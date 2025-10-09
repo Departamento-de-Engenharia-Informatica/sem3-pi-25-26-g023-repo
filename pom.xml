@@ -5,7 +5,7 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>pt.ipp.isep.dei</groupId>
-    <artifactId>sem3-pi-25-26-g023-repo</artifactId>
+    <artifactId>sem3-pi-25-26-g023-board</artifactId>
     <version>1.0-SNAPSHOT</version>
 
     <properties>
