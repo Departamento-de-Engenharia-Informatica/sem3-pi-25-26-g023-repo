@@ -1,0 +1,28 @@
+@startuml
+
+autonumber
+
+actor "Editor" as Editor
+participant "System" as System
+
+
+activate System
+System -> Editor : displays menu
+activate Editor
+Editor -> System : Selects to create the map
+System --> Editor : displays form (name, width, height)
+Editor -> System : fill out the form
+alt invalid name
+    System -> Editor : displays form again
+    Editor -> System : fill out the form
+    else valid name
+    alt invalid dimensions
+        System -> Editor : displays form again
+        Editor -> System : fill out the form
+        else valid dimensions
+        System -> System : create map
+        System -> Editor : return map created
+    end
+end
+
+@enduml

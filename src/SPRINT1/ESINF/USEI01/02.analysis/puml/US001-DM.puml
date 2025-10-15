@@ -1,0 +1,29 @@
+@startuml
+
+
+
+hide circle
+hide methods
+
+'title Domain Model
+
+
+
+class Map {
+    width
+    height
+    mapName
+}
+
+
+class Editor {
+    name
+    password
+}
+
+
+
+Editor "1" --> "*" Map : creates
+
+
+@enduml

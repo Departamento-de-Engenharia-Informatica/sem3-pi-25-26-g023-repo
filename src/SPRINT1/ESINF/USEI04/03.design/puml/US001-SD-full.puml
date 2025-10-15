@@ -1,0 +1,76 @@
+@startuml
+'skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Editor" as Editor
+participant ":CreateMapUI" as System
+participant ":MapController" as CTR
+participant "MapForm" as Form
+participant "Validator" as Val
+participant "Repositories" as REPOS
+participant "repositories\n:Repositories" as REPOS_SINGLETON
+participant "MapRepository" as Rep
+
+activate System
+    System --> Editor : displays menu
+    activate Editor
+        Editor -> System : Selects to create the map
+        System --> CTR** : create()
+        System -> CTR : requestForm()
+        activate CTR
+            CTR -> Form : getForm(name, width, height)
+            activate Form
+                Form --> CTR : getForm
+            deactivate Form
+            CTR --> System : getForm
+        deactivate CTR
+
+        System --> Editor : displays form (name, width, height)
+        Editor -> System : fill out the form
+        System -> CTR : getInformation()
+        activate CTR
+            CTR -> Val : validateInformation(name, width, height)
+            activate Val
+                alt invalid name
+                    Val --> CTR : invalid name
+                    CTR --> System : return error (invalid name)
+                    System --> Editor : displays form again
+                    Editor -> System : fill out the form
+                    System -> CTR : getInformation()
+                    CTR -> Val : validateInformation(name, width, height)
+                else valid name
+                alt invalid dimensions
+                    Val --> CTR : invalid dimensions
+                    CTR --> System : return error (invalid dimensions)
+                    System --> Editor : displays form again
+                    Editor -> System : fill out the form
+                    System -> CTR : getInformation()
+                    CTR -> Val : validateInformation(name, width, height)
+                else valid dimensions
+                Val -> CTR : valid name and dimensions
+            deactivate Val
+            CTR -> REPOS : getInstance()
+            activate REPOS
+                REPOS --> CTR: repositories
+            deactivate REPOS
+            CTR -> REPOS_SINGLETON : getMapRepository()
+            activate REPOS_SINGLETON
+                REPOS_SINGLETON --> CTR: MapRepository
+            deactivate REPOS_SINGLETON
+            CTR -> Rep : createMap(name, width, height)
+            activate Rep
+                Rep -> Rep : createNewMap(ID)
+                Rep --> CTR : map
+            deactivate Rep
+            CTR --> System : map
+        deactivate CTR
+        System --> Editor : return map created
+    deactivate Editor
+deactivate System
+end
+end
+
+@enduml

@@ -1,0 +1,61 @@
+@startuml
+
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+
+
+skinparam classAttributeIconSize 0
+
+
+
+class CreateMapUI {
+  +createMap()
+}
+
+class MapForm {
+  -name: String
+  -width: int
+  -height: int
+  +getName()
+  +getWidth()
+  +getHeight()
+}
+
+class Map {
+  -id: int
+  -name: String
+  -width: int
+  -height: int
+  +getId()
+  +getName()
+  +getDimensions()
+}
+
+class MapController {
+  +showForm(): MapForm
+  +submitForm(form: MapForm): void
+}
+
+class Repositories {
+  +createMap(form: MapForm): Map
+}
+
+class Validator {
+  +validateName(name: String): boolean
+  +validateDimensions(w: int, h: int): boolean
+}
+
+class MapRepository {
+  +save(map: Map): Map
+  +findById(id: int): Map
+}
+
+CreateMapUI --> MapController : uses
+MapController --> MapForm : creates
+MapController --> Validator : validates
+MapController --> Repositories
+Repositories --> MapRepository : mapRepository
+MapRepository --> Map : maps
+
+@enduml
