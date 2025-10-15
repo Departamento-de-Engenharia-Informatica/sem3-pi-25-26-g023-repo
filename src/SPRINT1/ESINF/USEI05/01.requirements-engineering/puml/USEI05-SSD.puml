@@ -1,0 +1,17 @@
+@startuml
+actor "Quality Operator" as Operator
+boundary "WMS" as System
+
+Operator -> System: Upload returns.csv
+System -> System: Validate records
+System -> System: Push returns into quarantine stack (LIFO)
+Operator -> System: Process quarantine items
+System -> System: Inspect latest return
+alt Valid & Good
+    System -> System: Restock item (create box RET-id)
+else Damaged/Expired
+    System -> System: Discard item
+end
+System -> System: Append log entry
+Operator <- System: Processing summary
+@enduml
