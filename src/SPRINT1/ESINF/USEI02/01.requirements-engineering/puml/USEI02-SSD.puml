@@ -1,0 +1,52 @@
+@startuml
+
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Warehouse Planner" as Planner
+participant ":System" as System
+
+activate Planner
+
+    Planner -> System: Requests allocation for open orders
+    activate System
+
+        System --> Planner: Returns sorted orders by priority, dueDate, orderId
+    deactivate System
+
+    Planner -> System: Request eligibility and allocation per order
+    activate System
+
+        System --> Planner: Lists order lines sorted by lineNo
+    deactivate System
+
+    Planner -> System: Check inventory for each SKU in order lines
+    activate System
+
+        System --> Planner: Lists available boxes per SKU sorted by FEFO/FIFO
+    deactivate System
+
+    Planner -> System: Approves allocation process
+    activate System
+
+        System --> Planner: Allocates quantities per box (min(remainingQty, box.qtyAvailable))
+        System --> Planner: Updates box quantities and remainingQty
+        System --> Planner: Determines line status (ELIGIBLE, PARTIAL, UNDISPATCHABLE)
+    deactivate System
+
+    Planner -> System: Requests final allocation report
+    activate System
+
+        System --> Planner: Returns eligibility list (orderId, lineNo, sku, requestedQty, allocatedQty, status)
+        System --> Planner: Returns detailed allocations (orderId, lineNo, sku, qty, boxId, aisle, bay)
+    deactivate System
+
+    System --> Planner: Confirms allocation operation success
+deactivate Planner
+
+@enduml
+
