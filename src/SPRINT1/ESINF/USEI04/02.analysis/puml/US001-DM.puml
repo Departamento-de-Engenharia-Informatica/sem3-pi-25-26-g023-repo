@@ -1,29 +1,31 @@
 @startuml
 
-
+title USEI04 - Domain Model
 
 hide circle
 hide methods
 
-'title Domain Model
-
-
-
-class Map {
-    width
-    height
-    mapName
+class Picker {
+  pickerId
 }
 
-
-class Editor {
-    name
-    password
+class PickingPlan {
+  planId
 }
 
+class Bay {
+  aisle
+  bay
+}
 
+class PickingPath {
+  strategy
+  totalDistance
+}
 
-Editor "1" --> "*" Map : creates
-
+Picker "1" -- "*" PickingPlan : executes
+PickingPlan "1" -- "1" PickingPath : generates
+PickingPlan "1" -- "1..*" Bay : is composed of
+PickingPath "1" -- "1..*" Bay : sequences
 
 @enduml
