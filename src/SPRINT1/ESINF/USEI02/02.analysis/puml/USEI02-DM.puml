@@ -1,0 +1,74 @@
+@startuml
+
+skinparam monochrome true
+skinparam shadowing false
+skinparam classAttributeIconSize 0
+enum Status {
+  ELIGIBLE
+  PARTIAL
+  UNDISPATCHABLE
+}
+
+class Order {
+  - orderId : int
+  - priority : int
+  - dueDate : LocalDate
+  - lines : List<OrderLine>
+}
+
+class OrderLine {
+  - lineNo : int
+  - sku : String
+  - requestedQty : int
+}
+
+class Box {
+  - boxId : String
+  - sku : String
+  - qtyAvailable : int
+  - expiryDate : LocalDate
+  - aisle : String
+  - bay : String
+}
+
+class Eligibility {
+  - orderId : int
+  - lineNo : int
+  - sku : String
+  - requestedQty : int
+  - allocatedQty : int
+  - status : Status
+}
+
+class Allocation {
+  - orderId : int
+  - lineNo : int
+  - sku : String
+  - qty : int
+  - boxId : String
+  - aisle : String
+  - bay : String
+}
+
+class Inventory {
+  - boxes : List<Box>
+  + getBoxesBySKU(sku:String) : List<Box>
+}
+
+class OrderAllocator {
+  + planAllocations(orders:List<Order>, inventory:Inventory, mode:String) : void
+}
+
+
+Order "1" -- "many" OrderLine : contains >
+OrderLine "1" -- "many" Allocation : generates >
+Allocation "1" --> "1" Box : uses >
+Eligibility "1" --> "1" OrderLine : describes >
+
+Inventory "1" --> "many" Box : manages >
+OrderAllocator --> Inventory : uses >
+OrderAllocator --> Order : processes >
+OrderAllocator --> Eligibility : produces >
+OrderAllocator --> Allocation : produces >
+
+@enduml
