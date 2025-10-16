@@ -8,13 +8,11 @@ public class Box implements Comparable<Box> {
     public final String sku;
     public int qtyAvailable;
     public final LocalDate expiryDate;
-    public final LocalDateTime receivedDate; // mudar para LocalDateTime
+    public final LocalDateTime receivedDate;
     public final String aisle;
     public final String bay;
 
-    public Box(String boxId, String sku, int qtyAvailable,
-               LocalDateTime expiryDate, LocalDateTime receivedDate,
-               String aisle, String bay) {
+    public Box(String boxId, String sku, int qtyAvailable, LocalDateTime expiryDate, LocalDateTime receivedDate, String aisle, String bay) {
         this.boxId = boxId;
         this.sku = sku;
         this.qtyAvailable = qtyAvailable;
@@ -24,13 +22,27 @@ public class Box implements Comparable<Box> {
         this.bay = bay;
     }
 
-    public String getBoxId() { return boxId; }
-    public String getSku() { return sku; }
-    public int getQtyAvailable() { return qtyAvailable; }
-    public String getAisle() { return aisle; }
-    public String getBay() { return bay; }
-    public LocalDate getExpiryDate() { return expiryDate; }
-    public LocalDateTime getReceivedDate() { return receivedDate; } // LocalDateTime
+    public String getBoxId() {
+        return boxId;
+    }
+    public String getSku() {
+        return sku;
+    }
+    public int getQtyAvailable() {
+        return qtyAvailable;
+    }
+    public String getAisle() {
+        return aisle;
+    }
+    public String getBay() {
+        return bay;
+    }
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
+    public LocalDateTime getReceivedDate() {
+        return receivedDate;
+    }
 
     @Override
     public int compareTo(Box other) {
