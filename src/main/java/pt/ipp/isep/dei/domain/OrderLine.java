@@ -1,7 +1,5 @@
 package pt.ipp.isep.dei.domain;
 
-
-
 public class OrderLine {
         public final int lineNo;
         public final String sku;
@@ -13,4 +11,4 @@ public class OrderLine {
             this.requestedQty = requestedQty;
         }
     }
-}
+
