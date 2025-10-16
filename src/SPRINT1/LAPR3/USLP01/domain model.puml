@@ -1,27 +1,66 @@
 @startuml
 'https://plantuml.com/class-diagram
 
-abstract class AbstractList
-abstract AbstractCollection
-interface List
-interface Collection
 
-List <|-- AbstractList
-Collection <|-- AbstractCollection
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing true
 
-Collection <|- List
-AbstractCollection <|- AbstractList
-AbstractList <|-- ArrayList
+hide methods
 
-class ArrayList {
-Object[] elementData
-size()
+
+
+
+
+TrainOperators --> RollingStock : owns
+
+RollingStock --> Trains : is
+RollingStock --> Locomotives : is
+RollingStock --> Wagons : is
+Trains --> Tracks : travel on
+Locomotives --> Tracks : travel on
+Wagons --> Tracks : travel on
+
+
+
+
+
+class Tracks{
 }
 
-enum TimeUnit {
-DAYS
-HOURS
-MINUTES
+class TrainOperators{
 }
+class RollingStock{
+}
+class Trains{
+}
+class Locomotives{
+}
+class Wagons{
+}
+
+
+
+class Bridges{
+}
+class Tunnels{
+}
+
+
+class Stations{
+}
+class Terminals{
+}
+
+class Warehouses{
+}
+class RefrigeratedAreas{
+}
+class GrainSilos{
+}
+
+
+
+
 
 @enduml
