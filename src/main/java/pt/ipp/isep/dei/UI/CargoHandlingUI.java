@@ -1,4 +1,4 @@
-package pt.ipp.isep.dei;
+package pt.ipp.isep.dei.UI;
 
 import java.util.InputMismatchException;
 import java.util.Scanner;
