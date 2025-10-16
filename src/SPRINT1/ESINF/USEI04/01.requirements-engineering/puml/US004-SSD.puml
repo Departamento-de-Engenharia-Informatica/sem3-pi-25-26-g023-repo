@@ -1,0 +1,35 @@
+@startuml
+
+title USEI04 - Pick Path Sequencing
+
+autonumber
+
+actor "Picker" as Picker
+participant "Warehouse Management System" as WMS
+
+activate Picker
+Picker -> WMS: Requests picking path for a given plan
+activate WMS
+
+' The system validates the input picking plan
+alt Empty or Invalid Picking Plan
+    WMS --> Picker: Displays error message (e.g., "Picking plan is empty or invalid")
+
+else Valid Picking Plan
+    ' Internal processing steps based on Acceptance Criteria
+    WMS -> WMS: Merge duplicate bay locations (AC1)
+    
+    ' Use a group to show the two main calculation tasks
+    group Path Calculation for Both Strategies (AC2)
+        WMS -> WMS: Calculate path using Strategy A (Deterministic Sweep)
+        WMS -> WMS: Calculate path using Strategy B (Nearest-Neighbour)
+    end
+    
+    ' The system returns the final, formatted result to the Picker
+    WMS --> Picker: Displays both optimized paths and their total distances (AC3)
+end
+
+deactivate WMS
+deactivate Picker
+
+@enduml
