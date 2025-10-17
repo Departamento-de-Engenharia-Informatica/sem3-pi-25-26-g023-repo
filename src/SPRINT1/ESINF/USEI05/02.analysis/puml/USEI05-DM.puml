@@ -1,0 +1,45 @@
+@startuml USEI05-DM
+title USEI05 - Domain Model (Returns & Quarantine)
+
+' ===== Classes =====
+class Return {
+  - returnId : String
+  - sku : String
+  - qty : int
+  - reason : String
+  - timestamp : DateTime
+  - expiryDate : Date?
+}
+
+class Quarantine {
+  - stack : Stack<Return>
+  + push(r : Return)
+  + pop() : Return
+  + isEmpty() : boolean
+}
+
+class Inventory {
+  + restock(r : Return)
+}
+
+class Box {
+  - boxId : String
+  - sku : String
+  - qty : int
+  - expiryDate : Date?
+  - receivedAt : DateTime
+  - location : String
+}
+
+class AuditLog {
+  + writeLog(r : Return, action : String)
+}
+
+' ===== Relationships =====
+Quarantine "1" *-- "*" Return : contains >
+Inventory "1" *-- "*" Box : manages >
+Inventory --> AuditLog : logs actions >
+Quarantine --> Inventory : interacts >
+Return --> Box : may create >
+
+@enduml

@@ -1,0 +1,61 @@
+@startuml USEI05-CD
+title USEI05 - Design Class Diagram (Returns & Quarantine)
+
+' ===== Classes =====
+class Return {
+  - returnId : String
+  - sku : String
+  - qty : int
+  - reason : String
+  - timestamp : DateTime
+  - expiryDate : Date?
+  + isRestockable() : boolean
+}
+
+class Quarantine {
+  - stack : Stack<Return>
+  + addReturn(r : Return)
+  + getNextReturn() : Return
+  + isEmpty() : boolean
+}
+
+class Inventory {
+  - boxes : List<Box>
+  + restock(r : Return)
+  + createBoxFromReturn(r : Return) : Box
+  + insertBoxFEFO(b : Box)
+  + removeExpiredItems()
+}
+
+class Box {
+  - boxId : String
+  - sku : String
+  - qty : int
+  - expiryDate : Date?
+  - receivedAt : DateTime
+  - location : String
+  + compareTo(other : Box) : int
+}
+
+class AuditLog {
+  - logFilePath : String
+  + writeLog(r : Return, action : String, qty : int)
+  + writePartialLog(r : Return, restockedQty : int, discardedQty : int)
+}
+
+class WMS {
+  - quarantine : Quarantine
+  - inventory : Inventory
+  - auditLog : AuditLog
+  + processReturns()
+}
+
+' ===== Relationships =====
+WMS --> Quarantine : manages
+WMS --> Inventory : interacts
+WMS --> AuditLog : records
+Inventory *-- Box : contains
+Quarantine *-- Return : stores
+Inventory --> AuditLog : logs actions
+
+@enduml

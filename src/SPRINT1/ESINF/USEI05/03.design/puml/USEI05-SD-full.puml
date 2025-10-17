@@ -1,0 +1,31 @@
+@startuml USEI05-SD-full
+title USEI05 - Full Sequence Diagram (Returns & Quarantine)
+
+actor "Quality Operator" as Operator
+participant "WMS" as WMS
+participant "Quarantine" as Quarantine
+participant "Inventory" as Inventory
+participant "AuditLog" as AuditLog
+
+Operator -> WMS: processReturns()
+WMS -> Quarantine: isEmpty()
+alt not empty
+  loop for each Return (LIFO order)
+    WMS -> Quarantine: getNextReturn()
+    Quarantine --> WMS: Return r
+    WMS -> r: isRestockable()
+    alt restockable
+      WMS -> Inventory: createBoxFromReturn(r)
+      Inventory --> WMS: Box b
+      WMS -> Inventory: insertBoxFEFO(b)
+      WMS -> AuditLog: writeLog(r, "Restocked", r.qty)
+    else not restockable
+      WMS -> AuditLog: writeLog(r, "Discarded", r.qty)
+    end
+  end
+else quarantine empty
+  WMS -> Operator: "No returns to process"
+end
+WMS -> Operator: Summary report (processed, restocked, discarded)
+
+@enduml
