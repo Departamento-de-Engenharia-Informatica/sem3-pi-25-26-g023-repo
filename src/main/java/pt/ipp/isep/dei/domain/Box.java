@@ -2,6 +2,7 @@ package pt.ipp.isep.dei.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 public class Box implements Comparable<Box> {
     public final String boxId;
@@ -12,16 +13,35 @@ public class Box implements Comparable<Box> {
     public final String aisle;
     public final String bay;
 
-    public Box(String boxId, String sku, int qtyAvailable, LocalDateTime expiryDate, LocalDateTime receivedDate, String aisle, String bay) {
-        this.boxId = boxId;
-        this.sku = sku;
+    /**
+     * Construtor principal: expiryDate como LocalDate
+     */
+    public Box(String boxId, String sku, int qtyAvailable,
+               LocalDate expiryDate, LocalDateTime receivedDate,
+               String aisle, String bay) {
+        this.boxId = Objects.requireNonNull(boxId);
+        this.sku = Objects.requireNonNull(sku);
         this.qtyAvailable = qtyAvailable;
-        this.expiryDate = LocalDate.from(expiryDate);
+        this.expiryDate = expiryDate;
         this.receivedDate = receivedDate;
         this.aisle = aisle;
         this.bay = bay;
     }
 
+    /**
+     * Construtor auxiliar: expiryDate como LocalDateTime (converte para LocalDate)
+     * Mantém compatibilidade com código que passe LocalDateTime para expiryDate.
+     */
+    public Box(String boxId, String sku, int qtyAvailable,
+               LocalDateTime expiryDateTime, LocalDateTime receivedDate,
+               String aisle, String bay) {
+        this(boxId, sku, qtyAvailable,
+                (expiryDateTime != null) ? expiryDateTime.toLocalDate() : null,
+                receivedDate,
+                aisle, bay);
+    }
+
+    // --- getters ---
     public String getBoxId() {
         return boxId;
     }
@@ -44,25 +64,51 @@ public class Box implements Comparable<Box> {
         return receivedDate;
     }
 
+    public boolean isPerishable() {
+        return expiryDate != null;
+    }
+
+    /**
+     * Ordenação FEFO/FIFO:
+     * 1) Items com expiryDate (perecíveis) vêm primeiro; items sem expiryDate por último.
+     * 2) Para perecíveis: menor expiryDate primeiro (FEFO).
+     * 3) Para empate/ambos não perecíveis: receivedDate mais antigo primeiro (FIFO).
+     * 4) Desempate final por boxId.
+     */
     @Override
     public int compareTo(Box other) {
-        LocalDateTime thisExpiry = (this.expiryDate != null) ? this.expiryDate.atStartOfDay() : null;
-        LocalDateTime otherExpiry = (other.expiryDate != null) ? other.expiryDate.atStartOfDay() : null;
+        if (other == null) return -1;
 
-        if (thisExpiry == null && otherExpiry != null) return 1;
-        if (thisExpiry != null && otherExpiry == null) return -1;
-        if (thisExpiry != null && otherExpiry != null) {
-            int cmp = thisExpiry.compareTo(otherExpiry);
+        if (this.expiryDate == null && other.expiryDate != null) return 1;
+        if (this.expiryDate != null && other.expiryDate == null) return -1;
+
+        // FEFO
+        if (this.expiryDate != null && other.expiryDate != null) {
+            int cmp = this.expiryDate.compareTo(other.expiryDate);
             if (cmp != 0) return cmp;
         }
 
-        LocalDateTime thisReceived = this.receivedDate;
-        LocalDateTime otherReceived = other.receivedDate;
+        // FIFO
+        if (this.receivedDate != null && other.receivedDate != null) {
+            int cmp = this.receivedDate.compareTo(other.receivedDate);
+            if (cmp != 0) return cmp;
+        } else if (this.receivedDate == null && other.receivedDate != null) {
+            return 1;
+        } else if (this.receivedDate != null && other.receivedDate == null) {
+            return -1;
+        }
 
-        if (thisReceived == null && otherReceived != null) return 1;
-        if (thisReceived != null && otherReceived == null) return -1;
-        if (thisReceived != null && otherReceived != null) return thisReceived.compareTo(otherReceived);
+        // desempate por boxId
+        return this.boxId.compareTo(other.boxId);
+    }
 
-        return 0;
+    @Override
+    public String toString() {
+        return String.format("Box{id=%s, sku=%s, qty=%d, expiry=%s, received=%s, aisle=%s, bay=%s}",
+                boxId, sku, qtyAvailable,
+                expiryDate != null ? expiryDate.toString() : "N/A",
+                receivedDate != null ? receivedDate.toString() : "N/A",
+                aisle != null ? aisle : "N/A",
+                bay != null ? bay : "N/A");
     }
 }
