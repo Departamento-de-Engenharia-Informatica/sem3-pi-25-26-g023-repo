@@ -29,21 +29,27 @@ public class Return {
     }
 
     public String getReturnId() {
+
         return returnId;
     }
     public String getSku() {
+
         return sku;
     }
     public int getQty() {
+
         return qty;
     }
     public String getReason() {
+
         return reason;
     }
     public LocalDateTime getTimestamp() {
+
         return timestamp;
     }
     public LocalDateTime getExpiryDate() {
+
         return expiryDate;
     }
 
