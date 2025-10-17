@@ -1,61 +1,72 @@
 @startuml
 
+title USEI04 - Design Class Diagram
+
 skinparam packageStyle rectangle
 skinparam shadowing false
 skinparam linetype polyline
-
-
 skinparam classAttributeIconSize 0
 
-
-
-class CreateMapUI {
-  +createMap()
+class GetPickingPathUI {
+  + requestPath()
 }
 
-class MapForm {
-  -name: String
-  -width: int
-  -height: int
-  +getName()
-  +getWidth()
-  +getHeight()
+class GetPickingPathController {
+  + getOptimizedPath(plan: PickingPlanDTO)
 }
 
-class Map {
-  -id: int
-  -name: String
-  -width: int
-  -height: int
-  +getId()
-  +getName()
-  +getDimensions()
+class PickingPlanDTO {
+  - bays: List<BayDTO>
+  + getBays()
 }
 
-class MapController {
-  +showForm(): MapForm
-  +submitForm(form: MapForm): void
+class PickingPlanValidator {
+  + validate(plan: PickingPlanDTO): boolean
+}
+
+class PathSequencingService {
+  + calculatePaths(plan: PickingPlan): PickingPath
+}
+
+class PickingPlan {
+  - planId: String
+  - bays: List<Bay>
+}
+
+class Bay {
+    - aisle: int
+    - bay: int
+}
+
+class PickingPath {
+  - strategyA_Path: List<Bay>
+  - strategyA_Distance: double
+  - strategyB_Path: List<Bay>
+  - strategyB_Distance: double
 }
 
 class Repositories {
-  +createMap(form: MapForm): Map
+  + getInstance()
 }
 
-class Validator {
-  +validateName(name: String): boolean
-  +validateDimensions(w: int, h: int): boolean
+class PickingPathRepository {
+  + save(path: PickingPath): PickingPath
 }
 
-class MapRepository {
-  +save(map: Map): Map
-  +findById(id: int): Map
-}
 
-CreateMapUI --> MapController : uses
-MapController --> MapForm : creates
-MapController --> Validator : validates
-MapController --> Repositories
-Repositories --> MapRepository : mapRepository
-MapRepository --> Map : maps
+GetPickingPathUI ..> GetPickingPathController : uses
+GetPickingPathController ..> PickingPlanDTO : uses
+GetPickingPathController ..> PickingPlanValidator : uses
+GetPickingPathController ..> PathSequencingService : uses
+GetPickingPathController ..> Repositories : uses
+
+PathSequencingService ..> PickingPlan : uses
+PathSequencingService ..> PickingPath : creates
+
+Repositories ..> PickingPathRepository : "pathRepository"
+
+PickingPathRepository ..> PickingPath : manages
+
+PickingPlan "1" -- "1..*" Bay : is composed of
 
 @enduml
