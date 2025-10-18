@@ -1,0 +1,56 @@
+@startuml
+
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class UnloadWagonUI {
+  +unloadWagon(wagonId: String)
+}
+
+class WagonForm {
+  -wagonId: String
+  +getWagonId()
+}
+
+class Wagon {
+  -wagonId: String
+  +getBoxes(): List<Box>
+}
+
+class Inventory {
+  +insertBoxFEFO(box: Box)
+  +unloadBoxes(boxes: List<Box>)
+  +getBoxes(): List<Box>
+}
+
+class Box {
+  -boxId: String
+  -sku: String
+  -qtyAvailable: int
+  -expiryDate: LocalDate
+  -receivedDate: LocalDateTime
+  -aisle: String
+  -bay: String
+  +getBoxId()
+  +getSku()
+  +getQtyAvailable()
+}
+
+class Validator {
+  +validateWagonId(id: String): boolean
+}
+
+class WagonRepository {
+  +findById(wagonId: String): Wagon
+}
+
+UnloadWagonUI --> Inventory : uses
+UnloadWagonUI --> WagonForm : creates
+UnloadWagonUI --> Validator : validates
+UnloadWagonUI --> WagonRepository : retrieves wagon
+WagonRepository --> Wagon : returns
+Inventory --> Box : stores
+
+@enduml
