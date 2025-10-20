@@ -1,4 +1,8 @@
-CREATE TABLE Linha (idLinha number(10) GENERATED AS IDENTITY, nome number(10), dono number(10), OperadoridOperador number(10) NOT NULL, PRIMARY KEY (idLinha));
+CREATE TABLE Linha
+(
+    idLinha number(10)
+GENERATED AS IDENTITY, nome number(10),
+                    dono number(10), OperadoridOperador number(10) NOT NULL, PRIMARY KEY (idLinha));
 CREATE TABLE SegmentoLinha (idSegmento number(10) GENERATED AS IDENTITY, idLinha number(10), idEstacaoInicio number(10), idEstacaoFim number(10), comprimento number(10), tipo number(10), eletrificado number(10), "Column" number(10), bitola number(10), pesoMaximo number(10), velocidadeMaxima number(10), LinhaidLinha number(10) NOT NULL, EstacaoidEstacao number(10) NOT NULL, PRIMARY KEY (idSegmento));
 CREATE TABLE Estacao (idEstacao number(10) GENERATED AS IDENTITY, nome number(10), "Column" number(10), localização number(10), Column2 number(10), PRIMARY KEY (idEstacao));
 CREATE TABLE Operador (idOperador number(10) GENERATED AS IDENTITY, nome number(10), PRIMARY KEY (idOperador));
