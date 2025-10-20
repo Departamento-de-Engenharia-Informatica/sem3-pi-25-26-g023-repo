@@ -8,7 +8,13 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+/**
+ * InventoryManager
+ * Responsável por carregar os ficheiros CSV (items, wagons, returns)
+ * e disponibilizar listas e objetos para o WMS.
+ */
 public class InventoryManager {
+
     private final Inventory inventory = new Inventory();
     private final Map<String, Item> items = new HashMap<>(); // SKU -> Item
 
@@ -39,7 +45,7 @@ public class InventoryManager {
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine();
+            br.readLine(); // ignora cabeçalho
             while ((line = br.readLine()) != null) {
                 String[] p = line.split(",");
                 if (p.length < 6) continue;
@@ -74,6 +80,70 @@ public class InventoryManager {
             }
         }
         return new ArrayList<>(wagons.values());
+    }
+
+    /**
+     * Lê returns.csv e converte em objetos Return
+     * Formato: returnId, SKU, qty, reason, timestamp, expiryDate
+     */
+    public List<Return> loadReturns(String filePath) throws IOException {
+        List<Return> list = new ArrayList<>();
+        DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            String line;
+            br.readLine(); // ignora cabeçalho
+            while ((line = br.readLine()) != null) {
+                String[] p = line.split(",");
+                if (p.length < 6) continue;
+
+                String id = p[0].trim();
+                String sku = p[1].trim();
+                String qtyStr = p[2].trim();
+                String reason = p[3].trim();
+                String tsRaw = p[4].trim();
+                String expRaw = p[5].trim();
+
+                // Validações básicas
+                if (id.isEmpty() || sku.isEmpty()) {
+                    System.err.printf("ERRO: Return inválido (id ou SKU vazio): %s%n", line);
+                    continue;
+                }
+                if (!items.containsKey(sku)) {
+                    System.err.printf("ERRO: SKU desconhecido '%s' no return %s%n", sku, id);
+                    continue;
+                }
+
+                int qty;
+                try {
+                    qty = Integer.parseInt(qtyStr);
+                    if (qty <= 0) throw new NumberFormatException();
+                } catch (NumberFormatException e) {
+                    System.err.printf("ERRO: Quantidade inválida '%s' no return %s%n", qtyStr, id);
+                    continue;
+                }
+
+                LocalDateTime timestamp;
+                try {
+                    timestamp = LocalDateTime.parse(tsRaw, fmt);
+                } catch (Exception e) {
+                    System.err.printf("ERRO: Timestamp inválido '%s' no return %s%n", tsRaw, id);
+                    continue;
+                }
+
+                LocalDateTime expiryDate = null;
+                if (!expRaw.isEmpty()) {
+                    try {
+                        expiryDate = LocalDateTime.parse(expRaw, fmt);
+                    } catch (Exception e) {
+                        System.err.printf("ERRO: expiryDate inválida '%s' no return %s%n", expRaw, id);
+                    }
+                }
+
+                list.add(new Return(id, sku, qty, reason, timestamp, expiryDate));
+            }
+        }
+        return list;
     }
 
     public Inventory getInventory() {
