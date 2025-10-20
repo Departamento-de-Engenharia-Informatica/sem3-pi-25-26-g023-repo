@@ -7,51 +7,109 @@ skinparam packageStyle rectangle
 skinparam shadowing true
 
 hide methods
+hide circle
 
 
+TrainOperators --> RollingStocks : owns
+
+Trains --> TrainOperators : operated by
+Trains --> Routes : follows
+Trains --> Wagons : pulls
+Trains --> Locomotives : pulls
 
 
+TrainDriver --> Trains : drives
+FreightManager ---> Freight : manages
+StationManager --> Stations : oversees
 
-TrainOperators --> RollingStock : owns
+LineSegment --> Sidings : includes
 
-RollingStock --> Trains : is
-RollingStock --> Locomotives : is
-RollingStock --> Wagons : is
-Trains --> Tracks : travel on
-Locomotives --> Tracks : travel on
-Wagons --> Tracks : travel on
+RollingStocks <|-- Locomotives
+RollingStocks <|-- Wagons
+Freight --> Wagons : transported in
 
+LineSegment --> SingleRailway
+LineSegment --> DoubleRailway
+RailwayNetwork --> LineSegment : is composed by
 
+Stations --> FreightYards : includes
+Stations --> Terminals : includes
 
+RailwayNetwork --> Stations : connects
 
+Planner --> Routes : plans
+Routes --> Path : includes
+Path --> RailwayNetwork : uses
+Path --> Stations : passes through
 
-class Tracks{
+LineOwners --> LineSegment : owns
+
+Stations --> Buildings : has
+
+Buildings <|-- RefrigeratedAreas
+Buildings <|-- GrainSilos
+Buildings <|-- Warehouses
+
+Freight --> Stations : delivered to
+Freight <-- Stations : picked up from
+Freight --> Routes : has assigned
+
+class RailwayNetwork{
+id: int
+name: String
+length: double
 }
 
 class TrainOperators{
+id
 }
-class RollingStock{
+
+class RollingStocks{
 }
 class Trains{
+id
 }
 class Locomotives{
+id
 }
 class Wagons{
+id
+}
+class Freight{
+id
+}
+
+class LineSegment{
+id
+}
+
+class Box{
+}
+class Order{
 }
 
 
 
 
-class Bridges{
+class Routes{
 }
-class Tunnels{
+class Path{
 }
+
+class SingleRailway{
+}
+class DoubleRailway{
+}
+
 
 
 class Stations{
 }
+class Buildings{
+}
 class Terminals{
 }
+
 
 class Warehouses{
 }
@@ -60,7 +118,16 @@ class RefrigeratedAreas{
 class GrainSilos{
 }
 
+class Planner{
+}
 
+class LineOwners{
+}
+
+class FreightYards{
+}
+class Sidings{
+}
 
 
 
