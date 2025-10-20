@@ -1,0 +1,61 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Terminal Operator" as Operator
+participant ":UnloadWagonUI" as System
+participant ":WagonController" as CTR
+participant "WagonForm" as Form
+participant "Validator" as Val
+participant "WagonRepository" as Repo
+participant "Inventory" as Inv
+
+activate System
+    System --> Operator : display unload menu
+    activate Operator
+        Operator -> System : select wagon to unload
+        System --> CTR : unloadWagon(wagonId)
+        System -> CTR : requestWagonForm()
+        activate CTR
+            CTR -> Form : getForm(wagonId)
+            activate Form
+                Form --> CTR : return wagonId
+            deactivate Form
+            CTR --> System : return form
+        deactivate CTR
+
+        System --> Operator : display form (wagonId)
+        Operator -> System : submit wagonId
+        System -> CTR : getInformation()
+        activate CTR
+            CTR -> Val : validateWagonId(wagonId)
+            activate Val
+                alt invalid wagonId
+                    Val --> CTR : invalid wagonId
+                    CTR --> System : return error
+                    System --> Operator : display error
+                else valid wagonId
+                    Val --> CTR : valid wagonId
+            deactivate Val
+
+            CTR -> Repo : findById(wagonId)
+            activate Repo
+                Repo --> CTR : Wagon with boxes
+            deactivate Repo
+
+            CTR -> Inv : unloadBoxes(Wagon.getBoxes())
+            activate Inv
+                Inv -> Inv : insert each box (FEFO/FIFO)
+                Inv --> CTR : confirmation
+            deactivate Inv
+
+            CTR --> System : return success message
+        deactivate CTR
+
+        System --> Operator : display success "Wagon unloaded"
+    deactivate Operator
+deactivate System
+
+@enduml

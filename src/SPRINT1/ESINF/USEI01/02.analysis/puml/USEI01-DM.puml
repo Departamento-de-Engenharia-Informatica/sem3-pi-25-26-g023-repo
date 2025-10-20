@@ -1,0 +1,44 @@
+@startuml
+
+hide circle
+hide methods
+
+'title Domain Model - USEI01: Wagon Unloading
+
+class Inventory {
+    +getBoxes()
+    +insertBoxFEFO(Box)
+    +unloadBoxes(List<Box>)
+}
+
+class Wagon {
+    wagonId
+    +getBoxes()
+    +unloadTo(Inventory)
+}
+
+class Box {
+    boxId
+    sku
+    qtyAvailable
+    expiryDate
+    receivedDate
+    aisle
+    bay
+}
+
+class SKU {
+    sku
+    name
+    category
+    unit
+    volume
+    unitWeight
+}
+
+' Relationships
+Wagon "1" --> "*" Box : contains
+Inventory "1" --> "*" Box : stores
+Box "*" --> "1" SKU : represents
+
+@enduml

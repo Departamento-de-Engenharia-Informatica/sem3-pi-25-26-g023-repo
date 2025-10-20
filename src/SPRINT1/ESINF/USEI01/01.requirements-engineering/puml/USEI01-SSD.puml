@@ -1,0 +1,35 @@
+@startuml
+autonumber
+
+actor "Terminal Operator" as Operator
+participant "System (WMS)" as System
+participant "Wagon" as Wagon
+participant "Inventory" as Inventory
+
+== Start of Operation ==
+
+activate Operator
+Operator -> System : Request to unload wagons
+
+activate System
+System -> Wagon : Retrieve wagon data (list of boxes)
+activate Wagon
+Wagon --> System : Return list of boxes
+deactivate Wagon
+
+System -> Inventory : unloadBoxes(list of boxes)
+activate Inventory
+Inventory -> Inventory : insert each Box using FEFO/FIFO order
+Inventory --> System : Confirmation (boxes stored)
+deactivate Inventory
+
+alt success
+    System -> Operator : Display message "Wagons successfully unloaded"
+else validation error
+    System -> Operator : Display error message (invalid SKU, quantity, date...)
+end
+
+deactivate System
+deactivate Operator
+
+@enduml
