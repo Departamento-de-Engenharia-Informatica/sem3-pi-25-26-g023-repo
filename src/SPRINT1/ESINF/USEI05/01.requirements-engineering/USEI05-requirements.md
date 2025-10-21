@@ -68,7 +68,3 @@ Every inspection must be logged to guarantee full traceability.
 9. Quarantine processing must handle large datasets efficiently, using stack operations (LIFO).
 10. All processing steps must conform to the requirements described in the official project specification.
 
-**References:**
-- *Project Assignment - Sprint 1_v1.pdf*, section **3.2.1 — USEI05 (Returns & Quarantine)**
-- *USEI01 — Wagons Unloading*: FEFO/FIFO logic reused for restocking  
-
