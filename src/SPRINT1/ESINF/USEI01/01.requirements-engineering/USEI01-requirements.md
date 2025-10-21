@@ -18,23 +18,17 @@ As a terminal operator, I want unloading operations of wagons to automatically s
 
 **From the client clarifications:**
 
-> **Question:** Are there minimum and maximum values for size?
+> **Question:** When the user wants to unload wagons, is it mandatory to unload all of them at once, or can they select specific wagons to process? Is it also possible to choose which warehouses will store the cargo, or are all warehouses automatically considered?
 >
-> **Answer:** The number needs to be a positive on; there is no maximum, it's up to the editor to decide.
-
-> **Question:** Is there a predefined list of sizes, or should users be able to input custom dimensions?
+> **Answer:** The system supports both options: the user can choose to unload all wagons at once or select specific wagons to process. Regarding storage, the existing warehouses are used following a fixed precedence (e.g., sorted by warehouseId in ascending order), filling each warehouse to its capacity before moving on to the next one. It is not possible to manually select which warehouses will store the cargo.
+> 
+> **Question:** If you try to unload wagons at a terminal's warehouses and a warehouse does not have enough capacity to receive all the boxes, what should happen? Should the warehouse receive only part of the wagon's cargo and the rest be stored in another warehouse? And what if the terminal currently does not have enough warehouse space to store the wagons' content?
+> 
+> **Answer:** The boxes of a wagon can be stored across multiple warehouses at the same terminal. Existing warehouses are used following a fixed precedence (e.g., sorted by warehouseId in ascending order), filling each warehouse to its capacity before moving on to the next one. If all warehouses are full and some wagons cannot be unloaded, the system must log the wagons that could not be processed.
+> 
+> **Question:** Should boxes in a bay be physically ordered by FIFO/FEFO, or is it sufficient for the system to indicate which box of a given SKU should be used next, regardless of placement in the bay? How is relocation triggered and managed?
 >
-> **Answer:** Custom dimensions but suggesting predefined sizes could be a good idea.
- 
-> **Question:** Are there any requirements or restrictions for the map's name (e.g., character limit, allowed/disallowed characters)?
->
-> **Answer:** File name like restrictions.
-
-> **Question:** Should map names be unique within the system?
->
-> **Answer:** Yes.
-
-
+> **Answer:** Boxes in a bay do not need to be physically reordered. The bay maintains a logical list ordered by expiryDate, receivedAt, and boxId across all SKUs. FEFO/FIFO is used to determine which box to pick, not as a physical constraint. Relocation must be requested manually by the warehouse manager; it is not automatic.
 ### 1.3. Acceptance Criteria
 
 * **AC1:** Boxes are inserted into inventory following FEFO/FIFO rules:
