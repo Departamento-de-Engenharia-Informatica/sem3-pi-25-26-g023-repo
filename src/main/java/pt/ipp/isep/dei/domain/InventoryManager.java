@@ -8,48 +8,40 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
-/**
- * InventoryManager
- * Responsável por carregar os ficheiros CSV (bays, items, wagons, returns, orders)
- * e disponibilizar listas e objetos para o WMS.
- */
 public class InventoryManager {
 
     private final Inventory inventory = new Inventory();
     private final Map<String, Item> items = new HashMap<>(); // SKU -> Item
+    private final List<Warehouse> warehouses = new ArrayList<>();
 
     // ============================================================
     // ITEMS
     // ============================================================
-    /** Lê items.csv e carrega produtos válidos */
     public void loadItems(String filePath) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // ignora cabeçalho
+            br.readLine();
             while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length < 5) continue;
-
-                String sku = parts[0].trim();
-                String name = parts[1].trim();
-                String category = parts[2].trim();
-                String unit = parts[3].trim();
-                double unitWeight = Double.parseDouble(parts[4].trim());
-
-                items.put(sku, new Item(sku, name, category, unit, unitWeight));
+                String[] p = line.split(",");
+                if (p.length < 5) continue;
+                String sku = p[0].trim();
+                String name = p[1].trim();
+                String category = p[2].trim();
+                String unit = p[3].trim();
+                double weight = Double.parseDouble(p[4].trim());
+                items.put(sku, new Item(sku, name, category, unit, weight));
             }
         }
     }
 
     // ============================================================
-    // BAYS
+    // BAYS & WAREHOUSES
     // ============================================================
-    /** Lê bays.csv e cria os objetos Bay */
     public List<Bay> loadBays(String filePath) throws IOException {
-        List<Bay> bays = new ArrayList<>();
+        List<Bay> allBays = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // ignora cabeçalho
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.split(",");
                 if (p.length < 4) continue;
@@ -59,23 +51,38 @@ public class InventoryManager {
                 int bay = Integer.parseInt(p[2].trim());
                 int capacity = Integer.parseInt(p[3].trim());
 
-                bays.add(new Bay(warehouseId, aisle, bay, capacity));
+                Bay newBay = new Bay(warehouseId, aisle, bay, capacity);
+                allBays.add(newBay);
+
+                Warehouse wh = warehouses.stream()
+                        .filter(w -> w.getWarehouseId().equals(warehouseId))
+                        .findFirst()
+                        .orElseGet(() -> {
+                            Warehouse w = new Warehouse(warehouseId);
+                            warehouses.add(w);
+                            return w;
+                        });
+                wh.addBay(newBay);
             }
         }
-        return bays;
+        warehouses.sort(Comparator.comparing(Warehouse::getWarehouseId));
+        return allBays;
+    }
+
+    public List<Warehouse> getWarehouses() {
+        return warehouses;
     }
 
     // ============================================================
     // WAGONS
     // ============================================================
-    /** Lê wagons.csv e converte em objetos Wagon + Box */
     public List<Wagon> loadWagons(String filePath) throws IOException {
         Map<String, Wagon> wagons = new LinkedHashMap<>();
-        DateTimeFormatter formatter = DateTimeFormatter.ISO_DATE_TIME;
+        DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // ignora cabeçalho
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.split(",");
                 if (p.length < 6) continue;
@@ -84,27 +91,16 @@ public class InventoryManager {
                 String boxId = p[1].trim();
                 String sku = p[2].trim();
                 int qty = Integer.parseInt(p[3].trim());
-                String expiryRaw = p[4].trim();
-                String receivedRaw = p[5].trim();
+                String expRaw = p[4].trim();
+                String recvRaw = p[5].trim();
 
                 if (!items.containsKey(sku)) {
                     System.err.printf("ERRO: SKU desconhecido '%s' no wagon %s%n", sku, wagonId);
                     continue;
                 }
-                if (qty <= 0) {
-                    System.err.printf("ERRO: Quantidade inválida %d no box %s%n", qty, boxId);
-                    continue;
-                }
 
-                LocalDate expiry = expiryRaw.isEmpty() ? null : LocalDate.parse(expiryRaw);
-                LocalDateTime receivedAt;
-                try {
-                    receivedAt = LocalDateTime.parse(receivedRaw, formatter);
-                } catch (Exception e) {
-                    System.err.printf("ERRO: Data receivedAt inválida em %s%n", boxId);
-                    continue;
-                }
-
+                LocalDate expiry = expRaw.isEmpty() ? null : LocalDate.parse(expRaw);
+                LocalDateTime receivedAt = LocalDateTime.parse(recvRaw, fmt);
                 Box box = new Box(boxId, sku, qty, expiry, receivedAt, null, null);
                 wagons.computeIfAbsent(wagonId, Wagon::new).addBox(box);
             }
@@ -115,66 +111,24 @@ public class InventoryManager {
     // ============================================================
     // RETURNS
     // ============================================================
-    /** Lê returns.csv e converte em objetos Return */
     public List<Return> loadReturns(String filePath) throws IOException {
         List<Return> list = new ArrayList<>();
         DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
-
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // ignora cabeçalho
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.split(",");
                 if (p.length < 6) continue;
-
                 String id = p[0].trim();
                 String sku = p[1].trim();
-                String qtyStr = p[2].trim();
+                int qty = Integer.parseInt(p[2].trim());
                 String reason = p[3].trim();
-                String tsRaw = p[4].trim();
-                String expRaw = p[5].trim();
-
-                if (id.isEmpty() || sku.isEmpty()) {
-                    System.err.printf("ERRO: Return inválido (id ou SKU vazio): %s%n", line);
-                    continue;
-                }
-                if (!items.containsKey(sku)) {
-                    System.err.printf("ERRO: SKU desconhecido '%s' no return %s%n", sku, id);
-                    continue;
-                }
-
-                int qty;
-                try {
-                    qty = Integer.parseInt(qtyStr);
-                    if (qty <= 0) throw new NumberFormatException();
-                } catch (NumberFormatException e) {
-                    System.err.printf("ERRO: Quantidade inválida '%s' no return %s%n", qtyStr, id);
-                    continue;
-                }
-
-                LocalDateTime timestamp;
-                try {
-                    timestamp = LocalDateTime.parse(tsRaw, fmt);
-                } catch (Exception e) {
-                    System.err.printf("ERRO: Timestamp inválido '%s' no return %s%n", tsRaw, id);
-                    continue;
-                }
-
-                // ✅ Agora aceita data simples (YYYY-MM-DD) ou timestamp (YYYY-MM-DDTHH:mm:ss)
-                LocalDateTime expiryDate = null;
-                if (!expRaw.isEmpty()) {
-                    try {
-                        expiryDate = LocalDateTime.parse(expRaw, fmt);
-                    } catch (Exception e1) {
-                        try {
-                            expiryDate = LocalDate.parse(expRaw).atStartOfDay();
-                        } catch (Exception e2) {
-                            System.err.printf("ERRO: expiryDate inválida '%s' no return %s%n", expRaw, id);
-                        }
-                    }
-                }
-
-                list.add(new Return(id, sku, qty, reason, timestamp, expiryDate));
+                LocalDateTime ts = LocalDateTime.parse(p[4].trim(), fmt);
+                LocalDateTime exp = p[5].trim().isEmpty() ? null :
+                        (p[5].contains("T") ? LocalDateTime.parse(p[5].trim(), fmt)
+                                : LocalDate.parse(p[5].trim()).atStartOfDay());
+                list.add(new Return(id, sku, qty, reason, ts, exp));
             }
         }
         return list;
@@ -183,57 +137,43 @@ public class InventoryManager {
     // ============================================================
     // ORDERS
     // ============================================================
-    /** Lê orders.csv e order_lines.csv, cria lista de Order com as suas linhas */
     public List<Order> loadOrders(String ordersPath, String linesPath) throws IOException {
-        Map<String, Order> orderMap = new LinkedHashMap<>();
+        Map<String, Order> orders = new LinkedHashMap<>();
+        DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
 
-        // Orders
         try (BufferedReader br = new BufferedReader(new FileReader(ordersPath))) {
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.split(",");
                 if (p.length < 3) continue;
+                String id = p[0].trim();
 
-                String orderId = p[0].trim(); // agora String
-
-                // ✅ Aceita datas com ou sem hora
-                LocalDate dueDate;
-                String dueRaw = p[1].trim();
-                try {
-                    dueDate = LocalDate.parse(dueRaw);
-                } catch (Exception e) {
-                    dueDate = LocalDateTime.parse(dueRaw, DateTimeFormatter.ISO_DATE_TIME).toLocalDate();
-                }
+                // Converte para LocalDate mesmo que venha com hora
+                LocalDate due = LocalDateTime.parse(p[1].trim(), fmt).toLocalDate();
 
                 int priority = Integer.parseInt(p[2].trim());
-
-                orderMap.put(orderId, new Order(orderId, priority, dueDate));
+                orders.put(id, new Order(id, priority, due));
             }
         }
 
-        // Order Lines
         try (BufferedReader br = new BufferedReader(new FileReader(linesPath))) {
             String line;
             br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.split(",");
                 if (p.length < 4) continue;
-
-                String orderId = p[0].trim(); // agora String
+                String orderId = p[0].trim();
                 int lineNo = Integer.parseInt(p[1].trim());
                 String sku = p[2].trim();
                 int qty = Integer.parseInt(p[3].trim());
-
-                if (!orderMap.containsKey(orderId)) {
-                    System.err.printf("ERRO: orderId %s inexistente em order_lines.csv%n", orderId);
-                    continue;
+                if (orders.containsKey(orderId)) {
+                    orders.get(orderId).lines.add(new OrderLine(lineNo, sku, qty));
                 }
-                orderMap.get(orderId).lines.add(new OrderLine(lineNo, sku, qty));
             }
         }
 
-        return new ArrayList<>(orderMap.values());
+        return new ArrayList<>(orders.values());
     }
 
     // ============================================================
@@ -244,7 +184,7 @@ public class InventoryManager {
     }
 
     public void unloadAll(List<Wagon> wagons) {
-        WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit.log"));
+        WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit.log"), warehouses);
         wms.unloadWagons(wagons);
     }
 }

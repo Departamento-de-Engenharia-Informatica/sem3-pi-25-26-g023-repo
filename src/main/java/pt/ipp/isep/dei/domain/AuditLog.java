@@ -22,5 +22,14 @@ public class AuditLog {
             System.err.println("Error writing audit log: " + e.getMessage());
         }
     }
-}
 
+    /** Método auxiliar para registar mensagens genéricas (como wagons não descarregados) */
+    public void writeLine(String message) {
+        String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
+        try (FileWriter writer = new FileWriter(logFilePath, true)) {
+            writer.write(timestamp + " | " + message);
+        } catch (IOException e) {
+            System.err.println("Error writing audit log: " + e.getMessage());
+        }
+    }
+}

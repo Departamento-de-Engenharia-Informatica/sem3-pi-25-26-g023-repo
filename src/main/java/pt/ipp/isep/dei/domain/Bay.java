@@ -24,4 +24,22 @@ public class Bay {
         }
         return false;
     }
+
+    public List<Box> getBoxes() {
+        return boxes;
+    }
+
+    public int getAisle() {
+
+        return aisle;
+    }
+    public int getBay() {
+        return bay;
+    }
+    public int getCapacityBoxes() {
+        return capacityBoxes;
+    }
+    public String getWarehouseId() {
+        return warehouseId;
+    }
 }

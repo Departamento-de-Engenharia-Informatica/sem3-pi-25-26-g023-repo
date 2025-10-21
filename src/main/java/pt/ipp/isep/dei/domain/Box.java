@@ -10,8 +10,9 @@ public class Box implements Comparable<Box> {
     public int qtyAvailable;
     public final LocalDate expiryDate;
     public final LocalDateTime receivedDate;
-    public final String aisle;
-    public final String bay;
+    // tornamos aisle e bay mutáveis para poderem ser atualizados quando a box for armazenada/relocada
+    private String aisle;
+    private String bay;
 
     /**
      * Construtor principal: expiryDate como LocalDate
@@ -62,6 +63,15 @@ public class Box implements Comparable<Box> {
     }
     public LocalDateTime getReceivedDate() {
         return receivedDate;
+    }
+
+    // --- setters para localização ---
+    public void setAisle(String aisle) {
+        this.aisle = aisle;
+    }
+
+    public void setBay(String bay) {
+        this.bay = bay;
     }
 
     public boolean isPerishable() {

@@ -12,7 +12,6 @@ public class CargoHandlingUI implements Runnable {
     private final InventoryManager manager;
     private final List<Wagon> wagons;
 
-    // Construtor que recebe as dependências principais
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons) {
         this.wms = wms;
         this.manager = manager;
@@ -33,7 +32,7 @@ public class CargoHandlingUI implements Runnable {
 
             } catch (InputMismatchException e) {
                 System.out.println("\n❌ Invalid input. Please enter a number corresponding to an option.\n");
-                scanner.next(); // limpa buffer
+                scanner.next();
             }
 
         } while (option != 0);
@@ -55,8 +54,36 @@ public class CargoHandlingUI implements Runnable {
     private void handleOption(int option) {
         switch (option) {
             case 1:
-                System.out.println("\n--- Executing Unload Wagons functionality ---\n");
-                wms.unloadWagons(wagons);
+                Scanner sc = new Scanner(System.in);
+                System.out.println("\n--- Unload Wagons ---");
+                System.out.println("1. Unload ALL wagons");
+                System.out.println("2. Select wagons manually");
+                System.out.print("> Option: ");
+                int sub = sc.nextInt();
+
+                if (sub == 1) {
+                    wms.unloadWagons(wagons);
+                } else if (sub == 2) {
+                    for (int i = 0; i < wagons.size(); i++) {
+                        System.out.printf("%d. Wagon %s (%d boxes)%n",
+                                i + 1, wagons.get(i).getWagonId(), wagons.get(i).getBoxes().size());
+                    }
+                    System.out.print("> Enter wagon numbers (comma-separated): ");
+                    sc.nextLine();
+                    String[] choices = sc.nextLine().split(",");
+                    List<Wagon> selected = new java.util.ArrayList<>();
+                    for (String c : choices) {
+                        try {
+                            int idx = Integer.parseInt(c.trim()) - 1;
+                            if (idx >= 0 && idx < wagons.size()) {
+                                selected.add(wagons.get(idx));
+                            }
+                        } catch (NumberFormatException ignored) {}
+                    }
+                    wms.unloadWagons(selected);
+                } else {
+                    System.out.println("Invalid option.");
+                }
                 break;
 
             case 2:
