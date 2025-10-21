@@ -11,6 +11,7 @@ public class OrderAllocator {
 
     public enum Mode { STRICT, PARTIAL }
 
+
     public AllocationResult allocateOrders(List<Order> orders, List<Box> inventory, Mode mode) {
         AllocationResult result = new AllocationResult();
 
@@ -63,6 +64,9 @@ public class OrderAllocator {
 
                     int take = Math.min(remaining, box.getQtyAvailable());
                     if (take <= 0) continue;
+                    double weight = 0.0;
+
+
 
                     // Criar registo de alocação
                     lineAllocations.add(new Allocation(
@@ -72,8 +76,8 @@ public class OrderAllocator {
                             take,
                             box.getBoxId(),
                             box.getAisle(),
-                            box.getBay()
-                    ));
+                            box.getBay(),
+                            weight));
 
                     box.qtyAvailable -= take; // atualizar stock
                     remaining -= take;
