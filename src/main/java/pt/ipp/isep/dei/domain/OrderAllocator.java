@@ -9,6 +9,10 @@ import java.util.stream.Collectors;
  */
 public class OrderAllocator {
 
+    public OrderAllocator() {
+
+    }
+
     public enum Mode { STRICT, PARTIAL }
 
 
