@@ -61,26 +61,27 @@ length: double
 }
 
 class TrainOperators{
-id
+id: int
+name: String
 }
 
 class RollingStocks{
 }
 class Trains{
-id
+id: int
 }
 class Locomotives{
-id
+id: int
 }
 class Wagons{
-id
+id: int
 }
 class Freight{
-id
+id: int
 }
 
 class LineSegment{
-id
+id: int
 }
 
 class Box{
@@ -92,8 +93,10 @@ class Order{
 
 
 class Routes{
+id: int
 }
 class Path{
+id: int
 }
 
 class SingleRailway{
@@ -104,10 +107,13 @@ class DoubleRailway{
 
 
 class Stations{
+id: int
 }
 class Buildings{
+id: int
 }
 class Terminals{
+id: int
 }
 
 
@@ -119,14 +125,32 @@ class GrainSilos{
 }
 
 class Planner{
+id: int
+name: String
+}
+class TrainDriver{
+id: int
+name: String
+}
+class FreightManager{
+id: int
+name: String
+}
+class StationManager{
+id: int
+name: String
 }
 
 class LineOwners{
+id: int
+name: String
 }
 
 class FreightYards{
+id: int
 }
 class Sidings{
+id: int
 }
 
 

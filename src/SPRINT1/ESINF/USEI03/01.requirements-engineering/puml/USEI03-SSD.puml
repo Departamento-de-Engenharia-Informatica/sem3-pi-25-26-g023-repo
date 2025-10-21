@@ -1,28 +1,43 @@
 @startuml
 
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
 autonumber
 
-actor "Editor" as Editor
-participant "System" as System
+
+actor "Warehouse Planner" as Planner
+participant ":System" as System
+
+activate Planner
+
+    Planner -> System: generatePickingPlans()
+    activate System
+        System --> Planner: displayParameterForm()
+    deactivate System
+
+    Planner -> System: submitPackingParameters()
+    activate System
+        System --> Planner: displayPickingPlanResults()
+    deactivate System
+
+    Planner -> System: requestTrolleyDetails()
+    activate System
+        System --> Planner: showTrolleyDetails()
+    deactivate System
+
+    Planner -> System: exportPlan(format: "CSV")
+    activate System
+        System --> Planner: returnFile()
+    deactivate System
+
+    Planner -> System: confirmPlanExecution()
+    activate System
+        System --> Planner: showSuccess("Plano de picking executado com sucesso")
+    deactivate System
 
 
-activate System
-System -> Editor : displays menu
-activate Editor
-Editor -> System : Selects to create the map
-System --> Editor : displays form (name, width, height)
-Editor -> System : fill out the form
-alt invalid name
-    System -> Editor : displays form again
-    Editor -> System : fill out the form
-    else valid name
-    alt invalid dimensions
-        System -> Editor : displays form again
-        Editor -> System : fill out the form
-        else valid dimensions
-        System -> System : create map
-        System -> Editor : return map created
-    end
-end
 
 @enduml
