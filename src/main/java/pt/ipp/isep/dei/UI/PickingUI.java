@@ -5,97 +5,173 @@ import java.util.List;
 import java.util.Scanner;
 
 public class PickingUI {
-    public static void main(String[] args) {
+    private final InventoryManager inventoryManager;
+
+    public PickingUI(InventoryManager inventoryManager) {
+        this.inventoryManager = inventoryManager;
+    }
+
+    public void run() {
         Scanner scanner = new Scanner(System.in);
 
-        System.out.println("=== USEI03 - Picking Plan Generator ===");
+        System.out.println("\n" + "=".repeat(50));
+        System.out.println("        USEI03 - Picking Plan Generator");
+        System.out.println("=".repeat(50));
 
         try {
             // 1. PRIMEIRO: Executar USEI02 para obter alocações
-            System.out.println("\n1. Executando USEI02 para gerar alocações...");
+            System.out.println("\n📦 PASSO 1: Executando USEI02 para gerar alocações...");
 
-            // Carregar dados necessários para USEI02 (orders e inventory)
-            List<Order> orders = loadOrders(); // Método que tens que implementar
-            List<Box> inventory = loadInventory(); // Método que tens que implementar
+            // Carregar orders e inventory
+            List<Order> orders = loadOrders();
+            List<Box> inventory = inventoryManager.getInventory().getBoxes();
 
+            if (orders.isEmpty()) {
+                System.out.println("❌ ERRO: Não há orders válidos para processar.");
+                return;
+            }
+
+            if (inventory.isEmpty()) {
+                System.out.println("❌ ERRO: O inventário está vazio.");
+                return;
+            }
+
+            System.out.printf("✅ Dados carregados: %d orders, %d boxes no inventário%n",
+                    orders.size(), inventory.size());
+
+            // Configurar e executar OrderAllocator
             OrderAllocator allocator = new OrderAllocator();
+            allocator.setItems(inventoryManager.getItemsMap()); // Passar items para cálculo de pesos
+
             AllocationResult allocationResult = allocator.allocateOrders(
                     orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-            // Verificar se há alocações válidas - AGORA CORRETO!
-            if (allocationResult.allocations.isEmpty()) { // ← Campo direto
-                System.out.println("❌ ERRO: Nenhuma alocação foi gerada na USEI02");
-                System.out.println("Verifique se existem orders e inventory válidos.");
+            // Verificar se há alocações válidas
+            if (allocationResult.allocations.isEmpty()) {
+                System.out.println("❌ Nenhuma alocação foi gerada na USEI02.");
+                System.out.println("\n📊 Resumo das Eligibilidades:");
+                for (Eligibility e : allocationResult.eligibilityList) {
+                    System.out.println("  " + e);
+                }
                 return;
             }
 
             System.out.println("✅ USEI02 executado com sucesso!");
-            System.out.println("Alocações geradas: " + allocationResult.allocations.size());
-            System.out.println("Linhas elegíveis: " + allocationResult.eligibilityList.size());
+            System.out.printf("📊 Resultados: %d alocações geradas, %d linhas processadas%n",
+                    allocationResult.allocations.size(), allocationResult.eligibilityList.size());
+
+            // Mostrar resumo das eligibilidades
+            System.out.println("\n📋 Resumo das Eligibilidades:");
+            int eligible = 0, partial = 0, undispatchable = 0;
+            for (Eligibility e : allocationResult.eligibilityList) {
+                System.out.println("  " + e);
+                switch (e.status) {
+                    case ELIGIBLE: eligible++; break;
+                    case PARTIAL: partial++; break;
+                    case UNDISPATCHABLE: undispatchable++; break;
+                }
+            }
+            System.out.printf("\n📈 Estatísticas: ELIGIBLE=%d, PARTIAL=%d, UNDISPATCHABLE=%d%n",
+                    eligible, partial, undispatchable);
 
             // 2. SEGUNDO: Parâmetros para USEI03
-            System.out.println("\n2. Parâmetros para USEI03:");
+            System.out.println("\n🎯 PASSO 2: Configurar USEI03 - Plano de Picking");
 
-            System.out.print("Trolley capacity (kg): ");
+            System.out.print("➡️  Capacidade do trolley (kg): ");
             double capacity = scanner.nextDouble();
 
-            System.out.print("Heuristic (1=FF, 2=FFD, 3=BFD): ");
-            int heuristicChoice = scanner.nextInt();
+            if (capacity <= 0) {
+                System.out.println("❌ Capacidade inválida. Usando valor padrão de 50kg.");
+                capacity = 50.0;
+            }
 
+            System.out.println("\n🧠 Heurísticas disponíveis:");
+            System.out.println("1. FIRST_FIT - Primeiro que cabe (mais rápido)");
+            System.out.println("2. FIRST_FIT_DECREASING - Maiores primeiro (mais eficiente)");
+            System.out.println("3. BEST_FIT_DECREASING - Melhor encaixe (otimiza espaço)");
+            System.out.print("➡️  Escolha a heurística (1-3): ");
+
+            int heuristicChoice = scanner.nextInt();
             HeuristicType heuristic = switch(heuristicChoice) {
                 case 1 -> HeuristicType.FIRST_FIT;
                 case 2 -> HeuristicType.FIRST_FIT_DECREASING;
                 case 3 -> HeuristicType.BEST_FIT_DECREASING;
-                default -> HeuristicType.FIRST_FIT;
+                default -> {
+                    System.out.println("⚠️  Escolha inválida. Usando FIRST_FIT.");
+                    yield HeuristicType.FIRST_FIT;
+                }
             };
 
             // 3. TERCEIRO: Executar USEI03
-            System.out.println("\n3. Executando USEI03...");
+            System.out.println("\n⚙️  PASSO 3: Executando USEI03...");
+
             PickingService service = new PickingService();
+            service.setItemsMap(inventoryManager.getItemsMap()); // Passar items para o serviço
+
             PickingPlan plan = service.generatePickingPlan(
-                    allocationResult.allocations, // ← CORRETO: campo direto!
+                    allocationResult.allocations,
                     capacity,
                     heuristic
             );
 
             // 4. QUARTO: Mostrar resultados
-            System.out.println("\n4. RESULTADOS - Plano de Picking Gerado:");
-            System.out.println("========================================");
+            System.out.println("\n" + "=".repeat(60));
+            System.out.println("           📊 RESULTADOS - Plano de Picking");
+            System.out.println("=".repeat(60));
             System.out.println(plan.getSummary());
 
-            System.out.println("\nDetalhes por Trolley:");
+            System.out.println("\n🛒 Detalhes por Trolley:");
+            System.out.println("-".repeat(50));
+
+            int trolleyCount = 1;
+            double totalUtilization = 0;
+
             for (Trolley trolley : plan.getTrolleys()) {
-                System.out.println("  " + trolley);
+                System.out.printf("\n🚗 Trolley %d: %s (%.1f%% utilizado)%n",
+                        trolleyCount, trolley.getId(), trolley.getUtilization());
+                System.out.printf("   📦 Peso: %.1f/%.1f kg | Itens: %d%n",
+                        trolley.getCurrentWeight(), trolley.getMaxCapacity(),
+                        trolley.getAssignments().size());
+
+                for (PickingAssignment assignment : trolley.getAssignments()) {
+                    System.out.printf("   → %s | Peso: %.1f kg | Local: %s%n",
+                            assignment, assignment.getTotalWeight(), assignment.getLocation());
+                }
+                totalUtilization += trolley.getUtilization();
+                trolleyCount++;
             }
 
-            System.out.println("\nExportar para CSV? (s/n): ");
-            String export = scanner.next();
-            if (export.equalsIgnoreCase("s")) {
+            double avgUtilization = totalUtilization / plan.getTotalTrolleys();
+            System.out.printf("\n📈 Utilização média: %.1f%%%n", avgUtilization);
+
+            // 5. OPÇÃO: Exportar para CSV
+            System.out.print("\n💾 Exportar plano para CSV? (s/n): ");
+            String exportChoice = scanner.next();
+            if (exportChoice.equalsIgnoreCase("s")) {
                 String csv = service.exportToCSV(plan);
-                System.out.println("\nCSV Exportado:");
+                System.out.println("\n📄 CSV Gerado:");
+                System.out.println("=".repeat(50));
                 System.out.println(csv);
             }
 
+            System.out.println("\n✅ USEI03 concluído com sucesso!");
+
         } catch (Exception e) {
-            System.out.println("❌ Erro: " + e.getMessage());
+            System.out.println("❌ Erro durante a execução: " + e.getMessage());
             e.printStackTrace();
-        } finally {
-            scanner.close();
         }
     }
 
-    // Métodos que precisas implementar:
-    private static List<Order> loadOrders() {
-        // TODO: Implementar carregamento de orders
-        // Exemplo: return Order.loadFromCSV("orders.csv");
-        System.out.println("⚠️  AVISO: Método loadOrders() precisa ser implementado");
-        return List.of(); // Retornar lista vazia por enquanto
-    }
-
-    private static List<Box> loadInventory() {
-        // TODO: Implementar carregamento de inventory
-        // Exemplo: return Box.loadFromCSV("boxes.csv");
-        System.out.println("⚠️  AVISO: Método loadInventory() precisa ser implementado");
-        return List.of(); // Retornar lista vazia por enquanto
+    private List<Order> loadOrders() {
+        try {
+            // Usar o InventoryManager para carregar orders
+            return inventoryManager.loadOrders(
+                    "src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv",
+                    "src/main/java/pt/ipp/isep/dei/FicheirosCSV/order_lines.csv"
+            );
+        } catch (Exception e) {
+            System.out.println("❌ Erro ao carregar orders: " + e.getMessage());
+            return List.of();
+        }
     }
 }

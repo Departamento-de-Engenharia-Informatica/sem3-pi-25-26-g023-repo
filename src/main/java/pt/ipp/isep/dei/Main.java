@@ -54,7 +54,7 @@ public class Main {
             );
             System.out.printf("Loaded %d orders.%n", orders.size());
 
-            // 7️⃣ Lançar interface textual (opcional)
+            // 7️⃣ Lançar interface textual
             CargoHandlingUI cargoMenu = new CargoHandlingUI(wms, manager, wagons);
             cargoMenu.run();
 

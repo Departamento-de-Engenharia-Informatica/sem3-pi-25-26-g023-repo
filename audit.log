@@ -404,3 +404,155 @@
 2025-10-21 15:49 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
 2025-10-21 15:49 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
 2025-10-21 15:49 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 16:06 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 16:06 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 16:06 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 16:06 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 16:06 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 16:06 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 16:06 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 16:06 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 16:06 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 16:06 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 16:06 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 16:06 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 16:06 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 16:06 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 16:06 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 16:06 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 16:06 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 16:10 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 16:10 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 16:10 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 16:10 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 16:10 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 16:10 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 16:10 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 16:10 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 16:10 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 16:10 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 16:10 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 16:10 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 16:10 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 16:10 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 16:10 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 16:10 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 16:10 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 16:13 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 16:13 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 16:13 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 16:13 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 16:13 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 16:13 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 16:13 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 16:13 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 16:13 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 16:13 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 16:13 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 16:13 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 16:13 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 16:13 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 16:13 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 16:13 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 16:13 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 17:14 | Wagon WGN001 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | Wagon WGN002 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | Wagon WGN003 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | Wagon WGN004 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | Wagon WGN005 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | Wagon WGN006 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | Wagon WGN007 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | Wagon WGN008 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:14 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 17:14 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 17:14 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 17:14 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 17:14 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 17:14 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 17:14 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 17:14 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 17:14 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 17:14 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 17:14 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 17:14 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 17:14 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 17:14 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 17:14 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 17:14 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 17:14 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 17:15 | Wagon WGN001 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | Wagon WGN002 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | Wagon WGN003 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | Wagon WGN004 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | Wagon WGN005 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | Wagon WGN006 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | Wagon WGN007 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | Wagon WGN008 | action=NotUnloaded | reason=AllWarehousesFull
+2025-10-21 17:15 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 17:15 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 17:15 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 17:15 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 17:15 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 17:15 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 17:15 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 17:15 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 17:15 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 17:15 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 17:15 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 17:15 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 17:15 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 17:15 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 17:15 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 17:15 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 17:15 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 17:19 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 17:19 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 17:19 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 17:19 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 17:19 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 17:19 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 17:19 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 17:19 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 17:19 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 17:19 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 17:19 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 17:19 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 17:19 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 17:19 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 17:19 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 17:19 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 17:19 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 17:29 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 17:29 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 17:29 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 17:29 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 17:29 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 17:29 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 17:29 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 17:29 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 17:29 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 17:29 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 17:29 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 17:29 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 17:29 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 17:29 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 17:29 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 17:29 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 17:29 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
+2025-10-21 17:34 | returnId=RET00030 | sku=SKU0005 | action=Restocked | qty=14
+2025-10-21 17:34 | returnId=RET00029 | sku=SKU0020 | action=Restocked | qty=3
+2025-10-21 17:34 | returnId=RET00027 | sku=SKU0013 | action=Discarded | qty=17
+2025-10-21 17:34 | returnId=RET00026 | sku=SKU0021 | action=Discarded | qty=1
+2025-10-21 17:34 | returnId=RET00025 | sku=SKU0025 | action=Restocked | qty=2
+2025-10-21 17:34 | returnId=RET00024 | sku=SKU0003 | action=Restocked | qty=14
+2025-10-21 17:34 | returnId=RET00023 | sku=SKU0024 | action=Discarded | qty=14
+2025-10-21 17:34 | returnId=RET00022 | sku=SKU0003 | action=Discarded | qty=17
+2025-10-21 17:34 | returnId=RET00020 | sku=SKU0016 | action=Restocked | qty=16
+2025-10-21 17:34 | returnId=RET00017 | sku=SKU0004 | action=Discarded | qty=18
+2025-10-21 17:34 | returnId=RET00015 | sku=SKU0023 | action=Discarded | qty=8
+2025-10-21 17:34 | returnId=RET00012 | sku=SKU0024 | action=Discarded | qty=16
+2025-10-21 17:34 | returnId=RET00009 | sku=SKU0011 | action=Discarded | qty=19
+2025-10-21 17:34 | returnId=RET00008 | sku=SKU0023 | action=Restocked | qty=1
+2025-10-21 17:34 | returnId=RET00006 | sku=SKU0021 | action=Restocked | qty=1
+2025-10-21 17:34 | returnId=RET00005 | sku=SKU0013 | action=Discarded | qty=5
+2025-10-21 17:34 | returnId=RET00004 | sku=SKU0005 | action=Discarded | qty=8
