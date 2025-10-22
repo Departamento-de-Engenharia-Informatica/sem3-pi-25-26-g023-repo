@@ -8,21 +8,23 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+/**
+ * Gestor principal do inventário que carrega e gere todos os dados do sistema
+ */
 public class InventoryManager {
 
     private final Inventory inventory = new Inventory();
     private final Map<String, Item> items = new HashMap<>();
     private final List<Warehouse> warehouses = new ArrayList<>();
 
-    // ============================================================
-    // ITEMS
-    // ============================================================
+    /**
+     * Carrega os itens/produtos do ficheiro
+     */
     public void loadItems(String filePath) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
             br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
-                // Tentar ambos os separadores: vírgula e ponto e vírgula
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 5) {
                     System.err.println("Invalid item record: " + line);
@@ -43,16 +45,15 @@ public class InventoryManager {
         System.out.printf("✅ Loaded %d items%n", items.size());
     }
 
-    // ============================================================
-    // BAYS & WAREHOUSES
-    // ============================================================
+    /**
+     * Carrega as bays (zonas de armazenamento) dos armazéns
+     */
     public List<Bay> loadBays(String filePath) throws IOException {
         List<Bay> allBays = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
             br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
-                // Tentar ambos os separadores: vírgula e ponto e vírgula
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 4) {
                     System.err.println("Invalid bay record: " + line);
@@ -67,6 +68,7 @@ public class InventoryManager {
                     Bay newBay = new Bay(warehouseId, aisle, bay, capacity);
                     allBays.add(newBay);
 
+                    // Adiciona ao armazém correspondente
                     Warehouse wh = warehouses.stream()
                             .filter(w -> w.getWarehouseId().equals(warehouseId))
                             .findFirst()
@@ -90,9 +92,9 @@ public class InventoryManager {
         return Collections.unmodifiableList(warehouses);
     }
 
-    // ============================================================
-    // WAGONS
-    // ============================================================
+    /**
+     * Carrega os vagões com caixas para descarregar
+     */
     public List<Wagon> loadWagons(String filePath) throws IOException {
         Map<String, Wagon> wagons = new LinkedHashMap<>();
         DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
@@ -101,7 +103,6 @@ public class InventoryManager {
             String line;
             br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
-                // Tentar ambos os separadores: vírgula e ponto e vírgula
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 6) {
                     System.err.println("Invalid wagon record: " + line);
@@ -115,13 +116,13 @@ public class InventoryManager {
                     String expRaw = p[4].trim();
                     String recvRaw = p[5].trim();
 
-                    // Validate SKU exists
+                    // Valida se o SKU existe
                     if (!items.containsKey(sku)) {
                         System.err.printf("❌ ERRO: SKU desconhecido '%s' no wagon %s%n", sku, wagonId);
                         continue;
                     }
 
-                    // Parse dates - lidar com campos vazios
+                    // Parse das datas
                     LocalDate expiry = null;
                     if (!expRaw.isEmpty() && !expRaw.equals("null")) {
                         try {
@@ -133,7 +134,7 @@ public class InventoryManager {
 
                     LocalDateTime receivedAt = LocalDateTime.parse(recvRaw, fmt);
 
-                    // Create box
+                    // Cria a caixa
                     Box box = new Box(boxId, sku, qty, expiry, receivedAt, null, null);
                     wagons.computeIfAbsent(wagonId, Wagon::new).addBox(box);
                 } catch (Exception e) {
@@ -145,9 +146,9 @@ public class InventoryManager {
         return new ArrayList<>(wagons.values());
     }
 
-    // ============================================================
-    // RETURNS
-    // ============================================================
+    /**
+     * Carrega as devoluções de clientes
+     */
     public List<Return> loadReturns(String filePath) throws IOException {
         List<Return> list = new ArrayList<>();
         DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
@@ -155,7 +156,6 @@ public class InventoryManager {
             String line;
             br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
-                // Tentar ambos os separadores: vírgula e ponto e vírgula
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 6) {
                     System.err.println("Invalid return record: " + line);
@@ -163,7 +163,7 @@ public class InventoryManager {
                 }
                 try {
                     String id = p[0].trim();
-                    // Remover BOM character se existir
+                    // Remove BOM character se existir
                     if (id.startsWith("\uFEFF")) {
                         id = id.substring(1);
                     }
@@ -173,7 +173,7 @@ public class InventoryManager {
                     String reason = p[3].trim();
                     LocalDateTime ts = LocalDateTime.parse(p[4].trim(), fmt);
 
-                    // Parse expiry date - lidar com campos vazios
+                    // Parse da data de expiração
                     LocalDateTime exp = null;
                     String expRaw = p[5].trim();
                     if (!expRaw.isEmpty() && !expRaw.equals("null")) {
@@ -198,19 +198,18 @@ public class InventoryManager {
         return list;
     }
 
-    // ============================================================
-    // ORDERS
-    // ============================================================
+    /**
+     * Carrega as encomendas e as suas linhas
+     */
     public List<Order> loadOrders(String ordersPath, String linesPath) throws IOException {
         Map<String, Order> orders = new LinkedHashMap<>();
         DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
 
-        // Load orders
+        // Carrega as encomendas
         try (BufferedReader br = new BufferedReader(new FileReader(ordersPath))) {
             String line;
             br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
-                // Tentar ambos os separadores: vírgula e ponto e vírgula
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 3) {
                     System.err.println("Invalid order record: " + line);
@@ -218,10 +217,7 @@ public class InventoryManager {
                 }
                 try {
                     String id = p[0].trim();
-
-                    // Convert to LocalDate even if it comes with time
                     LocalDate due = LocalDateTime.parse(p[1].trim(), fmt).toLocalDate();
-
                     int priority = Integer.parseInt(p[2].trim());
                     orders.put(id, new Order(id, priority, due));
                 } catch (Exception e) {
@@ -230,12 +226,11 @@ public class InventoryManager {
             }
         }
 
-        // Load order lines
+        // Carrega as linhas das encomendas
         try (BufferedReader br = new BufferedReader(new FileReader(linesPath))) {
             String line;
             br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
-                // Tentar ambos os separadores: vírgula e ponto e vírgula
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 4) {
                     System.err.println("Invalid order line record: " + line);
@@ -258,7 +253,7 @@ public class InventoryManager {
             }
         }
 
-        // Validate orders have lines
+        // Valida que as encomendas têm linhas
         List<Order> result = new ArrayList<>();
         for (Order order : orders.values()) {
             if (order.lines.isEmpty()) {
@@ -273,7 +268,7 @@ public class InventoryManager {
     }
 
     // ============================================================
-    // GETTERS & UTILITÁRIOS
+    // GETTERS
     // ============================================================
     public Inventory getInventory() {
         return inventory;

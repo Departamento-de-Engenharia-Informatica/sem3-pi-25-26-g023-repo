@@ -21,10 +21,12 @@ public class ItemRepository {
     }
 
     public boolean containsSku(String sku) {
+
         return itemsBySku.containsKey(sku);
     }
 
     public List<Item> getAllItems() {
+
         return new ArrayList<>(itemsBySku.values());
     }
 }

@@ -3,6 +3,9 @@ package pt.ipp.isep.dei.domain;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Representa uma zona de armazenamento num armazém
+ */
 public class Bay {
     private final String warehouseId;
     private final int aisle;
@@ -17,6 +20,9 @@ public class Bay {
         this.capacityBoxes = capacityBoxes;
     }
 
+    /**
+     * Adiciona uma caixa à bay se houver capacidade
+     */
     public boolean addBox(Box b) {
         if (boxes.size() < capacityBoxes) {
             boxes.add(b);
@@ -30,15 +36,17 @@ public class Bay {
     }
 
     public int getAisle() {
-
         return aisle;
     }
+
     public int getBay() {
         return bay;
     }
+
     public int getCapacityBoxes() {
         return capacityBoxes;
     }
+
     public String getWarehouseId() {
         return warehouseId;
     }

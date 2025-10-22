@@ -4,18 +4,20 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Objects;
 
+/**
+ * Representa uma caixa de produtos no armazém
+ */
 public class Box implements Comparable<Box> {
     public final String boxId;
     public final String sku;
     public int qtyAvailable;
     public final LocalDate expiryDate;
     public final LocalDateTime receivedDate;
-    // tornamos aisle e bay mutáveis para poderem ser atualizados quando a box for armazenada/relocada
     private String aisle;
     private String bay;
 
     /**
-     * Construtor principal: expiryDate como LocalDate
+     * Cria uma caixa com data de expiração como LocalDate
      */
     public Box(String boxId, String sku, int qtyAvailable,
                LocalDate expiryDate, LocalDateTime receivedDate,
@@ -30,8 +32,7 @@ public class Box implements Comparable<Box> {
     }
 
     /**
-     * Construtor auxiliar: expiryDate como LocalDateTime (converte para LocalDate)
-     * Mantém compatibilidade com código que passe LocalDateTime para expiryDate.
+     * Cria uma caixa com data de expiração como LocalDateTime
      */
     public Box(String boxId, String sku, int qtyAvailable,
                LocalDateTime expiryDateTime, LocalDateTime receivedDate,
@@ -43,62 +44,43 @@ public class Box implements Comparable<Box> {
     }
 
     // --- getters ---
-    public String getBoxId() {
-        return boxId;
-    }
-    public String getSku() {
-        return sku;
-    }
-    public int getQtyAvailable() {
-        return qtyAvailable;
-    }
-    public String getAisle() {
-        return aisle;
-    }
-    public String getBay() {
-        return bay;
-    }
-    public LocalDate getExpiryDate() {
-        return expiryDate;
-    }
-    public LocalDateTime getReceivedDate() {
-        return receivedDate;
-    }
+    public String getBoxId() { return boxId; }
+    public String getSku() { return sku; }
+    public int getQtyAvailable() { return qtyAvailable; }
+    public String getAisle() { return aisle; }
+    public String getBay() { return bay; }
+    public LocalDate getExpiryDate() { return expiryDate; }
+    public LocalDateTime getReceivedDate() { return receivedDate; }
 
     // --- setters para localização ---
-    public void setAisle(String aisle) {
-        this.aisle = aisle;
-    }
+    public void setAisle(String aisle) { this.aisle = aisle; }
+    public void setBay(String bay) { this.bay = bay; }
 
-    public void setBay(String bay) {
-        this.bay = bay;
-    }
-
+    /**
+     * Verifica se a caixa contém produtos perecíveis
+     */
     public boolean isPerishable() {
         return expiryDate != null;
     }
 
     /**
-     * Ordenação FEFO/FIFO:
-     * 1) Items com expiryDate (perecíveis) vêm primeiro; items sem expiryDate por último.
-     * 2) Para perecíveis: menor expiryDate primeiro (FEFO).
-     * 3) Para empate/ambos não perecíveis: receivedDate mais antigo primeiro (FIFO).
-     * 4) Desempate final por boxId.
+     * Ordena caixas por FEFO (produtos perecíveis) e FIFO (não perecíveis)
      */
     @Override
     public int compareTo(Box other) {
         if (other == null) return -1;
 
+        // Perecíveis primeiro
         if (this.expiryDate == null && other.expiryDate != null) return 1;
         if (this.expiryDate != null && other.expiryDate == null) return -1;
 
-        // FEFO
+        // FEFO para perecíveis
         if (this.expiryDate != null && other.expiryDate != null) {
             int cmp = this.expiryDate.compareTo(other.expiryDate);
             if (cmp != 0) return cmp;
         }
 
-        // FIFO
+        // FIFO para receção
         if (this.receivedDate != null && other.receivedDate != null) {
             int cmp = this.receivedDate.compareTo(other.receivedDate);
             if (cmp != 0) return cmp;
@@ -108,7 +90,7 @@ public class Box implements Comparable<Box> {
             return -1;
         }
 
-        // desempate por boxId
+        // Desempate por ID da caixa
         return this.boxId.compareTo(other.boxId);
     }
 

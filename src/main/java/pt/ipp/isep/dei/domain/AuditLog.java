@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+/**
+ * Regista ações do sistema num ficheiro de log para auditoria
+ */
 public class AuditLog {
     private final String logFilePath;
 
@@ -12,6 +15,9 @@ public class AuditLog {
         this.logFilePath = logFilePath;
     }
 
+    /**
+     * Regista uma ação relacionada com uma devolução
+     */
     public void writeLog(Return r, String action, int qty) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         String line = String.format("%s | returnId=%s | sku=%s | action=%s | qty=%d%n",
@@ -23,7 +29,9 @@ public class AuditLog {
         }
     }
 
-    /** Método auxiliar para registar mensagens genéricas (como wagons não descarregados) */
+    /**
+     * Regista uma mensagem genérica no log
+     */
     public void writeLine(String message) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
         try (FileWriter writer = new FileWriter(logFilePath, true)) {

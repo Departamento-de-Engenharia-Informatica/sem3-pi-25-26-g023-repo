@@ -4,24 +4,28 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * OrderAllocator - Responsável por alocar inventário às encomendas
- * segundo a política FEFO/FIFO, suportando modos STRICT e PARTIAL.
+ * Responsável por alocar inventário às encomendas usando FEFO/FIFO
  */
 public class OrderAllocator {
 
     public enum Mode { STRICT, PARTIAL }
 
-    private Map<String, Item> items; // Referência aos items para calcular pesos
+    private Map<String, Item> items;
 
     public OrderAllocator() {
         this.items = new HashMap<>();
     }
 
-    // Método para setar os items (chamado antes de allocateOrders)
+    /**
+     * Define os itens disponíveis para cálculo de pesos
+     */
     public void setItems(Map<String, Item> items) {
         this.items = items != null ? items : new HashMap<>();
     }
 
+    /**
+     * Aloca stock das boxes às encomendas conforme o modo selecionado
+     */
     public AllocationResult allocateOrders(List<Order> orders, List<Box> inventory, Mode mode) {
         AllocationResult result = new AllocationResult();
 
@@ -43,7 +47,7 @@ public class OrderAllocator {
         System.out.printf("📦 Processando %d orders com %d boxes no inventário...%n",
                 orders.size(), inventory.size());
 
-        // Ordenar encomendas por prioridade, dueDate e orderId
+        // Ordenar encomendas por prioridade
         orders.sort(Comparator
                 .comparingInt((Order o) -> o.priority)
                 .thenComparing(o -> o.dueDate)
@@ -53,12 +57,10 @@ public class OrderAllocator {
         Map<String, List<Box>> inventoryBySku = inventory.stream()
                 .collect(Collectors.groupingBy(Box::getSku));
 
-        // Contadores para estatísticas
         int totalLinesProcessed = 0;
         int totalAllocations = 0;
 
         for (Order order : orders) {
-            // Ordenar as linhas da encomenda
             order.lines.sort(Comparator.comparingInt(l -> l.lineNo));
 
             for (OrderLine line : order.lines) {
@@ -67,7 +69,6 @@ public class OrderAllocator {
                 int allocated = 0;
                 List<Allocation> lineAllocations = new ArrayList<>();
 
-                // Obter boxes do SKU específico
                 List<Box> boxesForSku = inventoryBySku.getOrDefault(line.sku, Collections.emptyList());
 
                 if (boxesForSku.isEmpty()) {
@@ -75,28 +76,25 @@ public class OrderAllocator {
                             line.sku, order.orderId);
                 }
 
-                // Ordenar boxes segundo FEFO/FIFO
+                // Ordenar boxes por FEFO/FIFO
                 List<Box> sortedBoxes = boxesForSku.stream()
                         .filter(b -> b.getQtyAvailable() > 0)
                         .sorted((b1, b2) -> {
-                            // FEFO: items com expiryDate vêm primeiro
                             if (b1.getExpiryDate() != null && b2.getExpiryDate() != null) {
                                 int cmp = b1.getExpiryDate().compareTo(b2.getExpiryDate());
                                 if (cmp != 0) return cmp;
-                                // Empate: FIFO por receivedDate
                                 return b1.getReceivedDate().compareTo(b2.getReceivedDate());
                             } else if (b1.getExpiryDate() != null) {
-                                return -1; // b1 tem expiryDate, b2 não → b1 vem primeiro
+                                return -1;
                             } else if (b2.getExpiryDate() != null) {
-                                return 1;  // b2 tem expiryDate, b1 não → b2 vem primeiro
+                                return 1;
                             } else {
-                                // Ambos sem expiryDate: FIFO por receivedDate
                                 return b1.getReceivedDate().compareTo(b2.getReceivedDate());
                             }
                         })
                         .collect(Collectors.toList());
 
-                // Tentar satisfazer a linha da encomenda
+                // Alocar stock das boxes à linha da encomenda
                 for (Box box : sortedBoxes) {
                     if (remaining <= 0) break;
                     if (box.getQtyAvailable() <= 0) continue;
@@ -104,10 +102,8 @@ public class OrderAllocator {
                     int take = Math.min(remaining, box.getQtyAvailable());
                     if (take <= 0) continue;
 
-                    // Calcular peso para esta alocação
                     double allocationWeight = getItemWeight(line.sku) * take;
 
-                    // Criar registo de alocação
                     Allocation allocation = new Allocation(
                             order.orderId,
                             line.lineNo,
@@ -120,7 +116,6 @@ public class OrderAllocator {
                     );
                     lineAllocations.add(allocation);
 
-                    // Atualizar stock da box (apenas na simulação - não persiste)
                     box.qtyAvailable -= take;
                     remaining -= take;
                     allocated += take;
@@ -130,7 +125,7 @@ public class OrderAllocator {
                             order.orderId, line.lineNo, take, line.sku, box.getBoxId());
                 }
 
-                // Determinar status da linha conforme o modo
+                // Determinar status conforme o modo
                 Status status;
                 if (mode == Mode.STRICT) {
                     if (allocated == line.requestedQty) {
@@ -142,7 +137,7 @@ public class OrderAllocator {
                         System.out.printf("  🔴 UNDISPATCHABLE: Order %s Line %d - %d/%d unidades%n",
                                 order.orderId, line.lineNo, allocated, line.requestedQty);
 
-                        // Rollback - devolver stock às boxes
+                        // Devolver stock às boxes
                         for (Allocation a : lineAllocations) {
                             inventoryBySku.get(line.sku).stream()
                                     .filter(b -> b.getBoxId().equals(a.boxId))
@@ -155,20 +150,15 @@ public class OrderAllocator {
                 } else { // Mode.PARTIAL
                     if (allocated == 0) {
                         status = Status.UNDISPATCHABLE;
-                        System.out.printf("  🔴 UNDISPATCHABLE: Order %s Line %d - 0/%d unidades%n",
-                                order.orderId, line.lineNo, line.requestedQty);
                     } else if (allocated < line.requestedQty) {
                         status = Status.PARTIAL;
-                        System.out.printf("  🟡 PARTIAL: Order %s Line %d - %d/%d unidades%n",
-                                order.orderId, line.lineNo, allocated, line.requestedQty);
                     } else {
                         status = Status.ELIGIBLE;
-                        System.out.printf("  🟢 ELIGIBLE: Order %s Line %d - %d/%d unidades%n",
-                                order.orderId, line.lineNo, allocated, line.requestedQty);
                     }
+                    System.out.printf("  %s: Order %s Line %d - %d/%d unidades%n",
+                            status, order.orderId, line.lineNo, allocated, line.requestedQty);
                 }
 
-                // Guardar resultado da linha
                 Eligibility eligibility = new Eligibility(
                         order.orderId,
                         line.lineNo,
@@ -182,7 +172,7 @@ public class OrderAllocator {
             }
         }
 
-        System.out.printf("📊 USEI02 Concluído: %d linhas processadas, %d alocações geradas%n",
+        System.out.printf("📊 Concluído: %d linhas processadas, %d alocações geradas%n",
                 totalLinesProcessed, totalAllocations);
 
         // Estatísticas finais
@@ -192,30 +182,30 @@ public class OrderAllocator {
         System.out.println("📈 Estatísticas Finais:");
         statusCount.forEach((status, count) ->
                 System.out.printf("  %s: %d linhas%n", status, count));
-        System.out.printf("  Total de alocações: %d%n", result.allocations.size());
 
         return result;
     }
 
+    /**
+     * Obtém o peso unitário de um item
+     */
     private double getItemWeight(String sku) {
         if (items == null || items.isEmpty()) {
-            System.out.printf("⚠️  Mapa de items vazio ou null para SKU %s%n", sku);
-            return 1.0; // Peso padrão
+            System.out.printf("⚠️  Mapa de items vazio para SKU %s%n", sku);
+            return 1.0;
         }
 
         Item item = items.get(sku);
         if (item == null) {
-            System.out.printf("⚠️  SKU %s não encontrado no mapa de items%n", sku);
-            return 1.0; // Peso padrão
+            System.out.printf("⚠️  SKU %s não encontrado%n", sku);
+            return 1.0;
         }
 
-        double weight = item.getUnitWeight();
-        System.out.printf("  📦 Peso do SKU %s: %.2f kg/unidade%n", sku, weight);
-        return weight;
+        return item.getUnitWeight();
     }
 
     /**
-     * Método auxiliar para debug - mostra informações sobre o inventário
+     * Mostra informações do inventário para debug
      */
     public void printInventoryInfo(List<Box> inventory) {
         if (inventory == null || inventory.isEmpty()) {
@@ -231,25 +221,6 @@ public class OrderAllocator {
             int totalQty = boxes.stream().mapToInt(Box::getQtyAvailable).sum();
             int boxCount = boxes.size();
             System.out.printf("  %s: %d boxes, %d unidades totais%n", sku, boxCount, totalQty);
-
-            // Mostrar detalhes das boxes ordenadas por FEFO/FIFO
-            boxes.stream()
-                    .sorted((b1, b2) -> {
-                        if (b1.getExpiryDate() != null && b2.getExpiryDate() != null) {
-                            int cmp = b1.getExpiryDate().compareTo(b2.getExpiryDate());
-                            if (cmp != 0) return cmp;
-                            return b1.getReceivedDate().compareTo(b2.getReceivedDate());
-                        } else if (b1.getExpiryDate() != null) return -1;
-                        else if (b2.getExpiryDate() != null) return 1;
-                        else return b1.getReceivedDate().compareTo(b2.getReceivedDate());
-                    })
-                    .forEach(box -> {
-                        String expiryInfo = box.getExpiryDate() != null ?
-                                box.getExpiryDate().toString() : "Sem expiry";
-                        System.out.printf("    - Box %s: %d unidades, Exp: %s, Receb: %s%n",
-                                box.getBoxId(), box.getQtyAvailable(), expiryInfo,
-                                box.getReceivedDate().toLocalDate());
-                    });
         });
     }
 }

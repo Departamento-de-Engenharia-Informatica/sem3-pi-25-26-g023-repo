@@ -1,5 +1,8 @@
 package pt.ipp.isep.dei.domain;
 
+/**
+ * Representa um item/produto no inventário
+ */
 public class Item {
     private final String sku;
     private final String name;
@@ -15,11 +18,21 @@ public class Item {
         this.unitWeight = unitWeight;
     }
 
-    public String getSku() { return sku; }
-    public String getName() { return name; }
-    public String getCategory() { return category; }
-    public String getUnit() { return unit; }
-    public double getUnitWeight() { return unitWeight; }
+    public String getSku() {
+        return sku;
+    }
+    public String getName() {
+        return name;
+    }
+    public String getCategory() {
+        return category;
+    }
+    public String getUnit() {
+        return unit;
+    }
+    public double getUnitWeight() {
+        return unitWeight;
+    }
 
     @Override
     public String toString() {
