@@ -2,15 +2,9 @@ package pt.ipp.isep.dei.domain;
 
 import java.time.LocalDateTime;
 
-/** sku - stock keeping unit - código único do produto devolvido
-   qty - quantity - número de unidades devolvidas
-   lifo - last in first out - politica de processamento de quarentena (utilizada na classe quatentine)
-   timestamp - data / hora de chegada - serve para ordenar devoluções
-   expirydate - data de validade - serve para decidir a prioridade de expedição
-   retunrid - identificador da devolução - chave única da entidade
-   isrestockable() - método de regra de negócio - verifica se o item pode ser reintroduzido no stock
+/**
+ * Representa uma devolução de produto para o armazém
  */
-
 public class Return {
     private final String returnId;
     private final String sku;
@@ -29,33 +23,42 @@ public class Return {
     }
 
     public String getReturnId() {
-
         return returnId;
     }
-    public String getSku() {
 
+    public String getSku() {
         return sku;
     }
-    public int getQty() {
 
+    public int getQty() {
         return qty;
     }
-    public String getReason() {
 
+    public String getReason() {
         return reason;
     }
-    public LocalDateTime getTimestamp() {
 
+    public LocalDateTime getTimestamp() {
         return timestamp;
     }
-    public LocalDateTime getExpiryDate() {
 
+    public LocalDateTime getExpiryDate() {
         return expiryDate;
     }
 
-    /** Business rule: determine if item can be restocked */
+    /**
+     * Determina se o item pode ser restockado
+     * @return true se o item pode ser reintroduzido no inventário
+     */
     public boolean isRestockable() {
-        if ("Damaged".equalsIgnoreCase(reason) || "Expired".equalsIgnoreCase(reason)) return false;
+        if ("Damaged".equalsIgnoreCase(reason) || "Expired".equalsIgnoreCase(reason)) {
+            return false;
+        }
+
+        if (expiryDate != null && expiryDate.isBefore(LocalDateTime.now())) {
+            return false;
+        }
+
         return true;
     }
 
@@ -67,7 +70,7 @@ public class Return {
                 ", qty=" + qty +
                 ", reason='" + reason + '\'' +
                 ", timestamp=" + timestamp +
+                ", expiryDate=" + expiryDate +
                 '}';
     }
 }
-

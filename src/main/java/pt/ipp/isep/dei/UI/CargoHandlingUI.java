@@ -48,6 +48,7 @@ public class CargoHandlingUI implements Runnable {
         System.out.println("2. View Current Inventory");
         System.out.println("3. Generate Picking Plan (USEI03)");
         System.out.println("4. View Warehouse Information");
+        System.out.println("5. Process Returns (USEI05)");
         System.out.println("-----------------------------------------");
         System.out.println("0. Exit");
         System.out.println("=========================================");
@@ -75,6 +76,10 @@ public class CargoHandlingUI implements Runnable {
 
             case 4:
                 showWarehouseInfo();
+                break;
+
+            case 5:
+                handleProcessReturns();
                 break;
 
             case 0:
@@ -118,6 +123,11 @@ public class CargoHandlingUI implements Runnable {
         } else {
             System.out.println("Invalid option.");
         }
+    }
+
+    private void handleProcessReturns() {
+        System.out.println("\n--- Processing Returns (USEI05) ---");
+        wms.processReturns();
     }
 
     private void showWarehouseInfo() {

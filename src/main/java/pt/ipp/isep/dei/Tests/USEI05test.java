@@ -13,29 +13,32 @@ import java.util.*;
 public class USEI05test implements Runnable {
 
     private final Map<String, Boolean> testResults = new HashMap<>();
-    private final String TEST_LOG_FILE = "audit_test_usei05.log"; // Ficheiro de log para os testes
+    private int testCounter = 0;
 
     public static void main(String[] args) {
         new USEI05test().run();
     }
 
-    // Apaga o ficheiro de log antes de cada execução de run()
-    private void clearTestLog() {
-        try {
-            Files.deleteIfExists(Paths.get(TEST_LOG_FILE));
-        } catch (IOException e) {
-            System.err.println("Aviso: Não foi possível apagar o ficheiro de log de teste: " + TEST_LOG_FILE);
-        }
+    // Gera um nome único para o ficheiro de log de cada teste
+    private String getUniqueLogFile() {
+        testCounter++;
+        return "audit_test_usei05_" + testCounter + ".log";
     }
 
+    // Apaga o ficheiro de log específico
+    private void clearTestLog(String logFile) {
+        try {
+            Files.deleteIfExists(Paths.get(logFile));
+        } catch (IOException e) {
+            System.err.println("Aviso: Não foi possível apagar o ficheiro de log de teste: " + logFile);
+        }
+    }
 
     @Override
     public void run() {
         System.out.println("======================================================");
         System.out.println("   Relatório de Testes - USEI05 Returns & Quarantine   ");
         System.out.println("======================================================");
-
-        clearTestLog(); // Garante um log limpo para cada execução completa dos testes
 
         testResults.put("Cenário 01: Quarentena Vazia", testQuarentenaVazia());
         testResults.put("Cenário 02: Processar Item Descartado (Damaged)", testItemDescartadoDamaged());
@@ -47,32 +50,41 @@ public class USEI05test implements Runnable {
         testResults.put("Cenário 08: Restock com Verificação FEFO/FIFO", testRestockOrdemInventario());
 
         printSummary();
+
+        // Limpa todos os ficheiros de log de teste no final
+        cleanupTestLogs();
     }
 
     // --- Cenários de Teste ---
 
     private boolean testQuarentenaVazia() {
         printScenarioHeader("Cenário 01: Quarentena Vazia");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
 
-        wms.processReturns(); // Executa o processamento
+        wms.processReturns();
 
-        boolean passed = inventory.getBoxes().isEmpty() && readLogLines(TEST_LOG_FILE).isEmpty();
+        boolean passed = inventory.getBoxes().isEmpty() && readLogLines(logFile).isEmpty();
         printResults("Inventário deve estar vazio.", inventory.getBoxes().isEmpty() ? "Sim" : "Não");
-        printResults("Log de auditoria deve estar vazio.", readLogLines(TEST_LOG_FILE).isEmpty() ? "Sim" : "Não");
+        printResults("Log de auditoria deve estar vazio.", readLogLines(logFile).isEmpty() ? "Sim" : "Não");
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testItemDescartadoDamaged() {
         printScenarioHeader("Cenário 02: Processar Item Descartado (Damaged)");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
         Return ret = createReturn("R001", "SKU1", 5, "Damaged", LocalDateTime.now(), null);
@@ -80,7 +92,7 @@ public class USEI05test implements Runnable {
 
         wms.processReturns();
 
-        List<String> logLines = readLogLines(TEST_LOG_FILE);
+        List<String> logLines = readLogLines(logFile);
         boolean passed = inventory.getBoxes().isEmpty() &&
                 logLines.size() == 1 &&
                 logLines.get(0).contains("returnId=R001") &&
@@ -95,19 +107,20 @@ public class USEI05test implements Runnable {
 
     private boolean testItemDescartadoExpired() {
         printScenarioHeader("Cenário 03: Processar Item Descartado (Expired)");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
-        // Nota: A lógica `isRestockable` atual não verifica a data de expiração, apenas a razão.
-        // O teste assume que a razão "Expired" é suficiente para descarte.
         Return ret = createReturn("R002", "SKU2", 3, "Expired", LocalDateTime.now(), LocalDateTime.now().minusDays(1));
         quarantine.addReturn(ret);
 
         wms.processReturns();
 
-        List<String> logLines = readLogLines(TEST_LOG_FILE);
+        List<String> logLines = readLogLines(logFile);
         boolean passed = inventory.getBoxes().isEmpty() &&
                 logLines.size() == 1 &&
                 logLines.get(0).contains("returnId=R002") &&
@@ -122,9 +135,12 @@ public class USEI05test implements Runnable {
 
     private boolean testItemRestockableRemorse() {
         printScenarioHeader("Cenário 04: Processar Item Restockable (Customer Remorse)");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
         Return ret = createReturn("R003", "SKU3", 7, "Customer Remorse", LocalDateTime.now(), null);
@@ -132,14 +148,14 @@ public class USEI05test implements Runnable {
 
         wms.processReturns();
 
-        List<String> logLines = readLogLines(TEST_LOG_FILE);
+        List<String> logLines = readLogLines(logFile);
         Optional<Box> restockedBox = inventory.getBoxes().stream().filter(b -> b.getBoxId().equals("RET-R003")).findFirst();
 
         boolean passed = inventory.getBoxes().size() == 1 &&
                 restockedBox.isPresent() &&
                 restockedBox.get().getSku().equals("SKU3") &&
                 restockedBox.get().getQtyAvailable() == 7 &&
-                restockedBox.get().getAisle() != null && // Verifica se tem localização
+                restockedBox.get().getAisle() != null &&
                 restockedBox.get().getBay() != null &&
                 logLines.size() == 1 &&
                 logLines.get(0).contains("returnId=R003") &&
@@ -155,24 +171,27 @@ public class USEI05test implements Runnable {
 
     private boolean testItemRestockableCycleCount() {
         printScenarioHeader("Cenário 05: Processar Item Restockable (Cycle Count)");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
-        Return ret = createReturn("R004", "SKU4", 4, "Cycle Count", LocalDateTime.now(), LocalDate.now().plusYears(1).atStartOfDay()); // Com expiry futuro
+        Return ret = createReturn("R004", "SKU4", 4, "Cycle Count", LocalDateTime.now(), LocalDate.now().plusYears(1).atStartOfDay());
         quarantine.addReturn(ret);
 
         wms.processReturns();
 
-        List<String> logLines = readLogLines(TEST_LOG_FILE);
+        List<String> logLines = readLogLines(logFile);
         Optional<Box> restockedBox = inventory.getBoxes().stream().filter(b -> b.getBoxId().equals("RET-R004")).findFirst();
 
         boolean passed = inventory.getBoxes().size() == 1 &&
                 restockedBox.isPresent() &&
                 restockedBox.get().getSku().equals("SKU4") &&
                 restockedBox.get().getQtyAvailable() == 4 &&
-                restockedBox.get().getExpiryDate() != null && // Deve ter data de expiração
+                restockedBox.get().getExpiryDate() != null &&
                 restockedBox.get().getAisle() != null &&
                 restockedBox.get().getBay() != null &&
                 logLines.size() == 1 &&
@@ -189,28 +208,31 @@ public class USEI05test implements Runnable {
 
     private boolean testProcessarMultiplosLIFO() {
         printScenarioHeader("Cenário 06: Processar Múltiplos Itens (LIFO)");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
 
-        Return ret1 = createReturn("R005", "SKU5", 1, "Damaged", LocalDateTime.now().minusMinutes(10), null); // Chegou primeiro
-        Return ret2 = createReturn("R006", "SKU6", 2, "Customer Remorse", LocalDateTime.now().minusMinutes(5), null); // Chegou depois
-        Return ret3 = createReturn("R007", "SKU7", 3, "Expired", LocalDateTime.now(), null); // Chegou por último
+        Return ret1 = createReturn("R005", "SKU5", 1, "Damaged", LocalDateTime.now().minusMinutes(10), null);
+        Return ret2 = createReturn("R006", "SKU6", 2, "Customer Remorse", LocalDateTime.now().minusMinutes(5), null);
+        Return ret3 = createReturn("R007", "SKU7", 3, "Expired", LocalDateTime.now(), null);
 
         quarantine.addReturn(ret1);
         quarantine.addReturn(ret2);
-        quarantine.addReturn(ret3); // R007 no topo
+        quarantine.addReturn(ret3);
 
         wms.processReturns();
 
-        List<String> logLines = readLogLines(TEST_LOG_FILE);
+        List<String> logLines = readLogLines(logFile);
         boolean passed = logLines.size() == 3 &&
-                logLines.get(0).contains("returnId=R007") && logLines.get(0).contains("Discarded") && // Primeiro a processar (LIFO)
-                logLines.get(1).contains("returnId=R006") && logLines.get(1).contains("Restocked") && // Segundo
-                logLines.get(2).contains("returnId=R005") && logLines.get(2).contains("Discarded") && // Último
-                inventory.getBoxes().size() == 1 && // Apenas R006 foi restockado
+                logLines.get(0).contains("returnId=R007") && logLines.get(0).contains("Discarded") &&
+                logLines.get(1).contains("returnId=R006") && logLines.get(1).contains("Restocked") &&
+                logLines.get(2).contains("returnId=R005") && logLines.get(2).contains("Discarded") &&
+                inventory.getBoxes().size() == 1 &&
                 inventory.getBoxes().get(0).getBoxId().equals("RET-R006");
 
         printResults("Log deve ter 3 linhas na ordem R007(D), R006(R), R005(D).", passed ? "Sim" : "Não: " + logLines);
@@ -221,28 +243,28 @@ public class USEI05test implements Runnable {
 
     private boolean testRestockSemEspaco() {
         printScenarioHeader("Cenário 07: Restock Falha (Sem Espaço)");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
-        // Warehouse com capacidade apenas para 1 caixa
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 1, 1);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
 
-        // Caixa inicial para encher o armazém
         Box initialBox = createBox("B_INIT", "SKU_INIT", 1, null, LocalDateTime.now().minusDays(1), null, null);
-        warehouses.get(0).storeBox(initialBox); // Coloca diretamente no warehouse (não no inventário lógico para este teste)
+        warehouses.get(0).storeBox(initialBox);
 
-        Return ret = createReturn("R008", "SKU8", 1, "Customer Remorse", LocalDateTime.now(), null); // Para restockar
+        Return ret = createReturn("R008", "SKU8", 1, "Customer Remorse", LocalDateTime.now(), null);
         quarantine.addReturn(ret);
 
         wms.processReturns();
 
-        List<String> logLines = readLogLines(TEST_LOG_FILE);
-        // Espera-se que o restock falhe e seja logado como descartado por falta de espaço
-        boolean passed = inventory.getBoxes().isEmpty() && // Não deve ter entrado no inventário lógico
+        List<String> logLines = readLogLines(logFile);
+        boolean passed = inventory.getBoxes().isEmpty() &&
                 logLines.size() == 1 &&
                 logLines.get(0).contains("returnId=R008") &&
-                logLines.get(0).contains("Discarded (No Space)"); // Verifica a mensagem específica
+                logLines.get(0).contains("Discarded (No Space)");
 
         printResults("Inventário deve estar vazio.", inventory.getBoxes().isEmpty() ? "Sim" : "Não");
         printResults("Log deve conter 1 linha 'Discarded (No Space)' para R008.", passed ? "Sim" : "Não: " + logLines);
@@ -252,34 +274,30 @@ public class USEI05test implements Runnable {
 
     private boolean testRestockOrdemInventario() {
         printScenarioHeader("Cenário 08: Restock com Verificação FEFO/FIFO");
+        String logFile = getUniqueLogFile();
+        clearTestLog(logFile);
+
         Inventory inventory = new Inventory();
         Quarantine quarantine = new Quarantine();
-        AuditLog auditLog = new AuditLog(TEST_LOG_FILE);
+        AuditLog auditLog = new AuditLog(logFile);
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(quarantine, inventory, auditLog, warehouses);
 
-        // Caixa existente no inventário
         Box existingBox = createBox("B_EXIST", "SKU9", 5, LocalDate.now().plusDays(10), LocalDateTime.now().minusDays(5), "1", "1");
-        inventory.insertBoxFEFO(existingBox); // Adiciona diretamente ao inventário lógico (assume que já tem local)
+        inventory.insertBoxFEFO(existingBox);
 
-        // Devolução para restockar que deve ir ANTES da existente (expira antes)
         Return ret_antes = createReturn("R009", "SKU9", 3, "Customer Remorse", LocalDateTime.now(), LocalDate.now().plusDays(5).atStartOfDay());
-        // Devolução para restockar que deve ir DEPOIS da existente (expira depois)
         Return ret_depois = createReturn("R010", "SKU9", 2, "Cycle Count", LocalDateTime.now(), LocalDate.now().plusDays(15).atStartOfDay());
-        // Devolução não perecível que deve ir DEPOIS de todas as perecíveis (chegou agora)
         Return ret_fifo = createReturn("R011", "SKU9", 4, "Customer Remorse", LocalDateTime.now(), null);
 
+        quarantine.addReturn(ret_fifo);
+        quarantine.addReturn(ret_depois);
+        quarantine.addReturn(ret_antes);
 
-        quarantine.addReturn(ret_fifo);   // Último a entrar (primeiro a sair LIFO)
-        quarantine.addReturn(ret_depois); // Penúltimo a entrar
-        quarantine.addReturn(ret_antes);  // Primeiro a entrar (último a sair LIFO) - MAS é processado por último
-
-        wms.processReturns(); // Processa na ordem: R009, R010, R011
+        wms.processReturns();
 
         List<Box> finalInventory = inventory.getBoxes();
         List<String> finalBoxIds = finalInventory.stream().map(Box::getBoxId).toList();
-        // Ordem esperada no inventário após processar R009, R010, R011 (FEFO > FIFO):
-        // RET-R009 (exp 5d), B_EXIST (exp 10d), RET-R010 (exp 15d), RET-R011 (null)
         List<String> expectedIds = List.of("RET-R009", "B_EXIST", "RET-R010", "RET-R011");
 
         boolean passed = finalBoxIds.equals(expectedIds);
@@ -289,20 +307,16 @@ public class USEI05test implements Runnable {
         return passed;
     }
 
-
     // --- Métodos Auxiliares ---
 
-    // Cria um Return simples
     private Return createReturn(String id, String sku, int qty, String reason, LocalDateTime timestamp, LocalDateTime expiry) {
         return new Return(id, sku, qty, reason, timestamp, expiry);
     }
 
-    // Cria um Box simples
     private Box createBox(String boxId, String sku, int qty, LocalDate expiry, LocalDateTime received, String aisle, String bay) {
         return new Box(boxId, sku, qty, expiry, received, aisle, bay);
     }
 
-    // Cria warehouses básicos
     private List<Warehouse> createWarehousesBasicos(int numWH, int numAislesPerWH, int numBaysPerAisle, int bayCapacity) {
         List<Warehouse> warehouses = new ArrayList<>();
         for (int i = 1; i <= numWH; i++) {
@@ -316,26 +330,35 @@ public class USEI05test implements Runnable {
         }
         return warehouses;
     }
+
     private List<Warehouse> createWarehousesBasicos(int numWH, int numAislesPerWH, int bayCapacity) {
-        return createWarehousesBasicos(numWH, numAislesPerWH, 5, bayCapacity); // Default 5 bays
+        return createWarehousesBasicos(numWH, numAislesPerWH, 5, bayCapacity);
     }
 
-
-    // Lê as linhas do ficheiro de log (simplificado)
     private List<String> readLogLines(String filePath) {
         try {
             Path path = Paths.get(filePath);
             if (Files.exists(path)) {
                 return Files.readAllLines(path);
             } else {
-                return new ArrayList<>(); // Retorna lista vazia se o ficheiro não existe
+                return new ArrayList<>();
             }
         } catch (IOException e) {
             System.err.println("Erro ao ler ficheiro de log " + filePath + ": " + e.getMessage());
-            return new ArrayList<>(); // Retorna lista vazia em caso de erro
+            return new ArrayList<>();
         }
     }
 
+    private void cleanupTestLogs() {
+        for (int i = 1; i <= testCounter; i++) {
+            String logFile = "audit_test_usei05_" + i + ".log";
+            try {
+                Files.deleteIfExists(Paths.get(logFile));
+            } catch (IOException e) {
+                // Ignora erros na limpeza
+            }
+        }
+    }
 
     private void printScenarioHeader(String title) {
         System.out.println("\n------------------------------------------------------");
@@ -381,5 +404,4 @@ public class USEI05test implements Runnable {
         System.out.println("             Fim do Relatório de Testes USEI05        ");
         System.out.println("======================================================");
     }
-
 }

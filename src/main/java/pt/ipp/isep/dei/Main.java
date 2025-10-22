@@ -19,7 +19,7 @@ public class Main {
             Quarantine quarantine = new Quarantine();
             AuditLog auditLog = new AuditLog("audit.log");
 
-            // 2️⃣ Carregar ficheiros base
+            // 2️⃣ Carregar ficheiros base (apenas carregar dados, NÃO processar)
             System.out.println("Loading product items...");
             manager.loadItems("src/main/java/pt/ipp/isep/dei/FicheirosCSV/items.csv");
 
@@ -31,22 +31,12 @@ public class Main {
             var wagons = manager.loadWagons("src/main/java/pt/ipp/isep/dei/FicheirosCSV/wagons.csv");
             System.out.printf("Loaded %d wagons.%n", wagons.size());
 
-            // 3️⃣ Criar o WMS com a lista de warehouses carregada
-            WMS wms = new WMS(quarantine, inventory, auditLog, manager.getWarehouses());
-
-            // 4️⃣ Descarregar vagões (USEI01)
-            System.out.println("Unloading wagons into warehouses and inventory...");
-            wms.unloadWagons(wagons);
-
-            // 5️⃣ Processar devoluções (USEI05)
             System.out.println("Loading returns...");
             List<Return> returns = manager.loadReturns("src/main/java/pt/ipp/isep/dei/FicheirosCSV/returns.csv");
             for (Return r : returns) {
                 quarantine.addReturn(r);
             }
-            wms.processReturns();
 
-            // 6️⃣ Carregar encomendas e respetivas linhas
             System.out.println("Loading orders...");
             var orders = manager.loadOrders(
                     "src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv",
@@ -54,7 +44,11 @@ public class Main {
             );
             System.out.printf("Loaded %d orders.%n", orders.size());
 
-            // 7️⃣ Lançar interface textual
+            // 3️⃣ Criar o WMS com a lista de warehouses carregada
+            WMS wms = new WMS(quarantine, inventory, auditLog, manager.getWarehouses());
+
+            // 4️⃣ Lançar interface textual (AGORA SEM PROCESSAR AUTOMATICAMENTE)
+            System.out.println("\n✅ All data loaded successfully! Launching menu...\n");
             CargoHandlingUI cargoMenu = new CargoHandlingUI(wms, manager, wagons);
             cargoMenu.run();
 

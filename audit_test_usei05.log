@@ -1,0 +1,11 @@
+2025-10-22 14:15 | returnId=R001 | sku=SKU1 | action=Discarded | qty=5
+2025-10-22 14:15 | returnId=R002 | sku=SKU2 | action=Discarded | qty=3
+2025-10-22 14:15 | returnId=R003 | sku=SKU3 | action=Restocked | qty=7
+2025-10-22 14:15 | returnId=R004 | sku=SKU4 | action=Restocked | qty=4
+2025-10-22 14:15 | returnId=R007 | sku=SKU7 | action=Discarded | qty=3
+2025-10-22 14:15 | returnId=R006 | sku=SKU6 | action=Restocked | qty=2
+2025-10-22 14:15 | returnId=R005 | sku=SKU5 | action=Discarded | qty=1
+2025-10-22 14:15 | returnId=R008 | sku=SKU8 | action=Discarded (No Space) | qty=1
+2025-10-22 14:15 | returnId=R009 | sku=SKU9 | action=Restocked | qty=3
+2025-10-22 14:15 | returnId=R010 | sku=SKU9 | action=Restocked | qty=2
+2025-10-22 14:15 | returnId=R011 | sku=SKU9 | action=Restocked | qty=4
