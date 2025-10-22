@@ -38,15 +38,15 @@ public final class BayLocation implements Comparable<BayLocation> {
 
     private static int safeParseInt(String value, String fieldName, PickingAssignment assignment) {
         if (value == null || value.trim().isEmpty() || value.trim().equalsIgnoreCase("N/A")) {
-            // Silencioso por defeito para não poluir a consola, descomentar se necessário
-            // System.err.printf("⚠️ Aviso BayLocation: '%s' nulo/vazio/NA para %s -> -1%n", fieldName, assignment);
+            // *** Logging ativado ***
+            System.err.printf("⚠️ Aviso BayLocation: '%s' nulo/vazio/NA para %s -> -1%n", fieldName, assignment);
             return -1;
         }
         try {
             return Integer.parseInt(value.trim());
         } catch (NumberFormatException e) {
-            // Silencioso por defeito
-            // System.err.printf("⚠️ Aviso BayLocation: Falha parse '%s' ('%s') para %s -> -1%n", value, fieldName, assignment);
+            // *** Logging ativado ***
+            System.err.printf("⚠️ Aviso BayLocation: Falha parse '%s' ('%s') para %s -> -1%n", value, fieldName, assignment);
             return -1;
         }
     }
@@ -118,4 +118,3 @@ public final class BayLocation implements Comparable<BayLocation> {
         return "(" + aisle + "," + bay + ")";
     }
 }
-

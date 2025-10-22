@@ -43,7 +43,7 @@ public class PickingPathService {
 
 
     public Map<String, PathResult> calculatePickingPaths(PickingPlan plan) {
-        // System.out.println("\n--- DEBUG USEI04: ENTRANDO EM calculatePickingPaths (Final Fix Attempt) ---"); // Pode remover/comentar
+        System.out.println("\n--- DEBUG USEI04: ENTRANDO EM calculatePickingPaths ---"); // Linha de debug
 
         Map<String, PathResult> results = new HashMap<>();
         // Inicializa com placeholders válidos (path com ENTRANCE, distância 0)
@@ -53,7 +53,7 @@ public class PickingPathService {
 
         if (plan == null || plan.getTrolleys() == null || plan.getTrolleys().isEmpty()) {
             System.out.println("⚠️ Picking plan está vazio ou nulo.");
-            // System.out.println("--- DEBUG USEI04: SAINDO (Plano Vazio) ---"); // Pode remover/comentar
+            System.out.println("--- DEBUG USEI04: SAINDO (Plano Vazio) ---"); // Linha de debug
             return results; // Retorna placeholders
         }
 
@@ -61,32 +61,38 @@ public class PickingPathService {
         Set<BayLocation> uniqueValidBays = new HashSet<>();
         int assignmentCount = 0;
 
-        // System.out.println("  DEBUG: Iniciando extração (loops)..."); // Pode remover/comentar
+        System.out.println("  DEBUG: Iniciando extração (loops)..."); // Linha de debug
         for (Trolley trolley : plan.getTrolleys()) {
             if (trolley == null || trolley.getAssignments() == null) continue;
             for (PickingAssignment assignment : trolley.getAssignments()) {
                 assignmentCount++;
                 if (assignment == null) continue;
+
+                // *** Adicionar linhas de debug aqui ***
+                System.out.println("  DEBUG: Lendo Assignment Aisle='" + assignment.getAisle() + "', Bay='" + assignment.getBay() + "' | Order: " + assignment.getOrderId() + " Line: " + assignment.getLineNo());
                 BayLocation loc = new BayLocation(assignment); // Usa o construtor público que valida
+                System.out.println("  DEBUG: Criado BayLocation: " + loc + ", Válido? " + loc.isValid());
+                // *** Fim das linhas de debug adicionadas ***
+
                 if (loc.isValid()) {
                     uniqueValidBays.add(loc);
                 } else {
-                    // O aviso silencioso está em BayLocation.safeParseInt
+                    // O aviso silencioso está em BayLocation.safeParseInt (agora ativado)
                 }
             }
         }
-        // System.out.println("  DEBUG: Extração concluída."); // Pode remover/comentar
-        // System.out.printf("  DEBUG: Assignments processados: %d%n", assignmentCount); // Pode remover/comentar
-        // System.out.printf("  DEBUG: Total ÚNICAS e VÁLIDAS: %d%n", uniqueValidBays.size()); // Pode remover/comentar
+        System.out.println("  DEBUG: Extração concluída."); // Linha de debug
+        System.out.printf("  DEBUG: Assignments processados: %d%n", assignmentCount); // Linha de debug
+        System.out.printf("  DEBUG: Total ÚNICAS e VÁLIDAS: %d%n", uniqueValidBays.size()); // Linha de debug
         List<BayLocation> sortedUniqueValidBays = uniqueValidBays.stream()
                 .filter(Objects::nonNull) // Segurança extra
                 .sorted() // Usa compareTo da BayLocation
                 .collect(Collectors.toList());
-        // System.out.println("  DEBUG: Lista FINAL ÚNICAS e VÁLIDAS (Ordenada): " + sortedUniqueValidBays); // Pode remover/comentar
+        System.out.println("  DEBUG: Lista FINAL ÚNICAS e VÁLIDAS (Ordenada): " + sortedUniqueValidBays); // Linha de debug
 
         if (sortedUniqueValidBays.isEmpty()) {
             System.out.println("ℹ️ Nenhuma bay VÁLIDA para visitar encontrada neste picking plan.");
-            // System.out.println("--- DEBUG USEI04: SAINDO (Nenhuma Bay Válida) ---"); // Pode remover/comentar
+            System.out.println("--- DEBUG USEI04: SAINDO (Nenhuma Bay Válida) ---"); // Linha de debug
             // Retorna placeholders indicando que não há rota (Path=[ENTRANCE], Dist=0)
             return results;
         }
@@ -110,25 +116,25 @@ public class PickingPathService {
         }
 
 
-        // System.out.println("--- DEBUG USEI04: SAINDO (Rotas Calculadas) ---"); // Pode remover/comentar
+        System.out.println("--- DEBUG USEI04: SAINDO (Rotas Calculadas) ---"); // Linha de debug
         return results;
     }
 
     // Estratégia A: Deterministic Sweep
     private PathResult calculateStrategyA(List<BayLocation> sortedBays) {
-        // System.out.println("  DEBUG (A): Iniciando Estratégia A..."); // Pode remover/comentar
+        System.out.println("  DEBUG (A): Iniciando Estratégia A..."); // Linha de debug
         List<BayLocation> path = new ArrayList<>();
         path.add(ENTRANCE); // Começa sempre na entrada
         path.addAll(sortedBays); // Adiciona as bays já ordenadas (aisle, depois bay)
 
         double totalDistance = calculateTotalDistance(path);
-        // System.out.println("  DEBUG (A): Cálculo concluído."); // Pode remover/comentar
+        System.out.println("  DEBUG (A): Cálculo concluído."); // Linha de debug
         return new PathResult(path, totalDistance);
     }
 
     // Estratégia B: Nearest Neighbour
     private PathResult calculateStrategyB(List<BayLocation> bays) {
-        // System.out.println("  DEBUG (B): Iniciando Estratégia B..."); // Pode remover/comentar
+        System.out.println("  DEBUG (B): Iniciando Estratégia B..."); // Linha de debug
         List<BayLocation> path = new ArrayList<>();
         path.add(ENTRANCE); // Começa na entrada
 
@@ -141,30 +147,30 @@ public class PickingPathService {
             iteration++;
             BayLocation nearest = null;
             double minDistance = Double.POSITIVE_INFINITY;
-            // System.out.printf("  DEBUG (B) Iter %d: Current: %s, Remaining (%d): %s%n", iteration, currentLocation, remainingBays.size(), remainingBays); // Pode remover/comentar
+            System.out.printf("  DEBUG (B) Iter %d: Current: %s, Remaining (%d): %s%n", iteration, currentLocation, remainingBays.size(), remainingBays); // Linha de debug
 
             // Encontra o vizinho mais próximo entre os restantes
             for (BayLocation potentialNext : remainingBays) {
                 if (potentialNext == null) continue; // Safety check
                 double distance = calculateDistance(currentLocation, potentialNext);
-                // System.out.printf("  DEBUG (B) Iter %d: Dist %s -> %s = %.2f%n", iteration, currentLocation, potentialNext, distance); // Pode remover/comentar
+                System.out.printf("  DEBUG (B) Iter %d: Dist %s -> %s = %.2f%n", iteration, currentLocation, potentialNext, distance); // Linha de debug
 
 
                 if (distance < minDistance) {
                     minDistance = distance;
                     nearest = potentialNext;
-                    // System.out.printf("  DEBUG (B) Iter %d: Novo nearest provisório: %s (Dist: %.2f)%n", iteration, nearest, minDistance); // Pode remover/comentar
+                    System.out.printf("  DEBUG (B) Iter %d: Novo nearest provisório: %s (Dist: %.2f)%n", iteration, nearest, minDistance); // Linha de debug
                 }
                 // Desempate: Se distâncias iguais, prefere aisle menor, depois bay menor (usando compareTo)
                 else if (distance == minDistance && nearest != null && potentialNext.compareTo(nearest) < 0) {
-                    // System.out.printf("  DEBUG (B) Iter %d: Empate! %s é preferível a %s (Dist: %.2f)%n", iteration, potentialNext, nearest, distance); // Pode remover/comentar
+                    System.out.printf("  DEBUG (B) Iter %d: Empate! %s é preferível a %s (Dist: %.2f)%n", iteration, potentialNext, nearest, distance); // Linha de debug
                     nearest = potentialNext; // Update nearest based on compareTo
                 }
             }
 
             // Se encontrou um vizinho válido e alcançável
             if (nearest != null && !Double.isInfinite(minDistance)) {
-                // System.out.printf("  DEBUG (B) Iter %d: Nearest definitivo escolhido: %s (Dist: %.2f)%n", iteration, nearest, minDistance); // Pode remover/comentar
+                System.out.printf("  DEBUG (B) Iter %d: Nearest definitivo escolhido: %s (Dist: %.2f)%n", iteration, nearest, minDistance); // Linha de debug
                 path.add(nearest);
                 currentLocation = nearest; // Atualiza a localização atual
                 remainingBays.remove(nearest); // Remove o escolhido do conjunto
@@ -190,7 +196,7 @@ public class PickingPathService {
         }
 
         double totalDistance = calculateTotalDistance(path);
-        // System.out.println("  DEBUG (B): Cálculo concluído."); // Pode remover/comentar
+        System.out.println("  DEBUG (B): Cálculo concluído."); // Linha de debug
         return new PathResult(path, totalDistance);
     }
 
@@ -208,7 +214,7 @@ public class PickingPathService {
         boolean c2ValidForCalc = (a2 >= 0 && b2 >= 0);
 
         if (!c1ValidForCalc || !c2ValidForCalc) {
-            // System.err.printf("DEBUG distance: Loc inválida c1(%d,%d) ou c2(%d,%d)%n", a1, b1, a2, b2); // Pode remover/comentar
+            System.err.printf("DEBUG distance: Loc inválida c1(%d,%d) ou c2(%d,%d)%n", a1, b1, a2, b2); // Linha de debug
             return Double.POSITIVE_INFINITY;
         }
 
@@ -253,4 +259,3 @@ public class PickingPathService {
         return totalDistance;
     }
 }
-
