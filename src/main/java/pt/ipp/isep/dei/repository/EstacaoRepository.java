@@ -5,14 +5,10 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 
-/**
- * Repositório MOCK para simular o acesso à tabela Estacao do BDDAD.
- */
 public class EstacaoRepository {
     private final List<Estacao> mockEstacoes = new ArrayList<>();
 
     public EstacaoRepository() {
-        // Dados de exemplo
         mockEstacoes.add(new Estacao(1, "Porto-Campanha"));
         mockEstacoes.add(new Estacao(2, "Lisboa-Oriente"));
         mockEstacoes.add(new Estacao(3, "Coimbra-B"));
@@ -21,7 +17,7 @@ public class EstacaoRepository {
     }
 
     public List<Estacao> findAll() {
-        return new ArrayList<>(mockEstacoes);
+        return new ArrayList<>(mockEstacoes); // Retorna cópia
     }
 
     public Optional<Estacao> findById(int id) {

@@ -2,6 +2,8 @@ package pt.ipp.isep.dei.controller;
 
 import pt.ipp.isep.dei.domain.Estacao;
 import pt.ipp.isep.dei.domain.Locomotiva;
+import pt.ipp.isep.dei.domain.RailwayNetworkService; // NOVO
+import pt.ipp.isep.dei.domain.RailwayPath; // NOVO
 import pt.ipp.isep.dei.domain.SegmentoLinha;
 import pt.ipp.isep.dei.repository.EstacaoRepository;
 import pt.ipp.isep.dei.repository.LocomotivaRepository;
@@ -13,16 +15,20 @@ public class TravelTimeController {
 
     private final EstacaoRepository estacaoRepo;
     private final LocomotivaRepository locomotivaRepo;
-    private final SegmentoLinhaRepository segmentoRepo;
+    // Removido SegmentoRepo, agora está no serviço
+    private final RailwayNetworkService networkService; // NOVO
 
-    public TravelTimeController(EstacaoRepository estacaoRepo, LocomotivaRepository locomotivaRepo, SegmentoLinhaRepository segmentoRepo) {
+    // Construtor modificado
+    public TravelTimeController(EstacaoRepository estacaoRepo,
+                                LocomotivaRepository locomotivaRepo,
+                                RailwayNetworkService networkService) { // Modificado
         this.estacaoRepo = estacaoRepo;
         this.locomotivaRepo = locomotivaRepo;
-        this.segmentoRepo = segmentoRepo;
+        this.networkService = networkService; // NOVO
     }
 
     /**
-     * Calcula o tempo de viagem para a USLP03.
+     * Calcula o tempo de viagem para a USLP03 (agora com múltiplos segmentos).
      * Retorna uma String com o resultado formatado ou uma mensagem de erro.
      */
     public String calculateTravelTime(int idEstacaoPartida, int idEstacaoChegada, int idLocomotiva) {
@@ -41,54 +47,70 @@ public class TravelTimeController {
         if (optLocomotiva.isEmpty()) {
             return String.format("❌ ERRO: Locomotiva com ID %d não encontrada.", idLocomotiva);
         }
-
         if (idEstacaoPartida == idEstacaoChegada) {
             return "❌ ERRO: Estação de partida e chegada são a mesma.";
         }
 
-        // 2. Encontrar o Segmento Direto
-        Optional<SegmentoLinha> optSegmento = segmentoRepo.findDirectSegment(idEstacaoPartida, idEstacaoChegada);
+        // 2. Chamar o serviço para encontrar o caminho mais rápido
+        RailwayPath path = networkService.findFastestPath(idEstacaoPartida, idEstacaoChegada);
 
-        if (optSegmento.isEmpty()) {
-            return String.format("❌ ERRO: Não existe ligação ferroviária *direta* entre %s e %s.",
+        if (path == null || path.isEmpty()) {
+            return String.format("❌ ERRO: Não foi encontrado um caminho ferroviário entre %s e %s.",
                     optPartida.get().getNome(), optChegada.get().getNome());
         }
 
-        // 3. Calcular Tempo (AC: Aceleração instantânea)
-        SegmentoLinha segmento = optSegmento.get();
-        double distancia = segmento.getComprimento();
-        double velocidade = segmento.getVelocidadeMaxima();
+        // 3. Formatar o resultado
+        return formatPathResult(path, optPartida.get(), optChegada.get(), optLocomotiva.get());
+    }
 
-        if (velocidade <= 0) {
-            return String.format("❌ ERRO: O segmento entre %s e %s tem uma velocidade máxima inválida (%.1f km/h).",
-                    optPartida.get().getNome(), optChegada.get().getNome(), velocidade);
-        }
-
-        double tempoEmHoras = distancia / velocidade;
-        long tempoTotalMinutos = Math.round(tempoEmHoras * 60); // Arredonda para o minuto mais próximo
-
-        // Formata para H:M
-        long horas = tempoTotalMinutos / 60;
-        long minutos = tempoTotalMinutos % 60;
-        String tempoFormatado;
-        if (horas > 0) {
-            tempoFormatado = String.format("%d horas e %d minutos", horas, minutos);
-        } else {
-            tempoFormatado = String.format("%d minutos", minutos);
-        }
-
-        // 4. Montar Relatório (AC: Listar secções)
+    /**
+     * Método auxiliar para formatar o relatório de saída.
+     */
+    private String formatPathResult(RailwayPath path, Estacao partida, Estacao chegada, Locomotiva locomotiva) {
         StringBuilder sb = new StringBuilder();
-        sb.append(String.format("Resultados para a viagem com Locomotiva %d (%s):%n",
-                optLocomotiva.get().getIdLocomotiva(), optLocomotiva.get().getModelo()));
+        sb.append(String.format("Resultados para a viagem de %s para %s:%n", partida.getNome(), chegada.getNome()));
+        sb.append(String.format("   (Locomotiva selecionada: ID %d - %s)%n",
+                locomotiva.getIdLocomotiva(), locomotiva.getModelo()));
         sb.append("-".repeat(50) + "\n");
-        sb.append("Secção 1 (Ligação Direta):\n");
-        sb.append(String.format("   De: %s (ID: %d)\n", optPartida.get().getNome(), idEstacaoPartida));
-        sb.append(String.format("   Para: %s (ID: %d)\n", optChegada.get().getNome(), idEstacaoChegada));
-        sb.append(String.format("   Distância: %.2f km\n", distancia));
-        sb.append(String.format("   Velocidade Máxima Permitida: %.1f km/h\n", velocidade));
+        sb.append("   Caminho mais rápido encontrado (por segmentos):\n");
+
+        int i = 1;
+        int estacaoAnteriorId = partida.getIdEstacao();
+
+        for (SegmentoLinha seg : path.getSegments()) {
+            // Descobre a ordem correta das estações para este segmento
+            int estacaoInicioSeg = seg.getIdEstacaoInicio();
+            int estacaoFimSeg = seg.getIdEstacaoFim();
+
+            String nomeInicio, nomeFim;
+
+            // Garante que a ordem de impressão segue o caminho
+            if (estacaoInicioSeg == estacaoAnteriorId) {
+                nomeInicio = estacaoRepo.findById(estacaoInicioSeg).map(Estacao::getNome).orElse("ID "+estacaoInicioSeg);
+                nomeFim = estacaoRepo.findById(estacaoFimSeg).map(Estacao::getNome).orElse("ID "+estacaoFimSeg);
+                estacaoAnteriorId = estacaoFimSeg; // Atualiza para o próximo loop
+            } else {
+                nomeInicio = estacaoRepo.findById(estacaoFimSeg).map(Estacao::getNome).orElse("ID "+estacaoFimSeg);
+                nomeFim = estacaoRepo.findById(estacaoInicioSeg).map(Estacao::getNome).orElse("ID "+estacaoInicioSeg);
+                estacaoAnteriorId = estacaoInicioSeg; // Atualiza para o próximo loop
+            }
+
+            double tempoSeg = (seg.getComprimento() / seg.getVelocidadeMaxima()) * 60; // em minutos
+
+            sb.append(String.format("   Secção %d: %s -> %s\n", i++, nomeInicio, nomeFim));
+            sb.append(String.format("      Dist: %.2f km | Vel: %.1f km/h | Tempo: %.1f min\n",
+                    seg.getComprimento(), seg.getVelocidadeMaxima(), tempoSeg));
+        }
+
         sb.append("-".repeat(50) + "\n");
-        sb.append(String.format("Tempo de Viagem Estimado (Acel. Instantânea): %s%n", tempoFormatado));
+
+        long totalMinutos = path.getTotalTimeMinutes();
+        long horas = totalMinutos / 60;
+        long minutos = totalMinutos % 60;
+        String tempoFormatado = (horas > 0) ? String.format("%d horas e %d minutos", horas, minutos) : String.format("%d minutos", minutos);
+
+        sb.append(String.format("   Distância Total: %.2f km\n", path.getTotalDistance()));
+        sb.append(String.format("   Tempo Total Estimado: %s (%.2f Horas)\n", tempoFormatado, path.getTotalTimeHours()));
 
         return sb.toString();
     }
