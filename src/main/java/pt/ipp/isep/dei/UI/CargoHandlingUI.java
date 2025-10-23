@@ -1,6 +1,9 @@
 package pt.ipp.isep.dei.UI;
 
+import pt.ipp.isep.dei.controller.TravelTimeController;
 import pt.ipp.isep.dei.domain.*;
+import pt.ipp.isep.dei.repository.EstacaoRepository;
+import pt.ipp.isep.dei.repository.LocomotivaRepository;
 
 import java.util.InputMismatchException;
 import java.util.List;
@@ -12,11 +15,25 @@ public class CargoHandlingUI implements Runnable {
     private final InventoryManager manager;
     private final List<Wagon> wagons;
 
-    public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons) {
+    // --- Componentes LAPR3 adicionados ---
+    private final TravelTimeController travelTimeController;
+    private final EstacaoRepository estacaoRepo;
+    private final LocomotivaRepository locomotivaRepo;
+    // --- Fim dos componentes adicionados ---
+
+    // --- CONSTRUTOR MODIFICADO ---
+    public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
+                           TravelTimeController travelTimeController, EstacaoRepository estacaoRepo,
+                           LocomotivaRepository locomotivaRepo) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
+        // --- Atribuição dos novos componentes ---
+        this.travelTimeController = travelTimeController;
+        this.estacaoRepo = estacaoRepo;
+        this.locomotivaRepo = locomotivaRepo;
     }
+
 
     @Override
     public void run() {
@@ -24,52 +41,62 @@ public class CargoHandlingUI implements Runnable {
         int option = -1;
 
         do {
-            showMenu();
+            showMenu(); // Menu foi atualizado
             try {
                 System.out.print("> Please choose an option: ");
                 option = scanner.nextInt();
-                handleOption(option);
+                scanner.nextLine(); // Consumir o newline
+                handleOption(option, scanner); // Passar o scanner para as sub-UIs
 
             } catch (InputMismatchException e) {
                 System.out.println("\n❌ Invalid input. Please enter a number corresponding to an option.\n");
-                scanner.next();
+                scanner.nextLine(); // Limpar o buffer
             }
 
         } while (option != 0);
 
-        scanner.close();
+        // scanner.close(); // Não fechar o System.in
     }
 
     private void showMenu() {
-        System.out.println("=========================================");
+        System.out.println("\n=========================================");
         System.out.println("   🚂 Cargo Handling Terminal Menu   ");
         System.out.println("=========================================");
+        System.out.println("--- ESINF (Warehouse) ---");
         System.out.println("1. Unload Wagons (FEFO/FIFO)");
         System.out.println("2. View Current Inventory");
-        System.out.println("3. Generate Picking Plan (USEI03)");
+        System.out.println("3. Generate Picking Plan (USEI03/04)");
         System.out.println("4. View Warehouse Information");
-        System.out.println("5. Process Returns (USEI05)");
+        System.out.println("--- LAPR3 (Railway) ---");
+        System.out.println("5. Calculate Travel Time (USLP03)"); // NOVA OPÇÃO
         System.out.println("-----------------------------------------");
         System.out.println("0. Exit");
         System.out.println("=========================================");
     }
 
-    private void handleOption(int option) {
+    // --- handleOption MODIFICADO ---
+    private void handleOption(int option, Scanner scanner) {
         switch (option) {
             case 1:
-                handleUnloadWagons();
+                handleUnloadWagons(scanner); // Passar o scanner
                 break;
 
             case 2:
                 System.out.println("\n--- Current Inventory Contents ---\n");
-                for (Box b : manager.getInventory().getBoxes()) {
-                    System.out.println(b);
+                List<Box> boxes = manager.getInventory().getBoxes();
+                if (boxes.isEmpty()) {
+                    System.out.println("Inventário está vazio.");
+                } else {
+                    for (Box b : boxes) {
+                        System.out.println(b);
+                    }
                 }
                 System.out.println();
                 break;
 
             case 3:
-                System.out.println("\n--- Generate Picking Plan (USEI03) ---");
+                System.out.println("\n--- Generate Picking Plan (USEI03/04) ---");
+                // PickingUI usa o seu próprio scanner, não precisa passar
                 PickingUI pickingUI = new PickingUI(manager);
                 pickingUI.run();
                 break;
@@ -78,8 +105,12 @@ public class CargoHandlingUI implements Runnable {
                 showWarehouseInfo();
                 break;
 
+            // --- NOVA OPÇÃO ---
             case 5:
-                handleProcessReturns();
+                System.out.println("\n--- Calculate Travel Time (USLP03) ---");
+                // A nova UI precisa dos componentes LAPR3 e do seu controller
+                TravelTimeUI travelTimeUI = new TravelTimeUI(travelTimeController, estacaoRepo, locomotivaRepo);
+                travelTimeUI.run(); // Esta UI usa o seu próprio scanner interno
                 break;
 
             case 0:
@@ -92,13 +123,23 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    private void handleUnloadWagons() {
-        Scanner sc = new Scanner(System.in);
+    // --- handleUnloadWagons MODIFICADO ---
+    private void handleUnloadWagons(Scanner sc) { // Recebe o scanner
         System.out.println("\n--- Unload Wagons ---");
         System.out.println("1. Unload ALL wagons");
         System.out.println("2. Select wagons manually");
         System.out.print("> Option: ");
-        int sub = sc.nextInt();
+
+        int sub = -1;
+        try {
+            sub = sc.nextInt(); // Usa o scanner passado
+            sc.nextLine(); // Consome newline
+        } catch (InputMismatchException e) {
+            System.out.println("❌ Input inválido.");
+            sc.nextLine(); // Limpa o buffer
+            return;
+        }
+
 
         if (sub == 1) {
             wms.unloadWagons(wagons);
@@ -108,7 +149,6 @@ public class CargoHandlingUI implements Runnable {
                         i + 1, wagons.get(i).getWagonId(), wagons.get(i).getBoxes().size());
             }
             System.out.print("> Enter wagon numbers (comma-separated): ");
-            sc.nextLine();
             String[] choices = sc.nextLine().split(",");
             List<Wagon> selected = new java.util.ArrayList<>();
             for (String c : choices) {
@@ -123,11 +163,6 @@ public class CargoHandlingUI implements Runnable {
         } else {
             System.out.println("Invalid option.");
         }
-    }
-
-    private void handleProcessReturns() {
-        System.out.println("\n--- Processing Returns (USEI05) ---");
-        wms.processReturns();
     }
 
     private void showWarehouseInfo() {
@@ -147,12 +182,13 @@ public class CargoHandlingUI implements Runnable {
 
             for (Bay bay : wh.getBays()) {
                 totalCapacity += bay.getCapacityBoxes();
-                usedCapacity += bay.getBoxes().size();
+                usedCapacity += bay.getBoxes().size(); // Conta caixas físicas na bay
             }
 
-            System.out.printf("   📊 Capacity: %d/%d boxes (%.1f%% full)%n",
+            System.out.printf("   📊 Physical Capacity: %d/%d boxes (%.1f%% full)%n",
                     usedCapacity, totalCapacity,
                     (totalCapacity > 0 ? (usedCapacity * 100.0 / totalCapacity) : 0));
+            System.out.printf("   ℹ️ Logical Inventory Size (Total): %d boxes%n", manager.getInventory().getBoxes().size());
         }
         System.out.println();
     }
