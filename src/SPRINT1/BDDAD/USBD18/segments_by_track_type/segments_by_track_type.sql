@@ -133,7 +133,7 @@ FROM LINE_SEGMENT
 WHERE line_id = 6
 GROUP BY number_tracks;
 
--- Test Line 7: Ramal Torre - Valença
+-- Test Line 7: Ramal Torre - valença
 SELECT 'Line 7 - Torre to Valença' as test_case FROM DUAL;
 SELECT 
     number_tracks as track_type,
