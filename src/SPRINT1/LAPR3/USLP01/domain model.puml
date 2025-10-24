@@ -55,33 +55,33 @@ Freight <-- Stations : picked up from
 Freight --> Routes : has assigned
 
 class RailwayNetwork{
-id: int
-name: String
-length: double
+id
+name
+length
 }
 
 class TrainOperators{
-id: int
-name: String
+id
+name
 }
 
 class RollingStocks{
 }
 class Trains{
-id: int
+id
 }
 class Locomotives{
-id: int
+id
 }
 class Wagons{
-id: int
+id
 }
 class Freight{
-id: int
+id
 }
 
 class LineSegment{
-id: int
+id
 }
 
 class Box{
@@ -93,10 +93,10 @@ class Order{
 
 
 class Routes{
-id: int
+id
 }
 class Path{
-id: int
+id
 }
 
 class SingleRailway{
@@ -107,13 +107,13 @@ class DoubleRailway{
 
 
 class Stations{
-id: int
+id
 }
 class Buildings{
-id: int
+id
 }
 class Terminals{
-id: int
+id
 }
 
 
@@ -125,32 +125,32 @@ class GrainSilos{
 }
 
 class Planner{
-id: int
-name: String
+id
+name
 }
 class TrainDriver{
-id: int
-name: String
+id
+name
 }
 class FreightManager{
-id: int
-name: String
+id
+name
 }
 class StationManager{
-id: int
-name: String
+id
+name
 }
 
 class LineOwners{
-id: int
-name: String
+id
+name
 }
 
 class FreightYards{
-id: int
+id
 }
 class Sidings{
-id: int
+id
 }
 
 
