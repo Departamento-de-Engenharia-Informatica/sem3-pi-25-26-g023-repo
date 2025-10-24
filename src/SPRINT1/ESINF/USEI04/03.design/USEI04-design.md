@@ -46,7 +46,7 @@ Other software classes (i.e., Pure Fabrication, Controllers, etc.) identified fo
 
 This diagram shows the full sequence of interactions between the classes involved in the realization of this user story.
 
-![Sequence Diagram - Full](svg/US001-SD-full.svg)
+![Sequence Diagram - Full](svg/USEI04-SD-full.svg)
 
 ### Split Diagrams
 
@@ -57,4 +57,4 @@ It uses Interaction Occurrence (a.k.a. Interaction Use).
 
 ## 3.3. Class Diagram (CD)
 
-![Class Diagram](svg/US001-CD.svg)
+![Class Diagram](svg/USEI04-CD.svg)
