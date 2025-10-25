@@ -1,77 +1,140 @@
 package pt.ipp.isep.dei.repository;
 
+import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection; // Importa conexão
 import pt.ipp.isep.dei.domain.SegmentoLinha;
+
+import java.sql.*;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 public class SegmentoLinhaRepository {
-    private final List<SegmentoLinha> mockSegmentos = new ArrayList<>();
 
+    // Velocidade padrão em km/h (já que não existe na BD por segmento/linha)
+    private static final double DEFAULT_MAX_SPEED = 150.0;
+    // Constante para gerar IDs únicos para segmentos inversos
+    private static final int INVERSE_ID_OFFSET = 1000;
+
+    // Construtor vazio
     public SegmentoLinhaRepository() {
-        // Dados de conexões de image_19a499.png
-        // Comprimentos calculados a partir da soma em image_19a49d.png (convertido para km)
-        // Velocidades máximas atribuídas de forma plausível (ASSUMPTION: Missing data)
-
-        // Linha 1: Ramal São Bento - Campanhã (ID 7 -> 5)
-        // image_19a49d.png: Line 1, Order 1 -> Length 2618m
-        mockSegmentos.add(new SegmentoLinha(1, 7, 5, 2.618, 120.0)); // ID Segmento, Inicio, Fim, Comprimento(km), VelMax(km/h)
-
-        // Linha 2: Ramal Campanhã - Nine (ID 5 -> 20)
-        // image_19a49d.png: Line 2, Order 1 (29003m) + Order 2 (10000m) = 39003m
-        mockSegmentos.add(new SegmentoLinha(2, 5, 20, 39.003, 160.0));
-
-        // Linha 3: Ramal Nine - Barcelos (ID 20 -> 8)
-        // image_19a49d.png: Line 3, Order 1 (5286m) + Order 2 (6000m) = 11286m
-        mockSegmentos.add(new SegmentoLinha(3, 20, 8, 11.286, 140.0));
-
-        // Linha 4: Ramal Barcelos - Viana (ID 8 -> 17)
-        // image_19a49d.png: Line 4, Order 1 (10387m) + Order 2 (12000m) + Order 3 (8000m) = 30387m
-        mockSegmentos.add(new SegmentoLinha(4, 8, 17, 30.387, 160.0));
-
-        // Linha 5: Ramal Viana - Caminha (ID 17 -> 21)
-        // image_19a49d.png: Line 5, Order 1 (6000m) + Order 2 (3000m) + Order 3 (15000m) = 24000m
-        mockSegmentos.add(new SegmentoLinha(5, 17, 21, 24.0, 140.0));
-
-        // Linha 6: Ramal Caminha - Torre (ID 21 -> 16)
-        // image_19a49d.png: Line 6, Order 1 -> Length 20829m
-        mockSegmentos.add(new SegmentoLinha(6, 21, 16, 20.829, 140.0));
-
-        // Linha 7: Ramal Torre - Valença (ID 16 -> 11)
-        // image_19a49d.png: Line 7, Order 1 -> Length 4264m
-        mockSegmentos.add(new SegmentoLinha(7, 16, 11, 4.264, 120.0));
-
-        // Adicionar ligação inversa para permitir caminhos nos dois sentidos no Dijkstra
-        // (O código atual já trata disso verificando inicio==u ou fim==u, mas adicionar explicitamente
-        // pode ser mais claro se a lógica mudar ou para outros algoritmos)
-        // Se a sua lógica `findFastestPath` já considera bidirecional, pode omitir estes.
-        // Vou adicionar por segurança, mas com IDs diferentes.
-        mockSegmentos.add(new SegmentoLinha(8, 5, 7, 2.618, 120.0));
-        mockSegmentos.add(new SegmentoLinha(9, 20, 5, 39.003, 160.0));
-        mockSegmentos.add(new SegmentoLinha(10, 8, 20, 11.286, 140.0));
-        mockSegmentos.add(new SegmentoLinha(11, 17, 8, 30.387, 160.0));
-        mockSegmentos.add(new SegmentoLinha(12, 21, 17, 24.0, 140.0));
-        mockSegmentos.add(new SegmentoLinha(13, 16, 21, 20.829, 140.0));
-        mockSegmentos.add(new SegmentoLinha(14, 11, 16, 4.264, 120.0));
-
-        System.out.println("SegmentoLinhaRepository: Loaded " + mockSegmentos.size() + " segments (includes reverse paths).");
-        // Nota: O segmento com velocidade 0 foi removido, pois era do mock antigo.
+        System.out.println("SegmentoLinhaRepository: Initialized (will connect to DB on demand).");
     }
 
+    /**
+     * Busca todas as linhas da tabela RAILWAY_LINE, calcula o comprimento total
+     * a partir de LINE_SEGMENT, e cria objetos SegmentoLinha para AMBOS os sentidos,
+     * imitando a estrutura do mock anterior.
+     *
+     * @return Lista de objetos SegmentoLinha (incluindo segmentos inversos).
+     */
     public List<SegmentoLinha> findAll() {
-        return new ArrayList<>(mockSegmentos); // Retorna cópia
+        List<SegmentoLinha> segmentos = new ArrayList<>();
+        Map<Integer, Double> lineLengthsKm = calculateAllLineLengthsKm(); // Calcula comprimentos primeiro
+
+        String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE ORDER BY line_id"; //
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                int lineId = rs.getInt("line_id");
+                int startFacilityId = rs.getInt("start_facility_id");
+                int endFacilityId = rs.getInt("end_facility_id");
+
+                double comprimentoKm = lineLengthsKm.getOrDefault(lineId, 0.0);
+                if (comprimentoKm <= 0.0) {
+                    System.err.println("⚠️ Aviso: Comprimento inválido (<=0) para line_id " + lineId + ". Segmento pode não funcionar corretamente.");
+                    // Poderia optar por não adicionar o segmento se o comprimento for inválido
+                    // continue;
+                }
+
+                // Cria o segmento no sentido original (A -> B)
+                // Usando line_id como idSegmento
+                segmentos.add(new SegmentoLinha(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
+
+                // Cria o segmento no sentido inverso (B -> A)
+                // Usando line_id + OFFSET como idSegmento para garantir unicidade
+                segmentos.add(new SegmentoLinha(lineId + INVERSE_ID_OFFSET, endFacilityId, startFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
+
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Erro ao buscar Linhas (Railway Lines) da BD para criar segmentos: " + e.getMessage());
+        }
+        System.out.println("SegmentoLinhaRepository: Generated " + segmentos.size() + " segments (includes reverse paths) from DB.");
+        return segmentos;
     }
 
-    // Método findDirectSegment pode já não ser tão útil se o caminho sempre usa Dijkstra,
-    // mas mantemo-lo por enquanto.
+    /**
+     * Busca um "Segmento" direto entre duas Facilidades (Estações).
+     * Procura uma RAILWAY_LINE que conecte essas duas facilidades diretamente
+     * e retorna o objeto SegmentoLinha correspondente (no sentido A->B encontrado na BD).
+     *
+     * @param idEstacaoA ID da primeira facility.
+     * @param idEstacaoB ID da segunda facility.
+     * @return Optional contendo o SegmentoLinha (representando a linha no sentido encontrado) se existir.
+     */
     public Optional<SegmentoLinha> findDirectSegment(int idEstacaoA, int idEstacaoB) {
-        // Esta procura agora pode encontrar o segmento original OU o seu inverso adicionado.
-        for (SegmentoLinha s : mockSegmentos) {
-            if ((s.getIdEstacaoInicio() == idEstacaoA && s.getIdEstacaoFim() == idEstacaoB) ||
-                    (s.getIdEstacaoInicio() == idEstacaoB && s.getIdEstacaoFim() == idEstacaoA)) {
-                return Optional.of(s);
+        // Recalcula o comprimento especificamente para esta linha para garantir que está atualizado
+        Map<Integer, Double> lineLengthsKm = calculateAllLineLengthsKm();
+        SegmentoLinha segmento = null;
+
+        String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE " + //
+                "WHERE (start_facility_id = ? AND end_facility_id = ?) OR (start_facility_id = ? AND end_facility_id = ?)";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setInt(1, idEstacaoA);
+            stmt.setInt(2, idEstacaoB);
+            stmt.setInt(3, idEstacaoB); // Para a condição OR (sentido inverso)
+            stmt.setInt(4, idEstacaoA);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    int lineId = rs.getInt("line_id");
+                    int startFacilityId = rs.getInt("start_facility_id");
+                    int endFacilityId = rs.getInt("end_facility_id");
+                    double comprimentoKm = lineLengthsKm.getOrDefault(lineId, 0.0);
+                    if (comprimentoKm <= 0.0) {
+                        System.err.println("⚠️ Aviso: Comprimento inválido (<=0) para line_id " + lineId + " ao buscar segmento direto.");
+                    }
+                    // Retorna o segmento na direção encontrada na BD (start -> end)
+                    // Usa line_id como idSegmento
+                    segmento = new SegmentoLinha(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED); //
+                }
             }
+        } catch (SQLException e) {
+            System.err.println("❌ Erro ao buscar Segmento direto entre " + idEstacaoA + " e " + idEstacaoB + ": " + e.getMessage());
         }
-        return Optional.empty();
+        return Optional.ofNullable(segmento);
+    }
+
+    /**
+     * Método auxiliar para calcular o comprimento total (em KM) para cada linha
+     * a partir da tabela LINE_SEGMENT.
+     * @return Map onde a chave é line_id e o valor é o comprimento total em KM.
+     */
+    private Map<Integer, Double> calculateAllLineLengthsKm() {
+        Map<Integer, Double> lengths = new HashMap<>();
+        String sql = "SELECT line_id, SUM(length_m) as total_length_m FROM LINE_SEGMENT GROUP BY line_id"; //
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                int lineId = rs.getInt("line_id");
+                double totalLengthMeters = rs.getDouble("total_length_m");
+                lengths.put(lineId, totalLengthMeters / 1000.0); // Converte para KM
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Erro ao calcular comprimentos totais das linhas (LINE_SEGMENT): " + e.getMessage());
+            // Retorna um mapa vazio em caso de erro para evitar NullPointerException
+            return new HashMap<>();
+        }
+        return lengths;
     }
 }
