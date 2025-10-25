@@ -25,7 +25,10 @@ Detailed documentation for warehouse management functionalities:
 
 * **USEI03: Pack Allocation Rows into Trolleys** 🛒
     * [📜 Requirements](src/SPRINT1/ESINF/USEI03/01.requirements-engineering/USEI03-requirements.md)
-    * [📊 Analysis](src/SPRINT1/ESINF/USEI03/02.analysis/US001-analysis.md) * [🛠️ Design](src/SPRINT1/ESINF/USEI03/03.design/US001-design.md) * **USEI04: Pick Path Sequencing** 🗺️
+    * [📊 Analysis](src/SPRINT1/ESINF/USEI03/02.analysis/US001-analysis.md) * [🛠️ Design](src/SPRINT1/ESINF/USEI03/03.design/US001-design.md)
+    *
+
+* **USEI04: Pick Path Sequencing** 🗺️
     * [📜 Requirements](src/SPRINT1/ESINF/USEI04/01.requirements-engineering/US004-requirements.md) * [📊 Analysis](src/SPRINT1/ESINF/USEI04/02.analysis/USEI04-analysis.md)
     * [🛠️ Design](src/SPRINT1/ESINF/USEI04/03.design/USEI04-design.md)
 
