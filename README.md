@@ -1,4 +1,4 @@
-# 🚀 Integrated Project - Semester 3 - 2025/2026 - G023 REPO 🚀
+#  Integrated Project - Semester 3 - 2025/2026 - G023 REPO 
 
 Welcome to the central repository for the **Sprint 1** development of the integrated project, encompassing the **ESINF**, **LAPR3**, and **BDDAD** curricular units.
 
@@ -10,7 +10,7 @@ Navigate through the documentation for each User Story developed during Sprint 1
 
 ---
 
-### 💻 ESINF (Software Engineering and Infrastructures)
+### 💻 ESINF 
 
 Detailed documentation for warehouse management functionalities:
 
@@ -36,7 +36,7 @@ Detailed documentation for warehouse management functionalities:
 
 ---
 
-### 💾 BDDAD (Databases and Data Warehouses)
+### 💾 BDDAD 
 
 Database structure and related artifacts:
 
@@ -47,7 +47,7 @@ Database structure and related artifacts:
 
 ---
 
-### 🚆 LAPR3 (Programming Laboratory III)
+### 🚆 LAPR3 
 
 Application development and railway network logic:
 
@@ -66,5 +66,3 @@ Application development and railway network logic:
         * [Service](src/main/java/pt/ipp/isep/dei/domain/RailwayNetworkService.java)
 
 ---
-
-*(You can add instructions on how to build and run the project here)*
