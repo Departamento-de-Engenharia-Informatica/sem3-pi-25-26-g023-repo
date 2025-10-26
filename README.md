@@ -50,7 +50,7 @@ Database structure and related artifacts:
 
 ---
 
-### 🚆 LAPR3 
+### 🚆 LAPR
 
 Application development and railway network logic:
 
