@@ -6,7 +6,7 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 /**
- * Regista ações do sistema num ficheiro de log para auditoria
+ * Regist actions from the system to the file
  */
 public class AuditLog {
     private final String logFilePath;
@@ -16,7 +16,7 @@ public class AuditLog {
     }
 
     /**
-     * Regista uma ação relacionada com uma devolução
+     * Regist a return
      */
     public void writeLog(Return r, String action, int qty) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
@@ -30,7 +30,7 @@ public class AuditLog {
     }
 
     /**
-     * Regista uma mensagem genérica no log
+     * Regist a generice message
      */
     public void writeLine(String message) {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm"));
