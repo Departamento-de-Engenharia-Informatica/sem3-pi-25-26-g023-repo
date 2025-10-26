@@ -1,5 +1,8 @@
 package pt.ipp.isep.dei.domain;
 
+/**
+ * Represents a picking assignment for warehouse order fulfillment.
+ */
 public class PickingAssignment {
     private final String orderId;
     private final int lineNo;
@@ -11,6 +14,9 @@ public class PickingAssignment {
     private final double totalWeight;
     private PickingStatus status;
 
+    /**
+     * Creates a new picking assignment.
+     */
     public PickingAssignment(String orderId, int lineNo, Item item, int quantity,
                              String boxId, String aisle, String bay) {
         this.orderId = orderId;
@@ -24,10 +30,13 @@ public class PickingAssignment {
         this.status = PickingStatus.PENDING;
     }
 
+    /** Returns the location as aisle-bay combination. */
     public String getLocation() { return aisle + "-" + bay; }
+
+    /** Returns the SKU of the item. */
     public String getSku() { return item.getSku(); }
 
-    // Getters
+    // Getters and setters
     public String getOrderId() { return orderId; }
     public int getLineNo() { return lineNo; }
     public Item getItem() { return item; }
@@ -39,6 +48,7 @@ public class PickingAssignment {
     public PickingStatus getStatus() { return status; }
     public void setStatus(PickingStatus status) { this.status = status; }
 
+    /** Returns string representation of the picking assignment. */
     @Override
     public String toString() {
         return String.format("%s-L%d: %s x%d @ %s", orderId, lineNo, getSku(), quantity, getLocation());

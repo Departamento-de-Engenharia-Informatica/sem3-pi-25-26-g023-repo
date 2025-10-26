@@ -1,133 +1,127 @@
 package pt.ipp.isep.dei.domain;
 
-import java.io.FileWriter; // Para exportar CSV para ficheiro
-import java.io.IOException; // Para exportar CSV para ficheiro
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
+/**
+ * Service for generating and managing picking plans.
+ */
 public class PickingService {
 
     private Map<String, Item> itemsMap;
 
+    /** Creates a new picking service. */
     public PickingService() {
         this.itemsMap = new HashMap<>();
     }
 
-    // Método para setar o mapa de items
+    /** Sets the items map for SKU lookup. */
     public void setItemsMap(Map<String, Item> itemsMap) {
         this.itemsMap = itemsMap != null ? itemsMap : new HashMap<>();
     }
 
+    /**
+     * Generates a picking plan based on allocations and heuristic.
+     */
     public PickingPlan generatePickingPlan(List<Allocation> allocations,
                                            double trolleyCapacity,
                                            HeuristicType heuristic) {
 
         if (allocations == null || allocations.isEmpty()) {
-            System.out.println("⚠️  Não há alocações da USEI02 para gerar o plano de picking.");
-            // Retorna um plano vazio ou lança exceção, dependendo do requisito
+            System.out.println("⚠️  No allocations provided for picking plan.");
             return new PickingPlan("EMPTY_PLAN_" + System.currentTimeMillis(), heuristic, trolleyCapacity);
         }
 
-        // Converter allocations para picking assignments, IGNORANDO as que não têm localização
         List<PickingAssignment> assignments = convertToAssignments(allocations);
 
         if (assignments.isEmpty()) {
-            System.out.println("⚠️  Nenhuma alocação válida com localização foi encontrada para criar Picking Assignments.");
+            System.out.println("⚠️  No valid assignments with location found.");
             return new PickingPlan("NO_VALID_ASSIGNMENTS_" + System.currentTimeMillis(), heuristic, trolleyCapacity);
         }
 
-        System.out.printf("  ➡️  Convertidas %d alocações em %d Picking Assignments válidos (com localização).%n",
+        System.out.printf("  ➡️  Converted %d allocations to %d valid assignments.%n",
                 allocations.size(), assignments.size());
 
-
-        // Usar factory para obter a heurística
         PackingHeuristic packingHeuristic = PackingHeuristicFactory.createHeuristic(heuristic);
-
-        // Aplicar heurística
         List<Trolley> trolleys = packingHeuristic.packItems(assignments, trolleyCapacity);
 
-        // Criar picking plan
         PickingPlan plan = new PickingPlan(generatePlanId(), heuristic, trolleyCapacity);
         trolleys.forEach(plan::addTrolley);
 
         return plan;
     }
 
-    // Método modificado para filtrar alocações sem localização válida
+    /** Converts allocations to picking assignments, filtering invalid locations. */
     private List<PickingAssignment> convertToAssignments(List<Allocation> allocations) {
         List<PickingAssignment> assignments = new ArrayList<>();
         int skippedCount = 0;
 
         for (Allocation alloc : allocations) {
-            // *** VERIFICAÇÃO ADICIONADA: Ignorar alocações sem localização ***
             if (alloc.aisle == null || alloc.bay == null || alloc.aisle.trim().isEmpty() || alloc.bay.trim().isEmpty()) {
-                System.out.printf("  ⚠️  A ignorar Alocação para Picking: Localização em falta (Aisle: %s, Bay: %s) para Order %s, SKU %s, Box %s%n",
-                        alloc.aisle, alloc.bay, alloc.orderId, alloc.sku, alloc.boxId);
+                System.out.printf("  ⚠️  Skipping allocation with missing location for Order %s, SKU %s%n",
+                        alloc.orderId, alloc.sku);
                 skippedCount++;
-                continue; // Passa para a próxima alocação
+                continue;
             }
-            // *** FIM DA VERIFICAÇÃO ***
-
 
             Item item = itemsMap.get(alloc.sku);
             if (item == null) {
-                // Criar item placeholder se não encontrado (ou poderia lançar erro)
-                System.out.printf("  ⚠️  Item não encontrado para SKU %s na alocação da Order %s. Usando peso padrão 1.0 kg.%n", alloc.sku, alloc.orderId);
-                item = new Item(alloc.sku, "Unknown Product", "Unknown Category", "units", 1.0); // Usar peso padrão
+                System.out.printf("  ⚠️  Item not found for SKU %s. Using default weight.%n", alloc.sku);
+                item = new Item(alloc.sku, "Unknown Product", "Unknown Category", "units", 1.0);
             }
 
-            // Aisle e Bay da alocação já foram validados como não nulos/vazios
             PickingAssignment assignment = new PickingAssignment(
                     alloc.orderId,
                     alloc.lineNo,
                     item,
                     alloc.qty,
                     alloc.boxId,
-                    alloc.aisle.trim(), // Usar trim() para garantir
-                    alloc.bay.trim()    // Usar trim() para garantir
+                    alloc.aisle.trim(),
+                    alloc.bay.trim()
             );
             assignments.add(assignment);
         }
 
         if (skippedCount > 0) {
-            System.out.printf("  ℹ️  Total de %d alocações ignoradas por falta de localização.%n", skippedCount);
+            System.out.printf("  ℹ️  Total %d allocations skipped due to missing location.%n", skippedCount);
         }
 
         return assignments;
     }
 
-
+    /** Generates a unique plan ID. */
     private String generatePlanId() {
         return "PLAN_" + System.currentTimeMillis();
     }
 
-    // Método auxiliar para exportar para CSV (String)
+    /** Exports picking plan to CSV string. */
     public String exportToCSV(PickingPlan plan) {
         StringBuilder csv = new StringBuilder();
-        // Cabeçalho melhorado
         csv.append("PlanID,Heuristic,TrolleyCapacity,TrolleyID,TrolleyUtilization(%),OrderID,LineNo,SKU,ItemName,Quantity,BoxID,Aisle,Bay,Weight(kg)\n");
 
         if (plan == null || plan.getTrolleys().isEmpty()) {
-            csv.append("N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A\n"); // Linha vazia ou placeholder
+            csv.append("N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A,N/A\n");
             return csv.toString();
         }
 
         for (Trolley trolley : plan.getTrolleys()) {
             for (PickingAssignment assignment : trolley.getAssignments()) {
-                Item item = assignment.getItem(); // Obter o item do assignment
+                Item item = assignment.getItem();
                 csv.append(String.format("%s,%s,%.1f,%s,%.1f,%s,%d,%s,%s,%d,%s,%s,%s,%.2f\n",
                         plan.getId(),
                         plan.getHeuristic(),
                         plan.getTrolleyCapacity(),
                         trolley.getId(),
-                        trolley.getUtilization(), // Adicionado utilização do trolley
+                        trolley.getUtilization(),
                         assignment.getOrderId(),
                         assignment.getLineNo(),
                         assignment.getSku(),
-                        (item != null ? item.getName().replace(",", ";") : "Unknown"), // Evitar vírgulas no nome
+                        (item != null ? item.getName().replace(",", ";") : "Unknown"),
                         assignment.getQuantity(),
                         assignment.getBoxId(),
-                        assignment.getAisle(), // Aisle já é String aqui
-                        assignment.getBay(),   // Bay já é String aqui
+                        assignment.getAisle(),
+                        assignment.getBay(),
                         assignment.getTotalWeight()
                 ));
             }
@@ -135,14 +129,14 @@ public class PickingService {
         return csv.toString();
     }
 
-    // Método opcional para exportar para ficheiro CSV
+    /** Exports picking plan to CSV file. */
     public void exportToCSVFile(PickingPlan plan, String filename) {
         String csvData = exportToCSV(plan);
         try (FileWriter writer = new FileWriter(filename)) {
             writer.write(csvData);
-            System.out.printf("✅ Plano de picking exportado com sucesso para '%s'%n", filename);
+            System.out.printf("✅ Picking plan exported to '%s'%n", filename);
         } catch (IOException e) {
-            System.err.printf("❌ Erro ao exportar plano de picking para CSV '%s': %s%n", filename, e.getMessage());
+            System.err.printf("❌ Error exporting picking plan to CSV '%s': %s%n", filename, e.getMessage());
         }
     }
 }
