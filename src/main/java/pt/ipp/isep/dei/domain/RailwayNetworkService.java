@@ -1,4 +1,4 @@
-package pt.ipp.isep.dei.domain; // Ou pt.ipp.isep.dei.service
+package pt.ipp.isep.dei.domain;
 
 import pt.ipp.isep.dei.repository.EstacaoRepository;
 import pt.ipp.isep.dei.repository.SegmentoLinhaRepository;
@@ -6,7 +6,7 @@ import pt.ipp.isep.dei.repository.SegmentoLinhaRepository;
 import java.util.*;
 
 /**
- * Serviço responsável por cálculos na rede ferroviária (grafo).
+ * Service for railway network calculations and path finding.
  */
 public class RailwayNetworkService {
 
@@ -19,8 +19,7 @@ public class RailwayNetworkService {
     }
 
     /**
-     * Encontra o caminho mais rápido (menor tempo) entre duas estações usando Dijkstra.
-     * O "peso" de cada segmento é o tempo (distância / velocidade).
+     * Finds the fastest path between two stations using Dijkstra's algorithm.
      */
     public RailwayPath findFastestPath(int idPartida, int idChegada) {
         List<Estacao> allStations = estacaoRepo.findAll();

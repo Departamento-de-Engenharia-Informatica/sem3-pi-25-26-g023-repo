@@ -3,22 +3,17 @@ package pt.ipp.isep.dei.domain;
 import java.util.Stack;
 
 /**
- * Gerencia devoluções em quarentena usando LIFO (Last-In-First-Out)
+ * Manages returns in quarantine using LIFO (Last-In-First-Out).
  */
 public class Quarantine {
     private final Stack<Return> stack = new Stack<>();
 
-    /**
-     * Adiciona uma devolução à quarentena
-     */
+    /** Adds a return to quarantine. */
     public void addReturn(Return r) {
         stack.push(r);
     }
 
-    /**
-     * Remove e retorna a próxima devolução (LIFO)
-     * @return Próxima devolução ou null se vazia
-     */
+    /** Removes and returns the next return (LIFO). */
     public Return getNextReturn() {
         if (stack.isEmpty()) {
             return null;
@@ -26,16 +21,12 @@ public class Quarantine {
         return stack.pop();
     }
 
-    /**
-     * Verifica se a quarentena está vazia
-     */
+    /** Checks if quarantine is empty. */
     public boolean isEmpty() {
         return stack.isEmpty();
     }
 
-    /**
-     * Retorna o número de devoluções em quarentena
-     */
+    /** Returns the number of returns in quarantine. */
     public int size() {
         return stack.size();
     }
