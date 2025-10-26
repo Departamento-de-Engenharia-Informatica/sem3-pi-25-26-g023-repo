@@ -2,7 +2,6 @@ package pt.ipp.isep.dei.domain;
 
 /**
  * Represents the allocation status of an order line during order fulfillment.
- *
  * ELIGIBLE - Entire requested quantity can be allocated from inventory
  * PARTIAL - Only part of the requested quantity can be allocated
  * UNDISPATCHABLE - No quantity can be allocated from current inventory

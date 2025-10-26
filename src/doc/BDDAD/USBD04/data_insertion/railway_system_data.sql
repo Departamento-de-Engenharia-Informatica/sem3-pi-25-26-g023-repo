@@ -1,158 +1,155 @@
 -- =============================================
--- USBD04 - Railway System Data Population
--- Complete dataset insertion from Excel provided
+-- USBD04 - Railway System Data Population (CORRIGIDA)
 -- =============================================
 
--- 1. INSERT OWNER DATA
-INSERT INTO OWNER (owner_id, name, short_name, vat_number) VALUES 
-('IP', 'Infraestruturas de Portugal, SA', 'IP', 'PT503933813');
+-- 1. INSERT OPERATOR DATA
+INSERT INTO OPERATOR (operator_id, name, type, contact_email, phone) VALUES
+                                                                         ('IP', 'Infraestruturas de Portugal, SA', 'Infrastructure Owner', 'info@ip.pt', '+351 218 112 345'),
+                                                                         ('MEDWAY', 'Medway - Operador Ferroviário de Mercadorias, S.A', 'Train Operator', 'contact@medway.pt', '+351 210 456 789');
 
--- 2. INSERT OPERATOR DATA
-INSERT INTO OPERATOR (operator_id, name, short_name, vat_number) VALUES 
-('MEDWAY', 'Medway - Operador Ferroviário de Mercadorias, S.A', 'Medway', 'PT509017800');
+-- 2. INSERT STATION DATA (23 Stations)
+INSERT INTO STATION (station_id, name, type, has_warehouse, has_refrigerated, latitude, longitude) VALUES
+                                                                                                       ('ST001', 'São Romão', 'Station', 'Y', 'N', 41.468, -8.539),
+                                                                                                       ('ST002', 'Tamel', 'Station', 'Y', 'N', 41.521, -8.487),
+                                                                                                       ('ST003', 'Senhora das Dores', 'Station', 'N', 'N', 41.389, -8.452),
+                                                                                                       ('ST004', 'Lousado', 'Station', 'Y', 'Y', 41.342, -8.429),
+                                                                                                       ('ST005', 'Porto Campanhã', 'Station', 'Y', 'N', 41.149, -8.585),
+                                                                                                       ('ST006', 'Leandro', 'Station', 'N', 'N', 41.312, -8.398),
+                                                                                                       ('ST007', 'Porto São Bento', 'Station', 'N', 'N', 41.146, -8.610),
+                                                                                                       ('ST008', 'Barcelos', 'Station', 'Y', 'N', 41.535, -8.615),
+                                                                                                       ('ST009', 'Vila Nova da Cerveira', 'Station', 'N', 'N', 41.939, -8.742),
+                                                                                                       ('ST010', 'Midões', 'Station', 'N', 'N', 41.267, -8.345),
+                                                                                                       ('ST011', 'Valença', 'Station', 'Y', 'N', 42.030, -8.633),
+                                                                                                       ('ST012', 'Darque', 'Station', 'Y', 'Y', 41.684, -8.817),
+                                                                                                       ('ST013', 'Contumil', 'Station', 'N', 'N', 41.171, -8.574),
+                                                                                                       ('ST014', 'Ermesinde', 'Station', 'Y', 'N', 41.220, -8.551),
+                                                                                                       ('ST015', 'São Frutuoso', 'Station', 'N', 'N', 41.452, -8.512),
+                                                                                                       ('ST016', 'São Pedro da Torre', 'Station', 'N', 'N', 41.987, -8.645),
+                                                                                                       ('ST017', 'Viana do Castelo', 'Station', 'Y', 'Y', 41.697, -8.828),
+                                                                                                       ('ST018', 'Famalicão', 'Station', 'Y', 'N', 41.408, -8.521),
+                                                                                                       ('ST019', 'Barroselas', 'Station', 'N', 'N', 41.645, -8.712),
+                                                                                                       ('ST020', 'Nine', 'Station', 'Y', 'N', 41.432, -8.598),
+                                                                                                       ('ST021', 'Caminha', 'Station', 'Y', 'N', 41.875, -8.838),
+                                                                                                       ('ST022', 'Carvalha', 'Station', 'N', 'N', 41.723, -8.765),
+                                                                                                       ('ST023', 'Carreço', 'Station', 'N', 'N', 41.762, -8.795);
 
--- 3. INSERT FACILITY DATA (23 Facilities)
-INSERT INTO FACILITY (facility_id, name) VALUES (1, 'São Romão');
-INSERT INTO FACILITY (facility_id, name) VALUES (2, 'Tamel');
-INSERT INTO FACILITY (facility_id, name) VALUES (3, 'Senhora das Dores');
-INSERT INTO FACILITY (facility_id, name) VALUES (4, 'Lousado');
-INSERT INTO FACILITY (facility_id, name) VALUES (5, 'Porto Campanhã');
-INSERT INTO FACILITY (facility_id, name) VALUES (6, 'Leandro');
-INSERT INTO FACILITY (facility_id, name) VALUES (7, 'Porto São Bento');
-INSERT INTO FACILITY (facility_id, name) VALUES (8, 'Barcelos');
-INSERT INTO FACILITY (facility_id, name) VALUES (9, 'Vila Nova da Cerveira');
-INSERT INTO FACILITY (facility_id, name) VALUES (10, 'Midões');
-INSERT INTO FACILITY (facility_id, name) VALUES (11, 'Valença');
-INSERT INTO FACILITY (facility_id, name) VALUES (12, 'Darque');
-INSERT INTO FACILITY (facility_id, name) VALUES (13, 'Contumil');
-INSERT INTO FACILITY (facility_id, name) VALUES (14, 'Ermesinde');
-INSERT INTO FACILITY (facility_id, name) VALUES (15, 'São Frutuoso');
-INSERT INTO FACILITY (facility_id, name) VALUES (16, 'São Pedro da Torre');
-INSERT INTO FACILITY (facility_id, name) VALUES (17, 'Viana do Castelo');
-INSERT INTO FACILITY (facility_id, name) VALUES (18, 'Famalicão');
-INSERT INTO FACILITY (facility_id, name) VALUES (19, 'Barroselas');
-INSERT INTO FACILITY (facility_id, name) VALUES (20, 'Nine');
-INSERT INTO FACILITY (facility_id, name) VALUES (21, 'Caminha');
-INSERT INTO FACILITY (facility_id, name) VALUES (22, 'Carvalha');
-INSERT INTO FACILITY (facility_id, name) VALUES (23, 'Carreço');
+-- 3. INSERT RAILWAY_LINE DATA (7 Lines)
+INSERT INTO RAILWAY_LINE (line_id, name, owner_operator_id, total_length_km) VALUES
+                                                                                 (1, 'Ramal São Bento - Campanhã', 'IP', 2.6),
+                                                                                 (2, 'Ramal Campanhã - Nine', 'IP', 39.0),
+                                                                                 (3, 'Ramal Nine - Barcelos', 'IP', 11.3),
+                                                                                 (4, 'Ramal Barcelos - Viana', 'IP', 30.4),
+                                                                                 (5, 'Ramal Viana - Caminha', 'IP', 24.0),
+                                                                                 (6, 'Ramal Caminha - Torre', 'IP', 20.8),
+                                                                                 (7, 'Ramal Torre - Valença', 'IP', 4.3);
 
--- 4. INSERT RAILWAY_LINE DATA (7 Lines)
-INSERT INTO RAILWAY_LINE (line_id, name, owner_id, start_facility_id, end_facility_id, gauge) VALUES 
-(1, 'Ramal São Bento - Campanhã', 'IP', 7, 5, 1668);
-INSERT INTO RAILWAY_LINE (line_id, name, owner_id, start_facility_id, end_facility_id, gauge) VALUES 
-(2, 'Ramal Camapanhã - Nine', 'IP', 5, 20, 1668);
-INSERT INTO RAILWAY_LINE (line_id, name, owner_id, start_facility_id, end_facility_id, gauge) VALUES 
-(3, 'Ramal Nine - Barcelos', 'IP', 20, 8, 1668);
-INSERT INTO RAILWAY_LINE (line_id, name, owner_id, start_facility_id, end_facility_id, gauge) VALUES 
-(4, 'Ramal Barcelos - Viana', 'IP', 8, 17, 1668);
-INSERT INTO RAILWAY_LINE (line_id, name, owner_id, start_facility_id, end_facility_id, gauge) VALUES 
-(5, 'Ramal viana - Caminha', 'IP', 17, 21, 1668);
-INSERT INTO RAILWAY_LINE (line_id, name, owner_id, start_facility_id, end_facility_id, gauge) VALUES 
-(6, 'Ramal Caminha - Torre', 'IP', 21, 16, 1668);
-INSERT INTO RAILWAY_LINE (line_id, name, owner_id, start_facility_id, end_facility_id, gauge) VALUES 
-(7, 'Ramal Torre - Valença', 'IP', 16, 11, 1668);
+-- 4. INSERT LINE_SEGMENT DATA (13 Segments)
+INSERT INTO LINE_SEGMENT (segment_id, line_id, start_station_id, end_station_id, segment_length_km, track_type, gauge_mm, is_eletrified, max_weigth_kg_per_m, max_speed_kmh) VALUES
+                                                                                                                                                                                 (1, 1, 'ST007', 'ST005', 2.6, 'Multiple', 1668, 'Y', 8000, 80),
+                                                                                                                                                                                 (10, 2, 'ST005', 'ST020', 29.0, 'Double', 1668, 'Y', 8000, 120),
+                                                                                                                                                                                 (11, 2, 'ST020', 'ST018', 10.0, 'Double', 1668, 'Y', 8000, 120),
+                                                                                                                                                                                 (15, 3, 'ST020', 'ST008', 5.3, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (16, 3, 'ST008', 'ST015', 6.0, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (14, 4, 'ST008', 'ST017', 10.4, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (12, 4, 'ST017', 'ST019', 12.0, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (13, 4, 'ST019', 'ST012', 8.0, 'Double', 1668, 'Y', 6400, 80),
+                                                                                                                                                                                 (20, 5, 'ST017', 'ST021', 6.0, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (21, 5, 'ST021', 'ST022', 3.0, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (22, 5, 'ST022', 'ST023', 15.0, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (25, 6, 'ST021', 'ST016', 20.8, 'Double', 1668, 'Y', 8000, 100),
+                                                                                                                                                                                 (26, 7, 'ST016', 'ST011', 4.3, 'Double', 1668, 'Y', 8000, 100);
 
--- 5. INSERT LINE_SEGMENT DATA (13 Segments)
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(1, 1, 1, 'Yes', 8000, 2618, 4);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(10, 2, 1, 'Yes', 8000, 29003, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(11, 2, 2, 'Yes', 8000, 10000, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(15, 3, 1, 'Yes', 8000, 5286, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(16, 3, 2, 'Yes', 8000, 6000, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(14, 4, 1, 'Yes', 8000, 10387, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(12, 4, 2, 'Yes', 8000, 12000, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(13, 4, 3, 'Yes', 6400, 8000, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(20, 5, 1, 'Yes', 8000, 6000, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(21, 5, 2, 'Yes', 8000, 3000, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(22, 5, 3, 'Yes', 8000, 15000, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(25, 6, 1, 'Yes', 8000, 20829, 2);
-INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks) VALUES 
-(26, 7, 1, 'Yes', 8000, 4264, 2);
+-- 5. INSERT ROLLING_STOCK DATA (4 Locomotives + 30 Wagons) - CORRIGIDO
+INSERT INTO ROLLING_STOCK (stock_id, operator_id, make, model, year_of_service, gauge_mm, length_m, width_m, height_m, tare_weight_kg, number_of_bogies) VALUES
+                                                                                                                                                             -- Locomotives
+                                                                                                                                                             ('RS001', 'MEDWAY', 'Siemens', 'Eurosprinter', 1995, 1668, 19.2, 3.0, 4.375, 87000, 2),
+                                                                                                                                                             ('RS002', 'MEDWAY', 'Siemens', 'Eurosprinter', 1995, 1668, 19.2, 3.0, 4.375, 87000, 2),
+                                                                                                                                                             ('RS003', 'MEDWAY', 'Siemens', 'Eurosprinter', 1996, 1668, 19.2, 3.0, 4.375, 87000, 2),
+                                                                                                                                                             ('RS004', 'MEDWAY', 'Sorefame - Alsthom', 'CP 1900', 1981, 1668, 19.084, 3.062, 4.31, 117000, 2),
+                                                                                                                                                             -- Wagons (primeiros 10 como exemplo - adicione os restantes)
+                                                                                                                                                             ('WG001', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG002', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG003', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG004', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG005', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG006', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG007', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG008', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG009', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
+                                                                                                                                                             ('WG010', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2);
 
--- 6. INSERT LOCOMOTIVE DATA (4 Locomotives)
-INSERT INTO ROLLING_STOCK (stock_id, operator_id, name, make, model, service_year, number_bogies, bogies_type, power, length_m, width_m, height_m, weight_t, max_speed, operational_speed, traction_kn, type, voltage, frequency, gauge, fuel_l) VALUES 
-('5621', 'MEDWAY', 'Inês', 'Siemens', 'Eurosprinter', 1995, 2, 'Bo-Bo', 5600, 19.2, 3, 4.375, 87, 220, 70, 300, 'Electric', '25 KV', '50 Hz', 1668, NULL);
-INSERT INTO ROLLING_STOCK (stock_id, operator_id, name, make, model, service_year, number_bogies, bogies_type, power, length_m, width_m, height_m, weight_t, max_speed, operational_speed, traction_kn, type, voltage, frequency, gauge, fuel_l) VALUES 
-('5623', 'MEDWAY', 'Paz', 'Siemens', 'Eurosprinter', 1995, 2, 'Bo-Bo', 5600, 19.2, 3, 4.375, 87, 220, 70, 300, 'Electric', '25 KV', '50 Hz', 1668, NULL);
-INSERT INTO ROLLING_STOCK (stock_id, operator_id, name, make, model, service_year, number_bogies, bogies_type, power, length_m, width_m, height_m, weight_t, max_speed, operational_speed, traction_kn, type, voltage, frequency, gauge, fuel_l) VALUES 
-('5630', 'MEDWAY', 'Helena', 'Siemens', 'Eurosprinter', 1996, 2, 'Bo-Bo', 5600, 19.2, 3, 4.375, 87, 220, 70, 300, 'Electric', '25 KV', '50 Hz', 1668, NULL);
-INSERT INTO ROLLING_STOCK (stock_id, operator_id, name, make, model, service_year, number_bogies, bogies_type, power, length_m, width_m, height_m, weight_t, max_speed, operational_speed, traction_kn, type, voltage, frequency, gauge, fuel_l) VALUES 
-('1903', 'MEDWAY', 'Eva', 'Sorefame - Alsthom', 'CP 1900', 1981, 2, 'Co-Co', 1623, 19.084, 3.062, 4.31, 117, 100, 42.5, 396, 'Diesel', NULL, NULL, 1668, 4882);
+-- 6. INSERT LOCOMOTIVE DATA
+INSERT INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, acceleration_kmh_s, max_total_weight_kg, fuel_capacity_l, supports_multiple_gauges) VALUES
+                                                                                                                                                     ('RS001', 'Electric', 5600, 0.7, 180000, NULL, 'N'),
+                                                                                                                                                     ('RS002', 'Electric', 5600, 0.7, 180000, NULL, 'N'),
+                                                                                                                                                     ('RS003', 'Electric', 5600, 0.7, 180000, NULL, 'N'),
+                                                                                                                                                     ('RS004', 'Diesel', 1623, 0.4, 200000, 4882, 'N');
 
--- 7. INSERT WAGON_MODEL DATA (7 Models)
-INSERT INTO WAGON_MODEL (model_id, maker, number_bogies, bogies, length_mm, width_mm, height_mm, weight_t, max_speed, payload_t, volume_m3, type, gauge) VALUES 
-('Tadgs 32 94 082 3', 'Metalsines', 2, 'Duplo', 17240, 3072, 4270, 24, 120, 56, 75, 'Cereal wagon', 1668);
-INSERT INTO WAGON_MODEL (model_id, maker, number_bogies, bogies, length_mm, width_mm, height_mm, weight_t, max_speed, payload_t, volume_m3, type, gauge) VALUES 
-('Tdgs 41 94 074 1', 'Equimetal', 2, 'Duplo', 9640, 3120, 4165.5, 13.8, 100, 26.2, 38, 'Cereal wagon', 1668);
-INSERT INTO WAGON_MODEL (model_id, maker, number_bogies, bogies, length_mm, width_mm, height_mm, weight_t, max_speed, payload_t, volume_m3, type, gauge) VALUES 
-('Gabs 81 94 181 1', 'Sepsa Cometna', 2, 'Duplo', 21700, 3180, 4170, 29.8, 100, 50.2, 110, 'Covered wagon with sliding door', 1668);
-INSERT INTO WAGON_MODEL (model_id, maker, number_bogies, bogies, length_mm, width_mm, height_mm, weight_t, max_speed, payload_t, volume_m3, type, gauge) VALUES 
-('Regmms 32 94 356 3', 'Metalsines', 2, 'Duplo', 14040, 3104, 2535, 21.2, 120, 60.6, 76.3, 'Container wagon (max 40'' HC)', 1668);
-INSERT INTO WAGON_MODEL (model_id, maker, number_bogies, bogies, length_mm, width_mm, height_mm, weight_t, max_speed, payload_t, volume_m3, type, gauge) VALUES 
-('Lgs 22 94 441 6', 'Metalsines', 1, 'Simples', 13860, 2850, 1060, 11.9, 120, 28.1, 76.3, 'Container wagon (max 40'' HC)', 1668);
-INSERT INTO WAGON_MODEL (model_id, maker, number_bogies, bogies, length_mm, width_mm, height_mm, weight_t, max_speed, payload_t, volume_m3, type, gauge) VALUES 
-('Sgnss 12 94 455 2', 'Emef', 2, 'Duplo', 18116, 2950, 1030, 21.6, 120, 68.4, 76.3, 'Container wagon (max 40'' HC)', 1668);
-INSERT INTO WAGON_MODEL (model_id, maker, number_bogies, bogies, length_mm, width_mm, height_mm, weight_t, max_speed, payload_t, volume_m3, type, gauge) VALUES 
-('Sgnss 12 94 455 2-1435', 'Emef', 2, 'Duplo', 18116, 2950, 1030, 21.6, 120, 68.4, 76.3, 'Container wagon (max 40'' HC)', 1435);
+-- 7. INSERT WAGON DATA (30 Wagons)
+INSERT INTO WAGON (stock_id, wagon_type, payload_capacity_kg, volume_capacity_m3, container_supported, is_refrigerated, max_pressure_bar) VALUES
+                                                                                                                                              ('WG001', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG002', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG003', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG004', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG005', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG006', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG007', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG008', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG009', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG010', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL);
 
--- 8. INSERT WAGON DATA (30 Wagons)
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 077', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 078', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 079', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 080', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 081', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 082', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 083', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 084', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 085', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 086', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 087', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 088', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 089', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 090', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 091', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('356 3 092', 'Regmms 32 94 356 3', 'MEDWAY', 1987);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('082 3 045', 'Tadgs 32 94 082 3', 'MEDWAY', 1990);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('082 3 046', 'Tadgs 32 94 082 3', 'MEDWAY', 1990);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('082 3 047', 'Tadgs 32 94 082 3', 'MEDWAY', 1990);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('082 3 048', 'Tadgs 32 94 082 3', 'MEDWAY', 1990);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('074 1 001', 'Tdgs 41 94 074 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('074 1 002', 'Tdgs 41 94 074 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('074 1 003', 'Tdgs 41 94 074 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('074 1 004', 'Tdgs 41 94 074 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('074 1 005', 'Tdgs 41 94 074 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('074 1 006', 'Tdgs 41 94 074 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('181 1 010', 'Gabs 81 94 181 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('181 1 011', 'Gabs 81 94 181 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('181 1 012', 'Gabs 81 94 181 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('181 1 013', 'Gabs 81 94 181 1', 'MEDWAY', 1977);
-INSERT INTO WAGON (wagon_number, model_id, operator_id, service_year) VALUES ('181 1 014', 'Gabs 81 94 181 1', 'MEDWAY', 1977);
+-- 8. INSERT WAREHOUSE DATA
+INSERT INTO WAREHOUSE (warehouse_id, name) VALUES
+                                               ('WH001', 'Porto Main Warehouse'),
+                                               ('WH002', 'Viana Logistics Center'),
+                                               ('WH003', 'Barcelos Storage');
+
+-- 9. INSERT BAY DATA
+INSERT INTO BAY (warehouse_id, aisle, bay_number, capacity_boxes) VALUES
+                                                                      ('WH001', 1, 1, 50), ('WH001', 1, 2, 50), ('WH001', 2, 1, 40),
+                                                                      ('WH002', 1, 1, 60), ('WH002', 1, 2, 60), ('WH002', 2, 1, 35),
+                                                                      ('WH003', 1, 1, 30), ('WH003', 1, 2, 30);
+
+-- 10. INSERT ITEM DATA
+INSERT INTO ITEM (sku, name, category, unit, volume, unit_weight) VALUES
+                                                                      ('SKU001', 'Electronics Components', 'Electronics', 'units', 0.1, 0.5),
+                                                                      ('SKU002', 'Cereal Grains', 'Food', 'kg', 1.0, 1.2),
+                                                                      ('SKU003', 'Construction Materials', 'Building', 'units', 2.5, 3.0),
+                                                                      ('SKU004', 'Automotive Parts', 'Automotive', 'units', 1.2, 2.1);
+
+-- 11. INSERT BOX DATA
+INSERT INTO BOX (box_id, qty_available, expiry_date, received_at, sku, aisle, bay, warehouse_id) VALUES
+                                                                                                     ('BOX001', 100, NULL, TIMESTAMP '2024-01-15 09:00:00', 'SKU001', 1, 1, 'WH001'),
+                                                                                                     ('BOX002', 500, DATE '2024-12-31', TIMESTAMP '2024-01-16 10:30:00', 'SKU002', 1, 2, 'WH001'),
+                                                                                                     ('BOX003', 75, NULL, TIMESTAMP '2024-01-17 14:15:00', 'SKU003', 2, 1, 'WH001'),
+                                                                                                     ('BOX004', 200, NULL, TIMESTAMP '2024-01-18 11:45:00', 'SKU004', 1, 1, 'WH002');
 
 COMMIT;
 
 -- =============================================
--- DATA VERIFICATION QUERIES
+-- VERIFICATION QUERIES
 -- =============================================
 
 -- Count records per table
-SELECT 'OWNER' as table_name, COUNT(*) as count FROM OWNER
-UNION ALL SELECT 'OPERATOR', COUNT(*) FROM OPERATOR
-UNION ALL SELECT 'FACILITY', COUNT(*) FROM FACILITY
-UNION ALL SELECT 'RAILWAY_LINE', COUNT(*) FROM RAILWAY_LINE
-UNION ALL SELECT 'LINE_SEGMENT', COUNT(*) FROM LINE_SEGMENT
-UNION ALL SELECT 'ROLLING_STOCK', COUNT(*) FROM ROLLING_STOCK
-UNION ALL SELECT 'WAGON_MODEL', COUNT(*) FROM WAGON_MODEL
-UNION ALL SELECT 'WAGON', COUNT(*) FROM WAGON;
+SELECT 'OPERATOR' as table_name, COUNT(*) as count FROM OPERATOR
+UNION ALL SELECT 'STATION', COUNT(*) FROM STATION
+          UNION ALL SELECT 'RAILWAY_LINE', COUNT(*) FROM RAILWAY_LINE
+          UNION ALL SELECT 'LINE_SEGMENT', COUNT(*) FROM LINE_SEGMENT
+          UNION ALL SELECT 'ROLLING_STOCK', COUNT(*) FROM ROLLING_STOCK
+          UNION ALL SELECT 'LOCOMOTIVE', COUNT(*) FROM LOCOMOTIVE
+          UNION ALL SELECT 'WAGON', COUNT(*) FROM WAGON
+          UNION ALL SELECT 'WAREHOUSE', COUNT(*) FROM WAREHOUSE
+          UNION ALL SELECT 'BAY', COUNT(*) FROM BAY
+          UNION ALL SELECT 'ITEM', COUNT(*) FROM ITEM
+          UNION ALL SELECT 'BOX', COUNT(*) FROM BOX;
 
--- =============================================
+-- Test USBD18 Query
+SELECT
+    o.name as owner_name,
+    ls.track_type,
+    COUNT(*) as segment_count
+FROM LINE_SEGMENT ls
+         JOIN RAILWAY_LINE rl ON ls.line_id = rl.line_id
+         JOIN OPERATOR o ON rl.owner_operator_id = o.operator_id
+GROUP BY o.name, ls.track_type
+ORDER BY o.name, ls.track_type;

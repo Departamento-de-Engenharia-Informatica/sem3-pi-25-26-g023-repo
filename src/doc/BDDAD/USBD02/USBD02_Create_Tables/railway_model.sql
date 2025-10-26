@@ -2,131 +2,225 @@
 -- USBD02 - Railway System Relational Model
 -- =============================================
 
--- CLEAN UP
-DROP TABLE WAGON CASCADE CONSTRAINTS;
-DROP TABLE LOCOMOTIVE CASCADE CONSTRAINTS;
-DROP TABLE ROLLING_STOCK CASCADE CONSTRAINTS;
+-- CLEAN UP EXISTING TABLES
+DROP TABLE BAY CASCADE CONSTRAINTS;
+DROP TABLE BOX CASCADE CONSTRAINTS;
+DROP TABLE CUSTOMER_ORDER CASCADE CONSTRAINTS;
+DROP TABLE ITEM CASCADE CONSTRAINTS;
 DROP TABLE LINE_SEGMENT CASCADE CONSTRAINTS;
-DROP TABLE RAILWAY_LINE CASCADE CONSTRAINTS;
-DROP TABLE FACILITY CASCADE CONSTRAINTS;
+DROP TABLE LOCOMOTIVE CASCADE CONSTRAINTS;
 DROP TABLE OPERATOR CASCADE CONSTRAINTS;
-DROP TABLE OWNER CASCADE CONSTRAINTS;
+DROP TABLE ORDER_LINE CASCADE CONSTRAINTS;
+DROP TABLE RAILWAY_LINE CASCADE CONSTRAINTS;
+DROP TABLE RETURN_ITEM CASCADE CONSTRAINTS;
+DROP TABLE ROLLING_STOCK CASCADE CONSTRAINTS;
+DROP TABLE STATION CASCADE CONSTRAINTS;
+DROP TABLE WAGON CASCADE CONSTRAINTS;
+DROP TABLE WAREHOUSE CASCADE CONSTRAINTS;
 
+-- =============================================
 -- CREATE TABLES
-CREATE TABLE OWNER (
-                       owner_id VARCHAR2(10) NOT NULL,
-                       name VARCHAR2(100),
-                       short_name VARCHAR2(20),
-                       vat_number VARCHAR2(20),
-                       PRIMARY KEY (owner_id)
-);
+-- =============================================
 
+-- RAILWAY INFRASTRUCTURE TABLES
 CREATE TABLE OPERATOR (
                           operator_id VARCHAR2(10) NOT NULL,
                           name VARCHAR2(100),
-                          short_name VARCHAR2(20),
-                          vat_number VARCHAR2(20),
+                          type VARCHAR2(50),
+                          contact_email VARCHAR2(100),
+                          phone VARCHAR2(20),
                           PRIMARY KEY (operator_id)
 );
 
-CREATE TABLE FACILITY (
-                          facility_id NUMBER NOT NULL,
-                          name VARCHAR2(100) NOT NULL,
-                          PRIMARY KEY (facility_id)
+CREATE TABLE STATION (
+                         station_id VARCHAR2(10) NOT NULL,
+                         name VARCHAR2(100),
+                         type VARCHAR2(50),
+                         has_warehouse CHAR(1),
+                         has_refrigerated CHAR(1),
+                         latitude NUMBER(10,6),
+                         longitude NUMBER(10,6),
+                         PRIMARY KEY (station_id)
 );
 
 CREATE TABLE RAILWAY_LINE (
-                              line_id NUMBER NOT NULL,
+                              line_id VARCHAR2(10) NOT NULL,
                               name VARCHAR2(100),
-                              owner_id VARCHAR2(10) NOT NULL,
-                              start_facility_id NUMBER NOT NULL,
-                              end_facility_id NUMBER NOT NULL,
-                              gauge NUMBER,
+                              owner_operator_id VARCHAR2(10) NOT NULL,
+                              total_length_km NUMBER(8,2),
                               PRIMARY KEY (line_id)
 );
 
 CREATE TABLE LINE_SEGMENT (
-                              segment_id NUMBER NOT NULL,
-                              line_id NUMBER NOT NULL,
-                              segment_order NUMBER NOT NULL,
-                              electrified VARCHAR2(3) CHECK (electrified IN ('Yes', 'No')),
-                              max_weight_kg_m NUMBER,
-                              length_m NUMBER,
-                              number_tracks NUMBER,
+                              segment_id VARCHAR2(10) NOT NULL,
+                              line_id VARCHAR2(10) NOT NULL,
+                              start_station_id VARCHAR2(10) NOT NULL,
+                              end_station_id VARCHAR2(10) NOT NULL,
+                              segment_length_km NUMBER(8,2),
+                              track_type VARCHAR2(20),
+                              gauge_mm NUMBER(5,1),
+                              is_eletrified CHAR(1),
+                              max_weigth_kg_per_m NUMBER(8,2),
+                              max_speed_kmh NUMBER,
                               PRIMARY KEY (segment_id)
 );
 
 CREATE TABLE ROLLING_STOCK (
-                               stock_id VARCHAR2(20) NOT NULL,
+                               stock_id VARCHAR2(10) NOT NULL,
                                operator_id VARCHAR2(10) NOT NULL,
-                               name VARCHAR2(100),
                                make VARCHAR2(50),
                                model VARCHAR2(50),
-                               service_year NUMBER,
-                               number_bogies NUMBER,
-                               bogies_type VARCHAR2(20),
-                               power NUMBER,
+                               year_of_service NUMBER,
+                               gauge_mm NUMBER(5,1),
                                length_m NUMBER(5,2),
                                width_m NUMBER(5,2),
                                height_m NUMBER(5,2),
-                               weight_t NUMBER(8,2),
-                               max_speed NUMBER,
-                               operational_speed NUMBER,
-                               traction_kn NUMBER,
-                               type VARCHAR2(20),
-                               voltage VARCHAR2(20),
-                               frequency VARCHAR2(20),
-                               gauge NUMBER,
-                               fuel_l NUMBER,
+                               tare_weight_kg NUMBER(8,2),
+                               number_of_bogies NUMBER,
                                PRIMARY KEY (stock_id)
 );
 
-CREATE TABLE WAGON_MODEL (
-                             model_id VARCHAR2(50) NOT NULL,
-                             maker VARCHAR2(50),
-                             number_bogies NUMBER,
-                             bogies VARCHAR2(20),
-                             length_mm NUMBER,
-                             width_mm NUMBER,
-                             height_mm NUMBER,
-                             weight_t NUMBER(8,2),
-                             max_speed NUMBER,
-                             payload_t NUMBER(8,2),
-                             volume_m3 NUMBER(8,2),
-                             type VARCHAR2(100),
-                             gauge NUMBER,
-                             PRIMARY KEY (model_id)
+CREATE TABLE LOCOMOTIVE (
+                            stock_id VARCHAR2(10) NOT NULL,
+                            locomotive_type VARCHAR2(20),
+                            power_kw NUMBER,
+                            acceleration_kmh_s NUMBER(3,2),
+                            max_total_weight_kg NUMBER(8,2),
+                            fuel_capacity_l NUMBER,
+                            supports_multiple_gauges CHAR(1),
+                            PRIMARY KEY (stock_id)
 );
 
 CREATE TABLE WAGON (
-                       wagon_number VARCHAR2(20) NOT NULL,
-                       model_id VARCHAR2(50) NOT NULL,
-                       operator_id VARCHAR2(10) NOT NULL,
-                       service_year NUMBER,
-                       PRIMARY KEY (wagon_number)
+                       stock_id VARCHAR2(10) NOT NULL,
+                       wagon_type VARCHAR2(30),
+                       payload_capacity_kg NUMBER(8,2),
+                       volume_capacity_m3 NUMBER(8,2),
+                       container_supported VARCHAR2(50),
+                       is_refrigerated CHAR(1),
+                       max_pressure_bar NUMBER(5,2),
+                       PRIMARY KEY (stock_id)
+);
+
+-- WAREHOUSE MANAGEMENT TABLES
+CREATE TABLE WAREHOUSE (
+                           warehouse_id VARCHAR2(20) NOT NULL,
+                           name VARCHAR2(100),
+                           PRIMARY KEY (warehouse_id)
+);
+
+CREATE TABLE BAY (
+                     warehouse_id VARCHAR2(20) NOT NULL,
+                     aisle NUMBER(4) NOT NULL,
+                     bay_number NUMBER(4) NOT NULL,
+                     capacity_boxes NUMBER(4),
+                     PRIMARY KEY (warehouse_id, aisle, bay_number)
+);
+
+CREATE TABLE ITEM (
+                      sku VARCHAR2(20) NOT NULL,
+                      name VARCHAR2(100),
+                      category VARCHAR2(50),
+                      unit VARCHAR2(20),
+                      volume NUMBER(8,2),
+                      unit_weight NUMBER(8,2),
+                      PRIMARY KEY (sku)
+);
+
+CREATE TABLE BOX (
+                     box_id VARCHAR2(20) NOT NULL,
+                     qty_available NUMBER(6),
+                     expiry_date DATE,
+                     received_at TIMESTAMP(0),
+                     sku VARCHAR2(20) NOT NULL,
+                     aisle NUMBER(4) NOT NULL,
+                     bay NUMBER(4) NOT NULL,
+                     warehouse_id VARCHAR2(20) NOT NULL,
+                     PRIMARY KEY (box_id)
+);
+
+CREATE TABLE CUSTOMER_ORDER (
+                                order_id VARCHAR2(20) NOT NULL,
+                                due_date DATE,
+                                priority NUMBER(2),
+                                PRIMARY KEY (order_id)
+);
+
+CREATE TABLE ORDER_LINE (
+                            order_id VARCHAR2(20) NOT NULL,
+                            line_no NUMBER(3) NOT NULL,
+                            sku VARCHAR2(20) NOT NULL,
+                            qty NUMBER(6),
+                            PRIMARY KEY (order_id, line_no)
+);
+
+CREATE TABLE RETURN_ITEM (
+                             return_id VARCHAR2(20) NOT NULL,
+                             sku VARCHAR2(20) NOT NULL,
+                             qty NUMBER(6),
+                             reason VARCHAR2(50),
+                             timestamp TIMESTAMP(0),
+                             expiry_date DATE,
+                             PRIMARY KEY (return_id)
 );
 
 -- =============================================
 -- FOREIGN KEY CONSTRAINTS
 -- =============================================
 
-ALTER TABLE RAILWAY_LINE ADD CONSTRAINT fk_line_owner
-    FOREIGN KEY (owner_id) REFERENCES OWNER(owner_id);
+-- Railway Infrastructure Constraints
+ALTER TABLE RAILWAY_LINE ADD CONSTRAINT "An operator has several railway lines"
+    FOREIGN KEY (owner_operator_id) REFERENCES OPERATOR(operator_id);
 
-ALTER TABLE RAILWAY_LINE ADD CONSTRAINT fk_line_start_facility
-    FOREIGN KEY (start_facility_id) REFERENCES FACILITY(facility_id);
-
-ALTER TABLE RAILWAY_LINE ADD CONSTRAINT fk_line_end_facility
-    FOREIGN KEY (end_facility_id) REFERENCES FACILITY(facility_id);
-
-ALTER TABLE LINE_SEGMENT ADD CONSTRAINT fk_segment_line
+ALTER TABLE LINE_SEGMENT ADD CONSTRAINT "A line has several segments"
     FOREIGN KEY (line_id) REFERENCES RAILWAY_LINE(line_id);
 
-ALTER TABLE ROLLING_STOCK ADD CONSTRAINT fk_stock_operator
+ALTER TABLE LINE_SEGMENT ADD CONSTRAINT "A station can be the start of several segments"
+    FOREIGN KEY (start_station_id) REFERENCES STATION(station_id);
+
+ALTER TABLE LINE_SEGMENT ADD CONSTRAINT "A station can be the end of several segments"
+    FOREIGN KEY (end_station_id) REFERENCES STATION(station_id);
+
+ALTER TABLE ROLLING_STOCK ADD CONSTRAINT "An operator has several rolling stocks"
     FOREIGN KEY (operator_id) REFERENCES OPERATOR(operator_id);
 
-ALTER TABLE WAGON ADD CONSTRAINT fk_wagon_model
-    FOREIGN KEY (model_id) REFERENCES WAGON_MODEL(model_id);
+ALTER TABLE LOCOMOTIVE ADD CONSTRAINT "A locomotive is a rolling stock"
+    FOREIGN KEY (stock_id) REFERENCES ROLLING_STOCK(stock_id);
 
-ALTER TABLE WAGON ADD CONSTRAINT fk_wagon_operator
-    FOREIGN KEY (operator_id) REFERENCES OPERATOR(operator_id);
+ALTER TABLE WAGON ADD CONSTRAINT "A wagon is a rolling stock"
+    FOREIGN KEY (stock_id) REFERENCES ROLLING_STOCK(stock_id);
+
+-- Warehouse Management Constraints
+ALTER TABLE BAY ADD CONSTRAINT "A warehouse has several bays"
+    FOREIGN KEY (warehouse_id) REFERENCES WAREHOUSE(warehouse_id);
+
+ALTER TABLE BOX ADD CONSTRAINT "A box is located in a bay"
+    FOREIGN KEY (warehouse_id, aisle, bay) REFERENCES BAY(warehouse_id, aisle, bay_number);
+
+ALTER TABLE BOX ADD CONSTRAINT "An item can be in multiple boxes"
+    FOREIGN KEY (sku) REFERENCES ITEM(sku);
+
+ALTER TABLE ORDER_LINE ADD CONSTRAINT "An order has multiple lines"
+    FOREIGN KEY (order_id) REFERENCES CUSTOMER_ORDER(order_id);
+
+ALTER TABLE ORDER_LINE ADD CONSTRAINT "An item can appear on multiple order lines"
+    FOREIGN KEY (sku) REFERENCES ITEM(sku);
+
+ALTER TABLE RETURN_ITEM ADD CONSTRAINT "An item can have multiple returns"
+    FOREIGN KEY (sku) REFERENCES ITEM(sku);
+
+-- =============================================
+-- VERIFICATION QUERY
+-- =============================================
+
+-- Verify all tables were created successfully
+SELECT table_name, num_rows
+FROM user_tables
+WHERE table_name IN (
+                     'OPERATOR', 'STATION', 'RAILWAY_LINE', 'LINE_SEGMENT',
+                     'ROLLING_STOCK', 'LOCOMOTIVE', 'WAGON', 'WAREHOUSE',
+                     'BAY', 'ITEM', 'BOX', 'CUSTOMER_ORDER', 'ORDER_LINE', 'RETURN_ITEM'
+    )
+ORDER BY table_name;
+
+-- =============================================
