@@ -5,17 +5,45 @@ import pt.ipp.isep.dei.domain.*; // Import all necessary domain classes
 import java.util.*; // Import Collections and other utilities
 import java.util.stream.Collectors;
 
+/**
+ * Test harness for USEI04: Pick Path Sequencing.
+ * <p>
+ * This class implements {@link Runnable} to execute test scenarios for the
+ * {@link PickingPathService}. It validates the two primary pathfinding strategies
+ * ("Deterministic Sweep" and "Nearest Neighbour") by checking the generated
+ * path sequence and the total calculated distance.
+ * </p>
+ * It tests:
+ * <ul>
+ * <li>Edge cases (null/empty plan, invalid locations, duplicates).</li>
+ * <li>Simple paths (single aisle, single point).</li>
+ * <li>Complex paths (multiple aisles, "staircase", horizontal lines).</li>
+ * <li>Strategy differentiation (cases where Nearest Neighbour is optimal).</li>
+ * </ul>
+ */
 public class USEI04test implements Runnable {
 
-    // Structure to store test results
+    /** Structure to store test results (Scenario Name -> Pass/Fail). */
     private final Map<String, Boolean> testResults = new HashMap<>();
 
     // --- Main Method for Execution ---
+
+    /**
+     * Main entry point for the test runner.
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
         USEI04test tester = new USEI04test();
         tester.run();
     }
 
+    /**
+     * Orchestrates the execution of all test scenarios.
+     * It calls each test method, stores its boolean result in the
+     * {@code testResults} map, and finally calls {@link #printSummary()}
+     * to display the final report.
+     */
     @Override
     public void run() {
         System.out.println("======================================================");
@@ -45,6 +73,13 @@ public class USEI04test implements Runnable {
 
     // --- Test Methods per Scenario (return boolean) ---
 
+    /**
+     * Scenario 01: Tests behavior with a {@code null} plan and an empty plan.
+     * Expects a default path containing only the entrance with 0 distance.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testPlanoNuloVazio(PickingPathService service) {
         printScenarioHeader("Scenario 01: Null and Empty Plan");
         boolean passed = true;
@@ -64,6 +99,13 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 02: Tests a plan where all assignments have invalid locations.
+     * Expects a default path containing only the entrance with 0 distance.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testSemLocalizacoesValidas(PickingPathService service) {
         printScenarioHeader("Scenario 02: No Valid Locations");
         PickingPlan plan = createPlan("PLAN_INVALIDOS");
@@ -85,6 +127,13 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 03: Tests a plan with one assignment having no location (null, null).
+     * Expects a default path containing only the entrance with 0 distance.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testApenasEntrada(PickingPathService service) {
         printScenarioHeader("Scenario 03: Entrance Only (1 invalid assignment)");
         PickingPlan plan = createPlan("PLAN_SO_ENTRADA");
@@ -100,6 +149,13 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 04: Tests if duplicate locations in assignments are correctly consolidated.
+     * Expects the path to visit each unique location only once.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testLocalizacoesDuplicadas(PickingPathService service) {
         printScenarioHeader("Scenario 04: Duplicate Locations");
         PickingPlan plan = createPlan("PLAN_DUPLICADOS");
@@ -132,6 +188,13 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 05: Tests a path where all locations are in a single aisle.
+     * Expects both strategies to produce the same simple up-and-down path.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testApenasUmAisle(PickingPathService service) {
         printScenarioHeader("Scenario 05: Locations in Only One Aisle (Ex: Aisle 2)");
         PickingPlan plan = createPlan("PLAN_AISLE2");
@@ -160,6 +223,12 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 06: Tests a typical case with locations in multiple aisles.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testVariosAisles(PickingPathService service) {
         printScenarioHeader("Scenario 06: Locations in Multiple Aisles (Typical Case)");
         PickingPlan plan = createPlan("PLAN_VARIOS_AISLES");
@@ -194,6 +263,13 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 07: Tests a case designed to highlight the difference between Sweep and NN.
+     * Expects Nearest Neighbour to find a shorter path by not following the aisle sweep.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testOrdemInvertida(PickingPathService service) {
         printScenarioHeader("Scenario 07: Inverted Order / Distant Points");
         PickingPlan plan = createPlan("PLAN_INVERTIDO");
@@ -225,6 +301,12 @@ public class USEI04test implements Runnable {
 
     // --- New Scenarios ---
 
+    /**
+     * Scenario 08: Tests a path from the entrance to a single valid point.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testApenasUmPonto(PickingPathService service) {
         printScenarioHeader("Scenario 08: Only One Valid Point");
         PickingPlan plan = createPlan("PLAN_UM_PONTO");
@@ -246,6 +328,12 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 09: Tests a path with points at the same bay depth across different aisles.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testLinhaHorizontal(PickingPathService service) {
         printScenarioHeader("Scenario 09: Points in Horizontal Line (Same Bay)");
         PickingPlan plan = createPlan("PLAN_HORIZONTAL");
@@ -276,6 +364,12 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 10: Tests a "staircase" pattern of points.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testEscada(PickingPathService service) {
         printScenarioHeader("Scenario 10: Staircase Points");
         PickingPlan plan = createPlan("PLAN_ESCADA");
@@ -305,6 +399,14 @@ public class USEI04test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 11: Tests the Nearest Neighbour tie-breaking logic.
+     * When two points are equidistant, the one with the lower aisle, then lower bay
+     * (based on {@link BayLocation#compareTo}) should be chosen.
+     *
+     * @param service The {@link PickingPathService} instance.
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testDesempateNearestNeighbour(PickingPathService service) {
         printScenarioHeader("Scenario 11: Nearest Neighbour Tie-Breaker");
         PickingPlan plan = createPlan("PLAN_DESEMPATE");
@@ -344,27 +446,54 @@ public class USEI04test implements Runnable {
 
     // --- Helper Methods (maintained from previous version) ---
 
-    // Prints the scenario header
+    /**
+     * Helper method to print a standardized header for each test scenario.
+     *
+     * @param title The title of the scenario.
+     */
     private void printScenarioHeader(String title) {
         System.out.println("\n------------------------------------------------------");
         System.out.println("  " + title);
         System.out.println("------------------------------------------------------");
     }
 
-    // Creates a simple PickingAssignment for tests
+    /**
+     * Helper method to create a {@link PickingAssignment} instance for testing.
+     *
+     * @param orderId The order ID.
+     * @param lineNo  The order line number.
+     * @param sku     The item SKU.
+     * @param qty     The quantity.
+     * @param boxId   The source box ID.
+     * @param aisle   The source aisle string.
+     * @param bay     The source bay string.
+     * @return A new {@link PickingAssignment} object.
+     */
     private PickingAssignment createAssignment(String orderId, int lineNo, String sku, int qty, String boxId, String aisle, String bay) {
         // Mock Item (weight 1.0 for simplicity, as it doesn't affect path)
         Item mockItem = new Item(sku, "Mock Item " + sku, "Mock Category", "unit", 1.0);
         return new PickingAssignment(orderId, lineNo, mockItem, qty, boxId, aisle, bay);
     }
 
-    // Creates an empty PickingPlan
+    /**
+     * Helper method to create an empty {@link PickingPlan} for testing.
+     *
+     * @param planId The ID for the plan.
+     * @return A new, empty {@link PickingPlan} object.
+     */
     private PickingPlan createPlan(String planId) {
         // Heuristic and capacity are not relevant for USEI04, we use dummy values
         return new PickingPlan(planId, HeuristicType.FIRST_FIT, 0);
     }
 
-    // Creates a specific BayLocation (necessary because the constructor is private)
+    /**
+     * Helper method to create a {@link BayLocation} instance for comparison.
+     * This is necessary because the main {@code BayLocation} constructor is private.
+     *
+     * @param aisle The aisle number.
+     * @param bay   The bay number.
+     * @return A new {@link BayLocation} object.
+     */
     private BayLocation createLoc(int aisle, int bay) {
         // Create a dummy assignment just to use the public BayLocation constructor
         PickingAssignment dummy = createAssignment("dummy", 0, "dummy", 0, "dummy", String.valueOf(aisle), String.valueOf(bay));
@@ -372,7 +501,11 @@ public class USEI04test implements Runnable {
     }
 
 
-    // Prints the results in a formatted way
+    /**
+     * Helper method to print the path results from the service.
+     *
+     * @param results The map of results returned by the {@link PickingPathService}.
+     */
     private void printResults(Map<String, PickingPathService.PathResult> results) {
         if (results == null || results.isEmpty()) {
             System.out.println("    ERROR: Null or empty results returned.");
@@ -388,7 +521,17 @@ public class USEI04test implements Runnable {
         });
     }
 
-    // Checks if the obtained results match the expected ones
+    /**
+     * Helper method to validate the results from both pathfinding strategies.
+     *
+     * @param actualResults   The map of results returned by the service.
+     * @param testName        The name of the test scenario for logging.
+     * @param expectedPathA   The expected path for Strategy A (Sweep).
+     * @param expectedDistA   The expected distance for Strategy A.
+     * @param expectedPathB   The expected path for Strategy B (Nearest Neighbour).
+     * @param expectedDistB   The expected distance for Strategy B.
+     * @return {@code true} if both strategies match their expected results, {@code false} otherwise.
+     */
     private boolean checkResult(Map<String, PickingPathService.PathResult> actualResults, String testName,
                                 List<BayLocation> expectedPathA, double expectedDistA,
                                 List<BayLocation> expectedPathB, double expectedDistB) {
@@ -417,13 +560,24 @@ public class USEI04test implements Runnable {
         return passA && passB;
     }
 
-    // Compares two lists of BayLocation (order matters)
+    /**
+     * Compares two lists of {@link BayLocation} objects for equality (order matters).
+     *
+     * @param path1 The first path.
+     * @param path2 The second path.
+     * @return {@code true} if the paths are identical, {@code false} otherwise.
+     */
     private boolean arePathsEqual(List<BayLocation> path1, List<BayLocation> path2) {
         return Objects.equals(path1, path2); // Uses the list's equals, which compares element by element
     }
 
 
-    // Prints the final status of the test
+    /**
+     * Helper method to print the final PASSED (✅) or FAILED (❌)
+     * status for a scenario.
+     *
+     * @param passed {@code true} if the scenario passed, {@code false} otherwise.
+     */
     private void printTestStatus(boolean passed) {
         if (passed) {
             System.out.println("\n  --> Scenario Result: ✅ PASSED");
@@ -432,7 +586,10 @@ public class USEI04test implements Runnable {
         }
     }
 
-    // Prints the final summary
+    /**
+     * Prints a final summary report of all executed tests, collating
+     * results from the {@code testResults} map.
+     */
     private void printSummary() {
         System.out.println("\n======================================================");
         System.out.println("                 Test Report Summary         ");

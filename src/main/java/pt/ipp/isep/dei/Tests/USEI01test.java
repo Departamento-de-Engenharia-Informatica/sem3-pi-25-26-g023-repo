@@ -6,15 +6,39 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
+/**
+ * Test harness for USEI01: Wagon Unloading.
+ * <p>
+ * This class implements {@link Runnable} to execute a series of predefined
+ * test scenarios simulating the unloading of {@link Wagon} objects into the
+ * {@link WMS} (Warehouse Management System). It checks for correct sorting
+ * (FIFO/FEFO), capacity constraints, and error handling.
+ * </p>
+ * It collects results and prints a summary report to the console.
+ */
 public class USEI01test implements Runnable {
 
+    /**
+     * Stores the results of each test scenario (Scenario Name -> Pass/Fail).
+     */
     private final Map<String, Boolean> testResults = new HashMap<>();
 
+    /**
+     * Main entry point for the test runner.
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
 
         new USEI01test().run();
     }
 
+    /**
+     * Orchestrates the execution of all test scenarios.
+     * It calls each test method, stores its boolean result in the
+     * {@code testResults} map, and finally calls {@link #printSummary()}
+     * to display the final report.
+     */
     @Override
     public void run() {
         System.out.println("======================================================");
@@ -36,6 +60,12 @@ public class USEI01test implements Runnable {
 
     // --- Test Scenarios ---
 
+    /**
+     * Scenario 01: Tests unloading an empty wagon.
+     * Expects the inventory to remain empty.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testVagaoVazio() {
         printScenarioHeader("Scenario 01: Unload empty wagon");
         Inventory inventory = new Inventory();
@@ -50,6 +80,13 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 02: Tests unloading a simple wagon with non-perishable items.
+     * Expects the items to be added to the inventory in FIFO
+     * (First-In, First-Out) order based on their reception date.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testVagaoSimplesFIFO() {
         printScenarioHeader("Scenario 02: Unload simple wagon (FIFO)");
         Inventory inventory = new Inventory();
@@ -71,6 +108,13 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 03: Tests unloading a simple wagon with perishable items.
+     * Expects the items to be added to the inventory in FEFO
+     * (First-Expiry, First-Out) order.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testVagaoSimplesFEFO() {
         printScenarioHeader("Scenario 03: Unload simple wagon (FEFO)");
         Inventory inventory = new Inventory();
@@ -92,6 +136,13 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 04: Tests unloading a mixed wagon (perishable and non-perishable).
+     * Expects the inventory to be sorted first by FEFO (perishables)
+     * and then by FIFO (non-perishables).
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testVagaoMisto() {
         printScenarioHeader("Scenario 04: Unload mixed wagon (FEFO/FIFO)");
         Inventory inventory = new Inventory();
@@ -122,6 +173,13 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 05: Tests unloading multiple wagons in a single operation.
+     * Expects all boxes from all wagons to be sorted together into a single
+     * list (FEFO first, then FIFO) before being placed in inventory.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testMultiplosVagoes() {
         printScenarioHeader("Scenario 05: Unload multiple wagons");
         Inventory inventory = new Inventory();
@@ -155,6 +213,13 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 06: Tests unloading boxes that exceed the capacity of a single bay.
+     * Expects the WMS to fill the first available bay to capacity and then
+     * place the remaining boxes in the next available bay.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testExcederCapacidadeBay() {
         printScenarioHeader("Scenario 06: Unload exceeding Bay capacity");
         Inventory inventory = new Inventory();
@@ -190,6 +255,13 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 07: Tests unloading boxes that exceed the total capacity of all warehouses.
+     * Expects all warehouses/bays to be filled, and the remaining boxes
+     * to be rejected (not added to inventory) and an error to be logged.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testExcederCapacidadeWarehouse() {
         printScenarioHeader("Scenario 07: Unload exceeding Warehouse capacity");
         Inventory inventory = new Inventory();
@@ -235,6 +307,12 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 08: Tests unloading with no warehouses configured in the WMS.
+     * Expects no boxes to be added to the inventory and an error to be logged.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testSemWarehouses() {
         printScenarioHeader("Scenario 08: Unload with no available Warehouses");
         Inventory inventory = new Inventory();
@@ -259,6 +337,13 @@ public class USEI01test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 09: Tests unloading a wagon containing boxes with duplicate IDs.
+     * Expects the WMS to either ignore the duplicate or throw an
+     * {@link IllegalArgumentException}, resulting in only one box being added.
+     *
+     * @return {@code true} if the test passes (correctly handles duplicate), {@code false} otherwise.
+     */
     private boolean testCaixasDuplicadas() {
         printScenarioHeader("Scenario 09: Unload with duplicate boxes (should fail or ignore)");
         // This test depends on how duplicate ID validation is implemented.
@@ -298,18 +383,42 @@ public class USEI01test implements Runnable {
 
     // --- Helper Methods ---
 
+    /**
+     * Helper method to print a standardized header for each test scenario.
+     *
+     * @param title The title of the scenario.
+     */
     private void printScenarioHeader(String title) {
         System.out.println("\n------------------------------------------------------");
         System.out.println("  " + title);
         System.out.println("------------------------------------------------------");
     }
 
-    // Creates a simple Box
+    /**
+     * Helper method to create a {@link Box} instance for testing.
+     *
+     * @param boxId    The box identifier.
+     * @param sku      The item SKU.
+     * @param qty      The quantity.
+     * @param expiry   The expiry date (can be {@code null}).
+     * @param received The reception timestamp.
+     * @param aisle    The aisle (can be {@code null}).
+     * @param bay      The bay (can be {@code null}).
+     * @return A new {@link Box} object.
+     */
     private Box createBox(String boxId, String sku, int qty, LocalDate expiry, LocalDateTime received, String aisle, String bay) {
         return new Box(boxId, sku, qty, expiry, received, aisle, bay);
     }
 
-    // Creates a basic structure of warehouses, aisles, and bays
+    /**
+     * Helper method to create a basic warehouse structure for testing.
+     *
+     * @param numWH           Number of warehouses to create.
+     * @param numAislesPerWH  Number of aisles per warehouse.
+     * @param numBaysPerAisle Number of bays per aisle.
+     * @param bayCapacity     The capacity (in boxes) of each bay.
+     * @return A list of configured {@link Warehouse} objects.
+     */
     private List<Warehouse> createWarehousesBasicos(int numWH, int numAislesPerWH, int numBaysPerAisle, int bayCapacity) {
         List<Warehouse> warehouses = new ArrayList<>();
         for (int i = 1; i <= numWH; i++) {
@@ -323,27 +432,49 @@ public class USEI01test implements Runnable {
         }
         return warehouses;
     }
-    // Overload for default capacity
+
+    /**
+     * Overloaded helper method to create a basic warehouse structure with a default
+     * number of bays (5) per aisle.
+     *
+     * @param numWH          Number of warehouses.
+     * @param numAislesPerWH Number of aisles per warehouse.
+     * @param bayCapacity    The capacity of each bay.
+     * @return A list of configured {@link Warehouse} objects.
+     */
     private List<Warehouse> createWarehousesBasicos(int numWH, int numAislesPerWH, int bayCapacity) {
         return createWarehousesBasicos(numWH, numAislesPerWH, 5, bayCapacity); // Default 5 bays per aisle
     }
 
 
-    // Prints a specific result
+    /**
+     * Helper method to print a specific assertion or result line.
+     *
+     * @param description The description of the check.
+     * @param result      The outcome of the check.
+     */
     private void printResults(String description, Object result) {
         System.out.printf("    - %s: %s%n", description, result.toString());
     }
 
-    // Prints the final test status
+    /**
+     * Helper method to print the final PASSED (✅) or FAILED (❌)
+     * status for a scenario.
+     *
+     * @param passed {@code true} if the scenario passed, {@code false} otherwise.
+     */
     private void printTestStatus(boolean passed) {
         if (passed) {
             System.out.println("\n  --> Scenario Result: ✅ PASSED");
         } else {
-            System.err.println("\n  --> Scenario Result: ❌ FAILED");
+            System.err.println("\n  --> Scenario Result: Example ❌ FAILED");
         }
     }
 
-    // Prints the final summary
+    /**
+     * Prints a final summary report of all executed tests, collating
+     * results from the {@code testResults} map.
+     */
     private void printSummary() {
         System.out.println("\n======================================================");
         System.out.println("             USEI01 Test Report Summary      ");

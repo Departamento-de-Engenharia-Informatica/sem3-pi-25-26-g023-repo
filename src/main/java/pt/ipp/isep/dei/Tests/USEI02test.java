@@ -7,21 +7,49 @@ import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
+/**
+ * Test harness for USEI02: Order Allocation.
+ * <p>
+ * This class implements {@link Runnable} to execute a series of test scenarios
+ * simulating the {@link OrderAllocator} logic. It tests various conditions including:
+ * <ul>
+ * <li>Allocation modes ({@link OrderAllocator.Mode#STRICT} and {@link OrderAllocator.Mode#PARTIAL}).</li>
+ * <li>Stock availability (sufficient, partial, insufficient).</li>
+ * <li>Sorting logic (Order priority, Line priority, FEFO/FIFO).</li>
+ * <li>Edge cases (empty inventory, no orders).</li>
+ * </ul>
+ * It collects results and prints a summary report.
+ */
 public class USEI02test implements Runnable {
 
+    /** Stores the results of each test scenario (Scenario Name -> Pass/Fail). */
     private final Map<String, Boolean> testResults = new HashMap<>();
+    /** Mock database of items, used to retrieve item details (like weight) for allocations. */
     private Map<String, Item> itemsMap; // Necessary for weights
 
+    /**
+     * Main entry point for the test runner.
+     *
+     * @param args Command-line arguments (not used).
+     */
     public static void main(String[] args) {
         new USEI02test().run();
     }
 
-    // Initialize the items map before running tests
+    /**
+     * Constructs the test class and initializes the mock item database.
+     */
     public USEI02test() {
         itemsMap = createMockItems();
     }
 
 
+    /**
+     * Orchestrates the execution of all test scenarios.
+     * It calls each test method, stores its boolean result in the
+     * {@code testResults} map, and finally calls {@link #printSummary()}
+     * to display the final report.
+     */
     @Override
     public void run() {
         System.out.println("======================================================");
@@ -49,6 +77,12 @@ public class USEI02test implements Runnable {
 
     // --- Test Scenarios ---
 
+    /**
+     * Scenario 01: Tests allocation with an empty list of orders.
+     * Expects no allocations and no eligibilities.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testSemEncomendas() {
         printScenarioHeader("Scenario 01: No Orders");
         OrderAllocator allocator = new OrderAllocator();
@@ -63,6 +97,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 02: Tests allocation with an empty inventory.
+     * Expects the order line to be marked as UNDISPATCHABLE.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testInventarioVazio() {
         printScenarioHeader("Scenario 02: Empty Inventory");
         OrderAllocator allocator = new OrderAllocator();
@@ -80,6 +120,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 03: Tests {@link OrderAllocator.Mode#STRICT} with sufficient stock.
+     * Expects the order line to be ELIGIBLE and fully allocated.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testStockSuficienteStrict() {
         printScenarioHeader("Scenario 03: Sufficient Stock (Strict)");
         OrderAllocator allocator = new OrderAllocator();
@@ -102,6 +148,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 04: Tests {@link OrderAllocator.Mode#STRICT} with insufficient total stock.
+     * Expects the order line to be UNDISPATCHABLE and no allocations made.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testStockInsuficienteStrict() {
         printScenarioHeader("Scenario 04: Insufficient Stock (Strict)");
         OrderAllocator allocator = new OrderAllocator();
@@ -121,6 +173,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 05: Tests {@link OrderAllocator.Mode#STRICT} with partial stock.
+     * Expects the order line to be UNDISPATCHABLE (same as insufficient).
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testStockParcialStrict() {
         printScenarioHeader("Scenario 05: Partial Stock (Strict)");
         OrderAllocator allocator = new OrderAllocator();
@@ -141,6 +199,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 06: Tests {@link OrderAllocator.Mode#PARTIAL} with sufficient stock.
+     * Expects the order line to be ELIGIBLE (same as Strict).
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testStockSuficientePartial() {
         printScenarioHeader("Scenario 06: Sufficient Stock (Partial)");
         OrderAllocator allocator = new OrderAllocator();
@@ -162,6 +226,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 07: Tests {@link OrderAllocator.Mode#PARTIAL} with zero stock of the SKU.
+     * Expects the order line to be UNDISPATCHABLE.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testStockInsuficientePartial() {
         printScenarioHeader("Scenario 07: Insufficient Stock (Partial)");
         OrderAllocator allocator = new OrderAllocator();
@@ -182,6 +252,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 08: Tests {@link OrderAllocator.Mode#PARTIAL} with partial stock.
+     * Expects the order line to be PARTIAL and allocate all available stock.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testStockParcialPartial() {
         printScenarioHeader("Scenario 08: Partial Stock (Partial)");
         OrderAllocator allocator = new OrderAllocator();
@@ -204,6 +280,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 09: Tests if orders are processed in correct priority order.
+     * Expects sorting by Priority (ascending) then DueDate (ascending).
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testPrioridadeEncomendas() {
         printScenarioHeader("Scenario 09: Order Priority");
         OrderAllocator allocator = new OrderAllocator();
@@ -233,6 +315,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 10: Tests if order lines are processed in correct priority (line number).
+     * Expects sorting by Line Number (ascending).
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testPrioridadeLinhas() {
         printScenarioHeader("Scenario 10: Line Priority");
         OrderAllocator allocator = new OrderAllocator();
@@ -261,6 +349,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 11: Tests allocation logic for perishable items (FEFO).
+     * Expects boxes to be picked based on the earliest expiry date.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testAlocacaoFEFO() {
         printScenarioHeader("Scenario 11: FEFO Allocation");
         OrderAllocator allocator = new OrderAllocator();
@@ -283,6 +377,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 12: Tests allocation logic for non-perishable items (FIFO).
+     * Expects boxes to be picked based on the earliest reception date.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testAlocacaoFIFO() {
         printScenarioHeader("Scenario 12: FIFO Allocation");
         OrderAllocator allocator = new OrderAllocator();
@@ -305,6 +405,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 13: Tests allocation from a mixed inventory (FEFO and FIFO).
+     * Expects all FEFO boxes to be picked first, then FIFO boxes.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testAlocacaoMista() {
         printScenarioHeader("Scenario 13: Mixed FEFO/FIFO Allocation");
         OrderAllocator allocator = new OrderAllocator();
@@ -331,6 +437,12 @@ public class USEI02test implements Runnable {
     }
 
 
+    /**
+     * Scenario 14: Tests if a single order line can be fulfilled from multiple boxes.
+     * Expects allocations from 4 different boxes to fulfill one order line.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testAlocacaoMultiplasCaixas() {
         printScenarioHeader("Scenario 14: Allocation across Multiple Boxes");
         OrderAllocator allocator = new OrderAllocator();
@@ -349,7 +461,7 @@ public class USEI02test implements Runnable {
                 result.allocations.stream().anyMatch(a -> a.boxId.equals("B1") && a.qty == 5) &&
                 result.allocations.stream().anyMatch(a -> a.boxId.equals("B2") && a.qty == 5) &&
                 result.allocations.stream().anyMatch(a -> a.boxId.equals("B3") && a.qty == 5) &&
-                result.allocations.stream().anyMatch(a -> a.boxId.equals("B4") && a.qty == 3) &&
+                result.allocations.stream().anyMatch(a -> a.boxId.equals("B4" ) && a.qty == 3) &&
                 result.eligibilityList.get(0).status == Status.ELIGIBLE;
 
         printResults("Allocated B1(5), B2(5), B3(5), B4(3).", passed ? "Correct" : "Incorrect: " + result.allocations);
@@ -357,6 +469,12 @@ public class USEI02test implements Runnable {
         return passed;
     }
 
+    /**
+     * Scenario 15: Tests allocation for a SKU that does not exist in inventory.
+     * Expects the order line to be UNDISPATCHABLE.
+     *
+     * @return {@code true} if the test passes, {@code false} otherwise.
+     */
     private boolean testSkuNaoExiste() {
         printScenarioHeader("Scenario 15: SKU does not exist in Inventory");
         OrderAllocator allocator = new OrderAllocator();
@@ -380,6 +498,11 @@ public class USEI02test implements Runnable {
 
     // --- Helper Methods ---
 
+    /**
+     * Creates a mock map of SKUs to {@link Item} objects.
+     *
+     * @return A map of item data.
+     */
     private Map<String, Item> createMockItems() {
         Map<String, Item> items = new HashMap<>();
         // Add items used in tests with weights (weight affects USEI03, not USEI02 directly, but good to have)
@@ -393,29 +516,65 @@ public class USEI02test implements Runnable {
         return items;
     }
 
-
+    /**
+     * Helper method to create an {@link Order} with lines for testing.
+     *
+     * @param id       The order ID.
+     * @param priority The order priority.
+     * @param dueDate  The order due date.
+     * @param lines    A list of {@link OrderLine} objects.
+     * @return A new {@link Order} object.
+     */
     private Order createOrder(String id, int priority, LocalDate dueDate, List<OrderLine> lines) {
         Order order = new Order(id, priority, dueDate);
         order.lines.addAll(lines);
         return order;
     }
 
-    // Creates a simple Box
+    /**
+     * Helper method to create a {@link Box} instance for testing.
+     *
+     * @param boxId    The box identifier.
+     * @param sku      The item SKU.
+     * @param qty      The quantity.
+     * @param expiry   The expiry date (can be {@code null}).
+     * @param received The reception timestamp.
+     * @param aisle    The aisle (can be {@code null}).
+     * @param bay      The bay (can be {@code null}).
+     * @return A new {@link Box} object.
+     */
     private Box createBox(String boxId, String sku, int qty, LocalDate expiry, LocalDateTime received, String aisle, String bay) {
         // Creates mutable copy of quantity to simulate consumption
         return new Box(boxId, sku, qty, expiry, received, aisle, bay);
     }
 
+    /**
+     * Helper method to print a standardized header for each test scenario.
+     *
+     * @param title The title of the scenario.
+     */
     private void printScenarioHeader(String title) {
         System.out.println("\n------------------------------------------------------");
         System.out.println("  " + title);
         System.out.println("------------------------------------------------------");
     }
 
+    /**
+     * Helper method to print a specific assertion or result line.
+     *
+     * @param description The description of the check.
+     * @param result      The outcome of the check.
+     */
     private void printResults(String description, Object result) {
         System.out.printf("    - %s: %s%n", description, result.toString());
     }
 
+    /**
+     * Helper method to print the final PASSED (✅) or FAILED (❌)
+     * status for a scenario.
+     *
+     * @param passed {@code true} if the scenario passed, {@code false} otherwise.
+     */
     private void printTestStatus(boolean passed) {
         if (passed) {
             System.out.println("\n  --> Scenario Result: ✅ PASSED");
@@ -424,6 +583,10 @@ public class USEI02test implements Runnable {
         }
     }
 
+    /**
+     * Prints a final summary report of all executed tests, collating
+     * results from the {@code testResults} map.
+     */
     private void printSummary() {
         System.out.println("\n======================================================");
         System.out.println("             USEI02 Test Report Summary      ");

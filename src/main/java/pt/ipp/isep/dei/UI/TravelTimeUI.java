@@ -8,18 +8,42 @@ import pt.ipp.isep.dei.repository.LocomotiveRepository;
 
 import java.util.*;
 
+/**
+ * User Interface class for handling USLP03: Calculate Travel Time.
+ * <p>
+ * This class implements {@link Runnable} and provides a command-line interface
+ * for a user to select a departure station, a *directly connected* arrival station,
+ * and a locomotive to calculate the fastest travel time between them.
+ * </p>
+ */
 public class TravelTimeUI implements Runnable {
 
     private final TravelTimeController controller;
     private final StationRepository stationRepo;
     private final LocomotiveRepository locomotiveRepo;
 
+    /**
+     * Constructs a new TravelTimeUI with the necessary dependencies.
+     *
+     * @param controller       The controller responsible for the business logic.
+     * @param stationRepo      The repository to fetch station data.
+     * @param locomotiveRepo   The repository to fetch locomotive data.
+     */
     public TravelTimeUI(TravelTimeController controller, StationRepository stationRepo, LocomotiveRepository locomotiveRepo) {
         this.controller = controller;
         this.stationRepo = stationRepo;
         this.locomotiveRepo = locomotiveRepo;
     }
 
+    /**
+     * Runs the user interface loop for calculating travel time.
+     * This method guides the user through the following steps:
+     * 1. Selecting a departure station from a list of all stations.
+     * 2. Selecting an arrival station from a list of *directly connected* stations.
+     * 3. Selecting a locomotive from a list of all locomotives.
+     * 4. Displaying the calculated fastest travel time and route information.
+     * It also handles invalid input and errors.
+     */
     @Override
     public void run() {
         Scanner scanner = new Scanner(System.in);

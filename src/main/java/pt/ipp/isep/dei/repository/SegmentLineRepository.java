@@ -1,39 +1,63 @@
 package pt.ipp.isep.dei.repository;
 
-import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection; // Importa conexão
+import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.LineSegment;
 
 import java.sql.*;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
+/**
+ * Repository class responsible for loading and managing {@link LineSegment} entities.
+ * <p>
+ * This repository connects to the database to fetch railway line information
+ * from the {@code RAILWAY_LINE} and {@code LINE_SEGMENT} tables.
+ * It generates {@link LineSegment} objects for both directions (A→B and B→A),
+ * assigning unique identifiers to reverse segments.
+ * </p>
+ *
+ * <p>
+ * Since the database does not contain speed information for each segment or line,
+ * a default maximum speed is assigned to all line segments.
+ * </p>
+ *
+ * <p><b>Note:</b> This class relies on {@link DatabaseConnection} to obtain database access.</p>
+ *
+ */
 public class SegmentLineRepository {
 
-    // Velocidade padrão em km/h (já que não existe na BD por segmento/linha)
+    /** Default maximum speed for all segments (in km/h). */
     private static final double DEFAULT_MAX_SPEED = 150.0;
-    // Constante para gerar IDs únicos para segmentos inversos
+
+    /** Offset used to generate unique IDs for reverse segments. */
     private static final int INVERSE_ID_OFFSET = 1000;
 
-    // Construtor vazio
+    /**
+     * Default constructor.
+     * <p>
+     * Initializes the repository. Database access occurs on demand
+     * when data retrieval methods are invoked.
+     * </p>
+     */
     public SegmentLineRepository() {
-        System.out.println("SegmentoLinhaRepository: Initialized (will connect to DB on demand).");
+        System.out.println("SegmentLineRepository: Initialized (will connect to DB on demand).");
     }
 
     /**
-     * Busca todas as linhas da tabela RAILWAY_LINE, calcula o comprimento total
-     * a partir de LINE_SEGMENT, e cria objetos SegmentoLinha para AMBOS os sentidos,
-     * imitando a estrutura do mock anterior.
+     * Retrieves all railway lines from the {@code RAILWAY_LINE} table,
+     * calculates their total length based on {@code LINE_SEGMENT} data,
+     * and creates {@link LineSegment} objects for both directions (A→B and B→A).
+     * <p>
+     * If a line has an invalid or zero length, a warning is displayed but the segment
+     * is still added to maintain structural consistency.
+     * </p>
      *
-     * @return Lista de objetos SegmentoLinha (incluindo segmentos inversos).
+     * @return a list of {@link LineSegment} objects (including reverse segments)
      */
     public List<LineSegment> findAll() {
-        List<LineSegment> segmentos = new ArrayList<>();
-        Map<Integer, Double> lineLengthsKm = calculateAllLineLengthsKm(); // Calcula comprimentos primeiro
+        List<LineSegment> segments = new ArrayList<>();
+        Map<Integer, Double> lineLengthsKm = calculateAllLineLengthsKm(); // Compute total lengths first
 
-        String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE ORDER BY line_id"; //
+        String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE ORDER BY line_id";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -44,82 +68,87 @@ public class SegmentLineRepository {
                 int startFacilityId = rs.getInt("start_facility_id");
                 int endFacilityId = rs.getInt("end_facility_id");
 
-                double comprimentoKm = lineLengthsKm.getOrDefault(lineId, 0.0);
-                if (comprimentoKm <= 0.0) {
-                    System.err.println("⚠️ Aviso: Comprimento inválido (<=0) para line_id " + lineId + ". Segmento pode não funcionar corretamente.");
-                    // Poderia optar por não adicionar o segmento se o comprimento for inválido
-                    // continue;
+                double lengthKm = lineLengthsKm.getOrDefault(lineId, 0.0);
+                if (lengthKm <= 0.0) {
+                    System.err.println("⚠️ Warning: Invalid length (<=0) for line_id " + lineId +
+                            ". Segment may not behave correctly.");
                 }
 
-                // Cria o segmento no sentido original (A -> B)
-                // Usando line_id como idSegmento
-                segmentos.add(new LineSegment(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
+                // Create the segment in the original direction (A → B)
+                segments.add(new LineSegment(lineId, startFacilityId, endFacilityId, lengthKm, DEFAULT_MAX_SPEED));
 
-                // Cria o segmento no sentido inverso (B -> A)
-                // Usando line_id + OFFSET como idSegmento para garantir unicidade
-                segmentos.add(new LineSegment(lineId + INVERSE_ID_OFFSET, endFacilityId, startFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
-
+                // Create the reverse segment (B → A) with a unique ID (using offset)
+                segments.add(new LineSegment(lineId + INVERSE_ID_OFFSET, endFacilityId, startFacilityId, lengthKm, DEFAULT_MAX_SPEED));
             }
+
         } catch (SQLException e) {
-            System.err.println("❌ Erro ao buscar Linhas (Railway Lines) da BD para criar segmentos: " + e.getMessage());
+            System.err.println("❌ Error while fetching railway lines from DB: " + e.getMessage());
         }
-        System.out.println("SegmentoLinhaRepository: Generated " + segmentos.size() + " segments (includes reverse paths) from DB.");
-        return segmentos;
+
+        System.out.println("SegmentLineRepository: Generated " + segments.size() + " segments (including reverse paths) from DB.");
+        return segments;
     }
 
     /**
-     * Busca um "Segmento" direto entre duas Facilidades (Estações).
-     * Procura uma RAILWAY_LINE que conecte essas duas facilidades diretamente
-     * e retorna o objeto SegmentoLinha correspondente (no sentido A->B encontrado na BD).
+     * Finds a direct line segment connecting two facilities (stations).
+     * <p>
+     * This method queries the {@code RAILWAY_LINE} table for a direct connection
+     * between the given start and end facilities (in either direction).
+     * </p>
      *
-     * @param idEstacaoA ID da primeira facility.
-     * @param idEstacaoB ID da segunda facility.
-     * @return Optional contendo o SegmentoLinha (representando a linha no sentido encontrado) se existir.
+     * @param stationAId the ID of the first facility
+     * @param stationBId the ID of the second facility
+     * @return an {@link Optional} containing the {@link LineSegment} if found, otherwise empty
      */
-    public Optional<LineSegment> findDirectSegment(int idEstacaoA, int idEstacaoB) {
-        // Recalcula o comprimento especificamente para esta linha para garantir que está atualizado
+    public Optional<LineSegment> findDirectSegment(int stationAId, int stationBId) {
         Map<Integer, Double> lineLengthsKm = calculateAllLineLengthsKm();
-        LineSegment segmento = null;
+        LineSegment segment = null;
 
-        String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE " + //
+        String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE " +
                 "WHERE (start_facility_id = ? AND end_facility_id = ?) OR (start_facility_id = ? AND end_facility_id = ?)";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setInt(1, idEstacaoA);
-            stmt.setInt(2, idEstacaoB);
-            stmt.setInt(3, idEstacaoB); // Para a condição OR (sentido inverso)
-            stmt.setInt(4, idEstacaoA);
+            stmt.setInt(1, stationAId);
+            stmt.setInt(2, stationBId);
+            stmt.setInt(3, stationBId);
+            stmt.setInt(4, stationAId);
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
                     int lineId = rs.getInt("line_id");
                     int startFacilityId = rs.getInt("start_facility_id");
                     int endFacilityId = rs.getInt("end_facility_id");
-                    double comprimentoKm = lineLengthsKm.getOrDefault(lineId, 0.0);
-                    if (comprimentoKm <= 0.0) {
-                        System.err.println("⚠️ Aviso: Comprimento inválido (<=0) para line_id " + lineId + " ao buscar segmento direto.");
+                    double lengthKm = lineLengthsKm.getOrDefault(lineId, 0.0);
+
+                    if (lengthKm <= 0.0) {
+                        System.err.println("⚠️ Warning: Invalid length (<=0) for line_id " + lineId +
+                                " while fetching direct segment.");
                     }
-                    // Retorna o segmento na direção encontrada na BD (start -> end)
-                    // Usa line_id como idSegmento
-                    segmento = new LineSegment(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED); //
+
+                    // Return the segment in the same direction found in DB
+                    segment = new LineSegment(lineId, startFacilityId, endFacilityId, lengthKm, DEFAULT_MAX_SPEED);
                 }
             }
+
         } catch (SQLException e) {
-            System.err.println("❌ Erro ao buscar Segmento direto entre " + idEstacaoA + " e " + idEstacaoB + ": " + e.getMessage());
+            System.err.println("❌ Error while fetching direct segment between " + stationAId + " and " + stationBId +
+                    ": " + e.getMessage());
         }
-        return Optional.ofNullable(segmento);
+
+        return Optional.ofNullable(segment);
     }
 
     /**
-     * Método auxiliar para calcular o comprimento total (em KM) para cada linha
-     * a partir da tabela LINE_SEGMENT.
-     * @return Map onde a chave é line_id e o valor é o comprimento total em KM.
+     * Helper method that calculates the total length (in kilometers) of each railway line
+     * based on the {@code LINE_SEGMENT} table.
+     *
+     * @return a map where the key is {@code line_id} and the value is the total length (in km)
      */
     private Map<Integer, Double> calculateAllLineLengthsKm() {
         Map<Integer, Double> lengths = new HashMap<>();
-        String sql = "SELECT line_id, SUM(length_m) as total_length_m FROM LINE_SEGMENT GROUP BY line_id"; //
+        String sql = "SELECT line_id, SUM(length_m) AS total_length_m FROM LINE_SEGMENT GROUP BY line_id";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -128,13 +157,14 @@ public class SegmentLineRepository {
             while (rs.next()) {
                 int lineId = rs.getInt("line_id");
                 double totalLengthMeters = rs.getDouble("total_length_m");
-                lengths.put(lineId, totalLengthMeters / 1000.0); // Converte para KM
+                lengths.put(lineId, totalLengthMeters / 1000.0); // Convert meters → kilometers
             }
+
         } catch (SQLException e) {
-            System.err.println("❌ Erro ao calcular comprimentos totais das linhas (LINE_SEGMENT): " + e.getMessage());
-            // Retorna um mapa vazio em caso de erro para evitar NullPointerException
-            return new HashMap<>();
+            System.err.println("❌ Error while calculating total line lengths (LINE_SEGMENT): " + e.getMessage());
+            return new HashMap<>(); // Return empty map to prevent NullPointerException
         }
+
         return lengths;
     }
 }
