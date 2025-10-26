@@ -4,7 +4,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Representa uma zona de armazenamento num armazém
+ * Represents a bay in warehouse
  */
 public class Bay {
     private final String warehouseId;
@@ -21,7 +21,7 @@ public class Bay {
     }
 
     /**
-     * Adiciona uma caixa à bay se houver capacidade
+     * Adds a box to a bay if is there any capacity
      */
     public boolean addBox(Box b) {
         if (boxes.size() < capacityBoxes) {
