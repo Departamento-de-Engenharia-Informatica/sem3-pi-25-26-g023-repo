@@ -1,29 +1,29 @@
 package pt.ipp.isep.dei.controller;
 
-import pt.ipp.isep.dei.domain.Estacao;
-import pt.ipp.isep.dei.domain.Locomotiva; // Mantido para consistência
+import pt.ipp.isep.dei.domain.Station;
+import pt.ipp.isep.dei.domain.Locomotive; // Mantido para consistência
 import pt.ipp.isep.dei.domain.RailwayNetworkService;
 import pt.ipp.isep.dei.domain.RailwayPath;
-import pt.ipp.isep.dei.domain.SegmentoLinha;
-import pt.ipp.isep.dei.repository.EstacaoRepository;
-import pt.ipp.isep.dei.repository.LocomotivaRepository;
-import pt.ipp.isep.dei.repository.SegmentoLinhaRepository;
+import pt.ipp.isep.dei.domain.LineSegment;
+import pt.ipp.isep.dei.repository.StationRepository;
+import pt.ipp.isep.dei.repository.LocomotiveRepository;
+import pt.ipp.isep.dei.repository.SegmentLineRepository;
 
 import java.util.*; // Importado para List, Set, Map, etc.
-import java.util.stream.Collectors; // Para streams (já estava)
+
 
 public class TravelTimeController {
 
-    private final EstacaoRepository estacaoRepo;
-    private final LocomotivaRepository locomotivaRepo;
+    private final StationRepository estacaoRepo;
+    private final LocomotiveRepository locomotivaRepo;
     private final RailwayNetworkService networkService;
-    private final SegmentoLinhaRepository segmentoRepo; // Dependência adicionada
+    private final SegmentLineRepository segmentoRepo; // Dependência adicionada
 
     // Construtor modificado para incluir SegmentoLinhaRepository
-    public TravelTimeController(EstacaoRepository estacaoRepo,
-                                LocomotivaRepository locomotivaRepo,
+    public TravelTimeController(StationRepository estacaoRepo,
+                                LocomotiveRepository locomotivaRepo,
                                 RailwayNetworkService networkService,
-                                SegmentoLinhaRepository segmentoRepo) { // Adicionado segmentoRepo
+                                SegmentLineRepository segmentoRepo) { // Adicionado segmentoRepo
         this.estacaoRepo = estacaoRepo;
         this.locomotivaRepo = locomotivaRepo;
         this.networkService = networkService;
@@ -37,9 +37,9 @@ public class TravelTimeController {
      */
     public String calculateTravelTime(int idEstacaoPartida, int idEstacaoChegada, int idLocomotiva) {
         // 1. Validar Entradas (IDs existem?)
-        Optional<Estacao> optPartida = estacaoRepo.findById(idEstacaoPartida); //
-        Optional<Estacao> optChegada = estacaoRepo.findById(idEstacaoChegada); //
-        Optional<Locomotiva> optLocomotiva = locomotivaRepo.findById(idLocomotiva); //
+        Optional<Station> optPartida = estacaoRepo.findById(idEstacaoPartida); //
+        Optional<Station> optChegada = estacaoRepo.findById(idEstacaoChegada); //
+        Optional<Locomotive> optLocomotiva = locomotivaRepo.findById(idLocomotiva); //
 
         if (optPartida.isEmpty()) {
             return String.format("❌ ERRO: Estação de partida com ID %d não encontrada.", idEstacaoPartida);
@@ -72,14 +72,14 @@ public class TravelTimeController {
      */
     public String getDirectConnectionsInfo(int idEstacaoPartida) {
         // 1. Validar Estação de Partida
-        Optional<Estacao> optPartida = estacaoRepo.findById(idEstacaoPartida); //
+        Optional<Station> optPartida = estacaoRepo.findById(idEstacaoPartida); //
         if (optPartida.isEmpty()) {
             return String.format("❌ ERRO: Estação de partida com ID %d não encontrada.", idEstacaoPartida);
         }
-        Estacao partida = optPartida.get();
+        Station partida = optPartida.get();
 
         // 2. Obter estações conectadas usando o novo método
-        List<Estacao> reachableStations = getDirectlyConnectedStations(idEstacaoPartida);
+        List<Station> reachableStations = getDirectlyConnectedStations(idEstacaoPartida);
 
         // 3. Formatar a Saída
         StringBuilder sb = new StringBuilder();
@@ -90,11 +90,11 @@ public class TravelTimeController {
         if (reachableStations.isEmpty()) {
             sb.append("   Nenhuma estação diretamente conectada encontrada.\n");
         } else {
-            for (Estacao destino : reachableStations) {
+            for (Station destino : reachableStations) {
                 // Calcular e mostrar a distância/tempo do segmento direto
-                Optional<SegmentoLinha> directSegment = segmentoRepo.findDirectSegment(idEstacaoPartida, destino.getIdEstacao()); //
+                Optional<LineSegment> directSegment = segmentoRepo.findDirectSegment(idEstacaoPartida, destino.getIdEstacao()); //
                 if (directSegment.isPresent()) {
-                    SegmentoLinha seg = directSegment.get();
+                    LineSegment seg = directSegment.get();
                     double tempoHoras = (seg.getVelocidadeMaxima() > 0) ? (seg.getComprimento() / seg.getVelocidadeMaxima()) : Double.POSITIVE_INFINITY; //
                     long tempoMinutos = Math.round(tempoHoras * 60);
                     sb.append(String.format("   -> %s (ID: %d) | Dist: %.2f km | Tempo Est: ~%d min\n",
@@ -115,7 +115,7 @@ public class TravelTimeController {
      * @param idEstacaoPartida O ID da estação de partida.
      * @return Uma lista de objetos Estacao que são diretamente alcançáveis, ou uma lista vazia se nenhuma for encontrada ou a partida for inválida.
      */
-    public List<Estacao> getDirectlyConnectedStations(int idEstacaoPartida) {
+    public List<Station> getDirectlyConnectedStations(int idEstacaoPartida) {
         // 1. Validar Estação de Partida
         if (estacaoRepo.findById(idEstacaoPartida).isEmpty()) { //
             System.err.printf("❌ ERRO: Estação de partida com ID %d não encontrada ao buscar conexões.\n", idEstacaoPartida);
@@ -123,10 +123,10 @@ public class TravelTimeController {
         }
 
         // 2. Encontrar Segmentos Conectados
-        List<SegmentoLinha> todosSegmentos = segmentoRepo.findAll(); //
+        List<LineSegment> todosSegmentos = segmentoRepo.findAll(); //
         Set<Integer> reachableStationIds = new HashSet<>();
 
-        for (SegmentoLinha seg : todosSegmentos) {
+        for (LineSegment seg : todosSegmentos) {
             int vizinhoId = -1;
             if (seg.getIdEstacaoInicio() == idEstacaoPartida) { //
                 vizinhoId = seg.getIdEstacaoFim(); //
@@ -140,11 +140,11 @@ public class TravelTimeController {
         }
 
         // 3. Buscar Objetos Estacao
-        List<Estacao> reachableStations = new ArrayList<>();
+        List<Station> reachableStations = new ArrayList<>();
         for (int id : reachableStationIds) {
             estacaoRepo.findById(id).ifPresent(reachableStations::add); //
         }
-        reachableStations.sort(Comparator.comparingInt(Estacao::getIdEstacao)); // Ordenar por ID //
+        reachableStations.sort(Comparator.comparingInt(Station::getIdEstacao)); // Ordenar por ID //
 
         return reachableStations;
     }
@@ -153,7 +153,7 @@ public class TravelTimeController {
     /**
      * Método auxiliar para formatar o relatório de saída do caminho mais rápido.
      */
-    private String formatPathResult(RailwayPath path, Estacao partida, Estacao chegada, Locomotiva locomotiva) {
+    private String formatPathResult(RailwayPath path, Station partida, Station chegada, Locomotive locomotiva) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("Resultados para a viagem de %s para %s:%n", partida.getNome(), chegada.getNome())); //
         sb.append(String.format("   (Locomotiva selecionada: ID %d - %s)%n",
@@ -164,7 +164,7 @@ public class TravelTimeController {
         int i = 1;
         int estacaoAnteriorId = partida.getIdEstacao(); //
 
-        for (SegmentoLinha seg : path.getSegments()) { //
+        for (LineSegment seg : path.getSegments()) { //
             // Descobre a ordem correta das estações para este segmento
             int estacaoInicioSeg = seg.getIdEstacaoInicio(); //
             int estacaoFimSeg = seg.getIdEstacaoFim(); //
@@ -173,12 +173,12 @@ public class TravelTimeController {
 
             // Garante que a ordem de impressão segue o caminho
             if (estacaoInicioSeg == estacaoAnteriorId) {
-                nomeInicio = estacaoRepo.findById(estacaoInicioSeg).map(Estacao::getNome).orElse("ID "+estacaoInicioSeg); //
-                nomeFim = estacaoRepo.findById(estacaoFimSeg).map(Estacao::getNome).orElse("ID "+estacaoFimSeg); //
+                nomeInicio = estacaoRepo.findById(estacaoInicioSeg).map(Station::getNome).orElse("ID "+estacaoInicioSeg); //
+                nomeFim = estacaoRepo.findById(estacaoFimSeg).map(Station::getNome).orElse("ID "+estacaoFimSeg); //
                 estacaoAnteriorId = estacaoFimSeg; // Atualiza para o próximo loop
             } else {
-                nomeInicio = estacaoRepo.findById(estacaoFimSeg).map(Estacao::getNome).orElse("ID "+estacaoFimSeg); //
-                nomeFim = estacaoRepo.findById(estacaoInicioSeg).map(Estacao::getNome).orElse("ID "+estacaoInicioSeg); //
+                nomeInicio = estacaoRepo.findById(estacaoFimSeg).map(Station::getNome).orElse("ID "+estacaoFimSeg); //
+                nomeFim = estacaoRepo.findById(estacaoInicioSeg).map(Station::getNome).orElse("ID "+estacaoInicioSeg); //
                 estacaoAnteriorId = estacaoInicioSeg; // Atualiza para o próximo loop
             }
 

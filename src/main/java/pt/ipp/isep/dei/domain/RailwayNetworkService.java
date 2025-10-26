@@ -1,7 +1,7 @@
 package pt.ipp.isep.dei.domain;
 
-import pt.ipp.isep.dei.repository.EstacaoRepository;
-import pt.ipp.isep.dei.repository.SegmentoLinhaRepository;
+import pt.ipp.isep.dei.repository.StationRepository;
+import pt.ipp.isep.dei.repository.SegmentLineRepository;
 
 import java.util.*;
 
@@ -10,10 +10,10 @@ import java.util.*;
  */
 public class RailwayNetworkService {
 
-    private final EstacaoRepository estacaoRepo;
-    private final SegmentoLinhaRepository segmentoRepo;
+    private final StationRepository estacaoRepo;
+    private final SegmentLineRepository segmentoRepo;
 
-    public RailwayNetworkService(EstacaoRepository estacaoRepo, SegmentoLinhaRepository segmentoRepo) {
+    public RailwayNetworkService(StationRepository estacaoRepo, SegmentLineRepository segmentoRepo) {
         this.estacaoRepo = estacaoRepo;
         this.segmentoRepo = segmentoRepo;
     }
@@ -22,17 +22,17 @@ public class RailwayNetworkService {
      * Finds the fastest path between two stations using Dijkstra's algorithm.
      */
     public RailwayPath findFastestPath(int idPartida, int idChegada) {
-        List<Estacao> allStations = estacaoRepo.findAll();
-        List<SegmentoLinha> allSegments = segmentoRepo.findAll();
+        List<Station> allStations = estacaoRepo.findAll();
+        List<LineSegment> allSegments = segmentoRepo.findAll();
 
         // Mapas para o algoritmo de Dijkstra
         Map<Integer, Double> timeTo = new HashMap<>(); // Distância (tempo) mais curta da partida até à estação
-        Map<Integer, SegmentoLinha> edgeTo = new HashMap<>(); // O último segmento no caminho mais curto
+        Map<Integer, LineSegment> edgeTo = new HashMap<>(); // O último segmento no caminho mais curto
         Map<Integer, Integer> predecessorNode = new HashMap<>(); // O nó anterior no caminho
         PriorityQueue<Map.Entry<Integer, Double>> pq = new PriorityQueue<>(Map.Entry.comparingByValue());
 
         // Inicializar distâncias
-        for (Estacao s : allStations) {
+        for (Station s : allStations) {
             timeTo.put(s.getIdEstacao(), Double.POSITIVE_INFINITY);
         }
         timeTo.put(idPartida, 0.0);
@@ -46,7 +46,7 @@ public class RailwayNetworkService {
             }
 
             // Relaxar todas as arestas (segmentos) que saem de 'u'
-            for (SegmentoLinha seg : allSegments) {
+            for (LineSegment seg : allSegments) {
                 int v = -1; // Vizinho
                 if (seg.getIdEstacaoInicio() == u) {
                     v = seg.getIdEstacaoFim();
@@ -82,11 +82,11 @@ public class RailwayNetworkService {
         }
 
         // Reconstruir o caminho
-        List<SegmentoLinha> path = new ArrayList<>();
+        List<LineSegment> path = new ArrayList<>();
         double totalDistance = 0;
         int curr = idChegada;
         while (curr != idPartida) {
-            SegmentoLinha seg = edgeTo.get(curr);
+            LineSegment seg = edgeTo.get(curr);
             path.add(seg);
             totalDistance += seg.getComprimento();
             curr = predecessorNode.get(curr); // Move-se para o nó anterior

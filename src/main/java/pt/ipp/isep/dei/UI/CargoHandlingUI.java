@@ -2,8 +2,8 @@ package pt.ipp.isep.dei.UI;
 
 import pt.ipp.isep.dei.controller.TravelTimeController;
 import pt.ipp.isep.dei.domain.*;
-import pt.ipp.isep.dei.repository.EstacaoRepository;
-import pt.ipp.isep.dei.repository.LocomotivaRepository;
+import pt.ipp.isep.dei.repository.StationRepository;
+import pt.ipp.isep.dei.repository.LocomotiveRepository;
 
 import java.util.InputMismatchException;
 import java.util.List;
@@ -17,14 +17,14 @@ public class CargoHandlingUI implements Runnable {
 
     // --- Componentes LAPR3 adicionados ---
     private final TravelTimeController travelTimeController;
-    private final EstacaoRepository estacaoRepo;
-    private final LocomotivaRepository locomotivaRepo;
+    private final StationRepository estacaoRepo;
+    private final LocomotiveRepository locomotivaRepo;
     // --- Fim dos componentes adicionados ---
 
     // --- CONSTRUTOR MODIFICADO ---
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
-                           TravelTimeController travelTimeController, EstacaoRepository estacaoRepo,
-                           LocomotivaRepository locomotivaRepo) {
+                           TravelTimeController travelTimeController, StationRepository estacaoRepo,
+                           LocomotiveRepository locomotivaRepo) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;

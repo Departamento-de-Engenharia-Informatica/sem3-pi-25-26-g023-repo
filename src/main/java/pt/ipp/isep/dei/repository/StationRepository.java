@@ -1,7 +1,7 @@
 package pt.ipp.isep.dei.repository;
 
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection; // Importa a classe de conexão
-import pt.ipp.isep.dei.domain.Estacao;
+import pt.ipp.isep.dei.domain.Station;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -9,15 +9,14 @@ import java.util.HashSet; // Para guardar IDs únicos
 import java.util.List;
 import java.util.Optional;
 import java.util.Set; // Para guardar IDs únicos
-import java.util.Comparator; // Para ordenar
 import java.util.stream.Collectors; // Para ordenar
 
-public class EstacaoRepository {
+public class StationRepository {
 
-    private List<Estacao> loadedEstacoes = null;
+    private List<Station> loadedEstacoes = null;
 
     // Construtor vazio
-    public EstacaoRepository() {
+    public StationRepository() {
         // System.out.println("EstacaoRepository: Initialized (will connect to DB and load stations on first use)."); // <-- COMENTADO
     }
 
@@ -58,7 +57,7 @@ public class EstacaoRepository {
              PreparedStatement stmtDetails = conn.prepareStatement(sqlGetDetails.toString());
              ResultSet rsDetails = stmtDetails.executeQuery()) {
             while (rsDetails.next()) {
-                loadedEstacoes.add(new Estacao(rsDetails.getInt("facility_id"), rsDetails.getString("name"))); //
+                loadedEstacoes.add(new Station(rsDetails.getInt("facility_id"), rsDetails.getString("name"))); //
             }
             // System.out.println("EstacaoRepository: Loaded " + loadedEstacoes.size() + " stations from RAILWAY_LINE references."); // <-- COMENTADO
         } catch (SQLException e) {
@@ -68,7 +67,7 @@ public class EstacaoRepository {
     }
 
     // Métodos findAll, findById, findByNome permanecem iguais (eles chamam loadStationsIfNeeded)
-    public List<Estacao> findAll() { loadStationsIfNeeded(); return new ArrayList<>(loadedEstacoes); }
-    public Optional<Estacao> findById(int id) { loadStationsIfNeeded(); return loadedEstacoes.stream().filter(e -> e.getIdEstacao() == id).findFirst(); }
-    public Optional<Estacao> findByNome(String nome) { loadStationsIfNeeded(); return loadedEstacoes.stream().filter(e -> e.getNome().equalsIgnoreCase(nome)).findFirst(); }
+    public List<Station> findAll() { loadStationsIfNeeded(); return new ArrayList<>(loadedEstacoes); }
+    public Optional<Station> findById(int id) { loadStationsIfNeeded(); return loadedEstacoes.stream().filter(e -> e.getIdEstacao() == id).findFirst(); }
+    public Optional<Station> findByNome(String nome) { loadStationsIfNeeded(); return loadedEstacoes.stream().filter(e -> e.getNome().equalsIgnoreCase(nome)).findFirst(); }
 }

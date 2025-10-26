@@ -1,13 +1,13 @@
 package pt.ipp.isep.dei.domain;
 
-public class SegmentoLinha {
+public class LineSegment {
     private final int idSegmento;
     private final int idEstacaoInicio;
     private final int idEstacaoFim;
     private final double comprimento; // em km
     private final double velocidadeMaxima; // em km/h
 
-    public SegmentoLinha(int idSegmento, int idEstacaoInicio, int idEstacaoFim, double comprimento, double velocidadeMaxima) {
+    public LineSegment(int idSegmento, int idEstacaoInicio, int idEstacaoFim, double comprimento, double velocidadeMaxima) {
         this.idSegmento = idSegmento;
         this.idEstacaoInicio = idEstacaoInicio;
         this.idEstacaoFim = idEstacaoFim;

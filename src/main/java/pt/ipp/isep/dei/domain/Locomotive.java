@@ -1,11 +1,11 @@
 package pt.ipp.isep.dei.domain;
 
-public class Locomotiva {
+public class Locomotive {
     private final int idLocomotiva;
     private final String modelo;
     private final String tipo; // "diesel" ou "eletrica"
 
-    public Locomotiva(int idLocomotiva, String modelo, String tipo) {
+    public Locomotive(int idLocomotiva, String modelo, String tipo) {
         this.idLocomotiva = idLocomotiva;
         this.modelo = modelo;
         this.tipo = tipo;

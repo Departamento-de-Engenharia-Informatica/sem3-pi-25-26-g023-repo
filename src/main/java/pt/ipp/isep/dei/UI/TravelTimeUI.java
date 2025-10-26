@@ -1,21 +1,20 @@
 package pt.ipp.isep.dei.UI;
 
 import pt.ipp.isep.dei.controller.TravelTimeController;
-import pt.ipp.isep.dei.domain.Estacao;
-import pt.ipp.isep.dei.domain.Locomotiva;
-import pt.ipp.isep.dei.repository.EstacaoRepository;
-import pt.ipp.isep.dei.repository.LocomotivaRepository;
+import pt.ipp.isep.dei.domain.Station;
+import pt.ipp.isep.dei.domain.Locomotive;
+import pt.ipp.isep.dei.repository.StationRepository;
+import pt.ipp.isep.dei.repository.LocomotiveRepository;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class TravelTimeUI implements Runnable {
 
     private final TravelTimeController controller;
-    private final EstacaoRepository estacaoRepo;
-    private final LocomotivaRepository locomotivaRepo;
+    private final StationRepository estacaoRepo;
+    private final LocomotiveRepository locomotivaRepo;
 
-    public TravelTimeUI(TravelTimeController controller, EstacaoRepository estacaoRepo, LocomotivaRepository locomotivaRepo) {
+    public TravelTimeUI(TravelTimeController controller, StationRepository estacaoRepo, LocomotiveRepository locomotivaRepo) {
         this.controller = controller;
         this.estacaoRepo = estacaoRepo;
         this.locomotivaRepo = locomotivaRepo;
@@ -31,7 +30,7 @@ public class TravelTimeUI implements Runnable {
         try {
             // 1. Listar e pedir Estação de Partida
             System.out.println("\n--- Estações Disponíveis ---");
-            List<Estacao> estacoes = estacaoRepo.findAll();
+            List<Station> estacoes = estacaoRepo.findAll();
             if (estacoes.isEmpty()) {
                 System.out.println("❌ ERRO: Não há estações carregadas.");
                 return;
@@ -49,7 +48,7 @@ public class TravelTimeUI implements Runnable {
 
             // 2. Listar Destinos Possíveis (Conexões Diretas)
             System.out.println("\n--- Destinos Diretamente Conectados ---");
-            List<Estacao> destinosPossiveis = controller.getDirectlyConnectedStations(idPartida); // Chama o novo método do controller
+            List<Station> destinosPossiveis = controller.getDirectlyConnectedStations(idPartida); // Chama o novo método do controller
 
             if (destinosPossiveis.isEmpty()) {
                 System.out.println("   Nenhuma estação diretamente conectada encontrada a partir desta origem.");
@@ -87,7 +86,7 @@ public class TravelTimeUI implements Runnable {
 
             // 4. Listar e pedir Locomotiva (como antes)
             System.out.println("\n--- Locomotivas Disponíveis ---");
-            List<Locomotiva> locomotivas = locomotivaRepo.findAll();
+            List<Locomotive> locomotivas = locomotivaRepo.findAll();
             if (locomotivas.isEmpty()) {
                 System.out.println("❌ ERRO: Não há locomotivas carregadas.");
                 return;

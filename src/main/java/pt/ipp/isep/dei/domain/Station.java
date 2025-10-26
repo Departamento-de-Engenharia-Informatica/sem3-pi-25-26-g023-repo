@@ -1,10 +1,10 @@
 package pt.ipp.isep.dei.domain;
 
-public class Estacao {
+public class Station {
     private final int idEstacao;
     private final String nome;
 
-    public Estacao(int idEstacao, String nome) {
+    public Station(int idEstacao, String nome) {
         this.idEstacao = idEstacao;
         this.nome = nome;
     }

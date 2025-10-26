@@ -1,12 +1,11 @@
 package pt.ipp.isep.dei;
 
 import pt.ipp.isep.dei.UI.CargoHandlingUI;
-import pt.ipp.isep.dei.UI.TravelTimeUI;
 import pt.ipp.isep.dei.controller.TravelTimeController;
 import pt.ipp.isep.dei.domain.*;
-import pt.ipp.isep.dei.repository.EstacaoRepository;
-import pt.ipp.isep.dei.repository.LocomotivaRepository;
-import pt.ipp.isep.dei.repository.SegmentoLinhaRepository;
+import pt.ipp.isep.dei.repository.StationRepository;
+import pt.ipp.isep.dei.repository.LocomotiveRepository;
+import pt.ipp.isep.dei.repository.SegmentLineRepository;
 
 import java.util.List;
 
@@ -60,9 +59,9 @@ public class Main {
 
             // 7️⃣ *** COMPONENTES LAPR3 MODIFICADOS ***
             System.out.println("Initializing LAPR3/BDDAD Mock Repositories...");
-            EstacaoRepository estacaoRepo = new EstacaoRepository(); //
-            LocomotivaRepository locomotivaRepo = new LocomotivaRepository(); //
-            SegmentoLinhaRepository segmentoRepo = new SegmentoLinhaRepository(); //
+            StationRepository estacaoRepo = new StationRepository(); //
+            LocomotiveRepository locomotivaRepo = new LocomotiveRepository(); //
+            SegmentLineRepository segmentoRepo = new SegmentLineRepository(); //
 
             // Novo Serviço de Rede
             RailwayNetworkService networkService = new RailwayNetworkService(estacaoRepo, segmentoRepo); //

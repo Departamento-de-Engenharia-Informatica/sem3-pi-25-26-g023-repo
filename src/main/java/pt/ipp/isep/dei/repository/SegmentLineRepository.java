@@ -1,7 +1,7 @@
 package pt.ipp.isep.dei.repository;
 
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection; // Importa conexão
-import pt.ipp.isep.dei.domain.SegmentoLinha;
+import pt.ipp.isep.dei.domain.LineSegment;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -10,7 +10,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
-public class SegmentoLinhaRepository {
+public class SegmentLineRepository {
 
     // Velocidade padrão em km/h (já que não existe na BD por segmento/linha)
     private static final double DEFAULT_MAX_SPEED = 150.0;
@@ -18,7 +18,7 @@ public class SegmentoLinhaRepository {
     private static final int INVERSE_ID_OFFSET = 1000;
 
     // Construtor vazio
-    public SegmentoLinhaRepository() {
+    public SegmentLineRepository() {
         System.out.println("SegmentoLinhaRepository: Initialized (will connect to DB on demand).");
     }
 
@@ -29,8 +29,8 @@ public class SegmentoLinhaRepository {
      *
      * @return Lista de objetos SegmentoLinha (incluindo segmentos inversos).
      */
-    public List<SegmentoLinha> findAll() {
-        List<SegmentoLinha> segmentos = new ArrayList<>();
+    public List<LineSegment> findAll() {
+        List<LineSegment> segmentos = new ArrayList<>();
         Map<Integer, Double> lineLengthsKm = calculateAllLineLengthsKm(); // Calcula comprimentos primeiro
 
         String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE ORDER BY line_id"; //
@@ -53,11 +53,11 @@ public class SegmentoLinhaRepository {
 
                 // Cria o segmento no sentido original (A -> B)
                 // Usando line_id como idSegmento
-                segmentos.add(new SegmentoLinha(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
+                segmentos.add(new LineSegment(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
 
                 // Cria o segmento no sentido inverso (B -> A)
                 // Usando line_id + OFFSET como idSegmento para garantir unicidade
-                segmentos.add(new SegmentoLinha(lineId + INVERSE_ID_OFFSET, endFacilityId, startFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
+                segmentos.add(new LineSegment(lineId + INVERSE_ID_OFFSET, endFacilityId, startFacilityId, comprimentoKm, DEFAULT_MAX_SPEED)); //
 
             }
         } catch (SQLException e) {
@@ -76,10 +76,10 @@ public class SegmentoLinhaRepository {
      * @param idEstacaoB ID da segunda facility.
      * @return Optional contendo o SegmentoLinha (representando a linha no sentido encontrado) se existir.
      */
-    public Optional<SegmentoLinha> findDirectSegment(int idEstacaoA, int idEstacaoB) {
+    public Optional<LineSegment> findDirectSegment(int idEstacaoA, int idEstacaoB) {
         // Recalcula o comprimento especificamente para esta linha para garantir que está atualizado
         Map<Integer, Double> lineLengthsKm = calculateAllLineLengthsKm();
-        SegmentoLinha segmento = null;
+        LineSegment segmento = null;
 
         String sql = "SELECT line_id, start_facility_id, end_facility_id FROM RAILWAY_LINE " + //
                 "WHERE (start_facility_id = ? AND end_facility_id = ?) OR (start_facility_id = ? AND end_facility_id = ?)";
@@ -103,7 +103,7 @@ public class SegmentoLinhaRepository {
                     }
                     // Retorna o segmento na direção encontrada na BD (start -> end)
                     // Usa line_id como idSegmento
-                    segmento = new SegmentoLinha(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED); //
+                    segmento = new LineSegment(lineId, startFacilityId, endFacilityId, comprimentoKm, DEFAULT_MAX_SPEED); //
                 }
             }
         } catch (SQLException e) {

@@ -8,7 +8,7 @@ import java.util.List;
  * Contains the sequence of line segments, total distance and travel time.
  */
 public class RailwayPath {
-    private final List<SegmentoLinha> segments;
+    private final List<LineSegment> segments;
     private final double totalDistance;
     private final double totalTimeHours;
 
@@ -18,7 +18,7 @@ public class RailwayPath {
      * @param totalDistance the total distance in kilometers
      * @param totalTimeHours the total travel time in hours
      */
-    public RailwayPath(List<SegmentoLinha> segments, double totalDistance, double totalTimeHours) {
+    public RailwayPath(List<LineSegment> segments, double totalDistance, double totalTimeHours) {
         this.segments = segments;
         this.totalDistance = totalDistance;
         this.totalTimeHours = totalTimeHours;
@@ -27,7 +27,7 @@ public class RailwayPath {
     /**
      * @return unmodifiable list of segments in this path
      */
-    public List<SegmentoLinha> getSegments() {
+    public List<LineSegment> getSegments() {
 
         return Collections.unmodifiableList(segments);
     }
