@@ -1,0 +1,152 @@
+@startuml USEI03_SequenceDiagram
+
+actor "Warehouse Planner" as WP
+participant "UI Layer" as UI
+participant "PickingPlanService" as PPS
+participant "PackingHeuristic\nFactory" as PHF
+participant "PackingHeuristic" as PH
+participant "PickingPlan" as PP
+participant "Trolley" as T
+participant "PickingAssignment" as PA
+participant "File System" as FS
+
+activate WP
+WP -> UI: 2. displayParameterForm()
+activate UI
+UI --> WP: Shows parameter form
+deactivate UI
+
+WP -> UI: 3. submitPackingParameters(\nallocations, capacity, heuristic)
+activate UI
+UI -> PPS: 1. generatePickingPlan(allocations, capacity, heuristic)
+activate PPS
+
+PPS -> PPS: convertToAssignments(allocations)
+activate PPS
+PPS --> PPS: List<PickingAssignment>
+deactivate PPS
+
+PPS -> PHF: createHeuristic(heuristic)
+activate PHF
+PHF --> PPS: PackingHeuristic instance
+deactivate PHF
+
+PPS -> PH: packItems(assignments, capacity)
+activate PH
+
+loop for each assignment
+    PH -> T: addAssignment(assignment)
+    activate T
+    T -> PA: setStatus(ASSIGNED)
+    activate PA
+    PA --> T:
+    deactivate PA
+    T --> PH: boolean result
+    deactivate T
+end
+
+PH --> PPS: List<Trolley>
+deactivate PH
+
+PPS -> PP: new PickingPlan(id, heuristic, capacity)
+activate PP
+PP --> PPS: PickingPlan instance
+deactivate PP
+
+loop for each trolley
+    PPS -> PP: addTrolley(trolley)
+    activate PP
+    PP --> PPS:
+    deactivate PP
+end
+
+PPS --> UI: PickingPlan
+deactivate PPS
+
+UI -> UI: 4. displayPickingPlanResults(plan)
+activate UI
+UI --> WP: Shows plan summary and trolleys
+deactivate UI
+
+
+WP -> UI: 7. exportPlan("CSV")
+activate UI
+UI -> PPS: exportToCSV(plan)
+activate PPS
+
+PPS -> PP: getTrolleys()
+activate PP
+PP --> PPS: List<Trolley>
+deactivate PP
+
+loop for each trolley
+    PPS -> T: getAssignments()
+    activate T
+    T --> PPS: List<PickingAssignment>
+    deactivate T
+
+    loop for each assignment
+        PPS -> PA: getOrderId(), getSku(), etc.
+        activate PA
+        PA --> PPS: assignment data
+        deactivate PA
+    end
+end
+
+PPS --> UI: CSV string
+deactivate PPS
+
+UI -> FS: 8. returnFile(csvData)
+activate FS
+FS --> UI: File saved confirmation
+deactivate FS
+
+UI --> WP: Download CSV file
+
+
+WP -> UI: 9. confirmPlanExecution()
+activate UI
+UI -> PPS: executePlan(plan)
+activate PPS
+
+loop for each trolley
+    PPS -> T: getAssignments()
+    activate T
+    T --> PPS: List<PickingAssignment>
+    deactivate T
+
+    loop for each assignment
+        PPS -> PA: setStatus(PICKED)
+        activate PA
+        PA --> PPS:
+        deactivate PA
+    end
+end
+
+PPS --> UI: Execution completed
+deactivate PPS
+
+UI -> UI: 10. showSuccess("Plano de picking executado")
+activate UI
+UI --> WP: Success message
+deactivate UI
+
+
+WP -> UI: 5. requestTrolleyDetails(trolleyId)
+activate UI
+UI -> PP: getTrolleys()
+activate PP
+PP --> UI: List<Trolley>
+deactivate PP
+
+UI -> T: getAssignments()
+activate T
+T --> UI: List<PickingAssignment>
+deactivate T
+
+UI -> UI: 6. showTrolleyDetails(assignments)
+activate UI
+UI --> WP: Shows detailed trolley content
+deactivate UI
+
+@enduml

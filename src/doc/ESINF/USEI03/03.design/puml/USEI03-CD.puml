@@ -1,0 +1,151 @@
+@startuml ClassDiagram
+hide method
+
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class PickingPlanService {
+  - itemsMap: Map<String, Item>
+  + generatePickingPlan(allocations, capacity, heuristic): PickingPlan
+  + exportToCSV(plan): String
+  + exportToCSVFile(plan, filename): void
+  + setItemsMap(itemsMap): void
+  - convertToAssignments(allocations): List<PickingAssignment>
+  - generatePlanId(): String
+}
+
+class PickingPlan {
+  - id: String
+  - createdDate: LocalDateTime
+  - trolleys: List<Trolley>
+  - heuristic: HeuristicType
+  - trolleyCapacity: double
+  + addTrolley(trolley): void
+  + getTotalTrolleys(): int
+  + getTotalWeight(): double
+  + getAverageUtilization(): double
+  + getSummary(): String
+  + getId(): String
+  + getCreatedDate(): LocalDateTime
+  + getTrolleys(): List<Trolley>
+  + getHeuristic(): HeuristicType
+  + getTrolleyCapacity(): double
+}
+
+class Trolley {
+  - id: String
+  - maxCapacity: double
+  - currentWeight: double
+  - assignments: List<PickingAssignment>
+  + Trolley(id, maxCapacity)
+  + addAssignment(assignment): boolean
+  + getUtilization(): double
+  + getRemainingCapacity(): double
+  + getId(): String
+  + getMaxCapacity(): double
+  + getCurrentWeight(): double
+  + getAssignments(): List<PickingAssignment>
+}
+
+class PickingAssignment {
+  - orderId: String
+  - lineNo: int
+  - item: Item
+  - quantity: int
+  - boxId: String
+  - aisle: String
+  - bay: String
+  - totalWeight: double
+  - status: PickingStatus
+  + PickingAssignment(orderId, lineNo, item, quantity, boxId, aisle, bay)
+  + getLocation(): String
+  + getSku(): String
+  + getOrderId(): String
+  + getLineNo(): int
+  + getItem(): Item
+  + getQuantity(): int
+  + getBoxId(): String
+  + getAisle(): String
+  + getBay(): String
+  + getTotalWeight(): double
+  + getStatus(): PickingStatus
+  + setStatus(status): void
+}
+
+class Allocation {
+  + orderId: String
+  + lineNo: int
+  + sku: String
+  + qty: int
+  + boxId: String
+  + aisle: String
+  + bay: String
+}
+
+class Item {
+  - sku: String
+  - name: String
+  - category: String
+  - unit: String
+  - unitWeight: double
+  + Item(sku, name, category, unit, unitWeight)
+  + getSku(): String
+  + getName(): String
+  + getCategory(): String
+  + getUnit(): String
+  + getUnitWeight(): double
+}
+
+interface PackingHeuristic {
+  + packItems(assignments, capacity): List<Trolley>
+}
+
+class FirstFitHeuristic {
+  + packItems(assignments, capacity): List<Trolley>
+}
+
+class FirstFitDecreasingHeuristic {
+  + packItems(assignments, capacity): List<Trolley>
+}
+
+class BestFitDecreasingHeuristic {
+  + packItems(assignments, capacity): List<Trolley>
+}
+
+enum HeuristicType {
+  FIRST_FIT
+  FIRST_FIT_DECREASING
+  BEST_FIT_DECREASING
+}
+
+enum PickingStatus {
+  PENDING
+  ASSIGNED
+  PICKED
+  PARTIALLY_PICKED
+  DEFERRED
+}
+
+' Relationships
+PickingPlanService --> PackingHeuristic : selects
+PickingPlanService --> PickingPlan : creates
+PickingPlanService --> Allocation : processes
+PickingPlanService --> Item : references
+
+PickingPlan --> Trolley : aggregates 1..*
+Trolley --> PickingAssignment : contains 1..*
+PickingAssignment --> Item : has
+PickingAssignment --> PickingStatus : has
+
+PackingHeuristic <|.. FirstFitHeuristic : implements
+PackingHeuristic <|.. FirstFitDecreasingHeuristic : implements
+PackingHeuristic <|.. BestFitDecreasingHeuristic : implements
+
+Allocation --> Item : references
+
+HeuristicType ..> PackingHeuristic : configures
+PickingPlanService ..> HeuristicType : uses
+
+@enduml

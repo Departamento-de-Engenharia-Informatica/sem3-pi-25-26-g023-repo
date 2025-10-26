@@ -1,29 +1,82 @@
-@startuml
-
-
+@startuml DomainModel
 
 hide circle
 hide methods
-
-'title Domain Model
-
-
-
-class Map {
-    width
-    height
-    mapName
-}
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
 
 
-class Editor {
+
+
+  class PickingPlanService {
+  }
+
+  class PickingPlan {
+    id
+    weight
+    heuristic
+  }
+
+  class Trolley {
+    id
+    weight
+  }
+
+  class PickingAssignment {
+    sku
+    qty
+    boxId
+    aisle
+    bay
+    status
+  }
+
+  class Allocation {
+    sku
+    qty
+    boxId
+    aisle
+    bay
+  }
+
+  class Item {
     name
-    password
-}
+    category
+    unit
+    weight
+  }
 
 
 
-Editor "1" --> "*" Map : creates
+  interface PackingHeuristic {
+  }
+
+  class FirstFitHeuristic {
+  }
+
+  class FirstFitDecreasingHeuristic {
+  }
+
+  class BestFitDecreasingHeuristic {
+  }
+
+WarehousePlanner --> PickingPlanService : uses
+
+PickingPlanService --> PackingHeuristic : selects
+PickingPlanService --> PickingPlan : generates
+PickingPlanService --> Allocation : processes
+
+PickingPlan --> Trolley
+Trolley --> PickingAssignment
+PickingAssignment --> Item
+
+PackingHeuristic <|-- FirstFitHeuristic : implements
+PackingHeuristic <|-- FirstFitDecreasingHeuristic : implements
+PackingHeuristic <|-- BestFitDecreasingHeuristic : implements
+
+Allocation --> Item
 
 
 @enduml

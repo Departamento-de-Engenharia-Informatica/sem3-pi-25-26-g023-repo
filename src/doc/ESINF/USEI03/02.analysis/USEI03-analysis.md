@@ -1,10 +1,10 @@
-# US001 - Create a map 
+# USEI03 - Pack the allocation rows into trolleys
 
 ## 2. Analysis
 
 ### 2.1. Relevant Domain Model Excerpt 
 
-![Domain Model](svg/US001-DM.svg)
+![Domain Model](svg/USEI03-DM.svg)
 
 ### 2.2. Other Remarks
 

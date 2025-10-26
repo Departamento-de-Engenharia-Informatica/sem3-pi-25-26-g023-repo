@@ -25,7 +25,7 @@ Detailed documentation for warehouse management functionalities:
 
 * **USEI03: Pack Allocation Rows into Trolleys** 🛒
     * [📜 Requirements](src/doc/ESINF/USEI03/01.requirements-engineering/USEI03-requirements.md)
-    * [📊 Analysis](src/doc/ESINF/USEI03/02.analysis/US001-analysis.md) * [🛠️ Design](src/doc/ESINF/USEI03/03.design/US001-design.md)
+    * [📊 Analysis](src/doc/ESINF/USEI03/02.analysis/USEI03-analysis.md) * [🛠️ Design](src/doc/ESINF/USEI03/03.design/USEI03-design.md)
     *
 
 * **USEI04: Pick Path Sequencing** 🗺️
