@@ -7,7 +7,7 @@ skinparam packageStyle rectangle
 skinparam shadowing true
 
 hide methods
-hide circle
+hide circles
 
 
 TrainOperators --> RollingStocks : owns
