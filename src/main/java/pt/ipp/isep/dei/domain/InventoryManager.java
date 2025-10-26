@@ -9,7 +9,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * Gestor principal do inventário - carrega e gere todos os dados do sistema
+ * Principal Manager
  */
 public class InventoryManager {
 
@@ -18,7 +18,7 @@ public class InventoryManager {
     private final List<Warehouse> warehouses = new ArrayList<>();
 
     /**
-     * Carrega os itens/produtos do ficheiro
+     * Load items from the file
      */
     public void loadItems(String filePath) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
@@ -46,7 +46,7 @@ public class InventoryManager {
     }
 
     /**
-     * Carrega as bays dos armazéns
+     * Load bays from warehouses
      */
     public List<Bay> loadBays(String filePath) throws IOException {
         List<Bay> allBays = new ArrayList<>();
@@ -92,7 +92,7 @@ public class InventoryManager {
     }
 
     /**
-     * Carrega os vagões com caixas
+     * Load Wagons with boxes
      */
     public List<Wagon> loadWagons(String filePath) throws IOException {
         Map<String, Wagon> wagons = new LinkedHashMap<>();
@@ -143,7 +143,7 @@ public class InventoryManager {
     }
 
     /**
-     * Carrega as devoluções de clientes
+     * Load returns from clients
      */
     public List<Return> loadReturns(String filePath) throws IOException {
         List<Return> list = new ArrayList<>();
@@ -209,7 +209,7 @@ public class InventoryManager {
     }
 
     /**
-     * Carrega as encomendas e respetivas linhas
+     * Load Orders and their respective lines
      */
     public List<Order> loadOrders(String ordersPath, String linesPath) throws IOException {
         Map<String, Order> orders = new LinkedHashMap<>();

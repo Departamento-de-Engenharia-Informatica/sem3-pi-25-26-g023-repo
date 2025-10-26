@@ -5,7 +5,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class Order {
-    public final String orderId;       // agora String para suportar ORD00001
+    public final String orderId;
     public final int priority;
     public final LocalDate dueDate;
     public final List<OrderLine> lines = new ArrayList<>();

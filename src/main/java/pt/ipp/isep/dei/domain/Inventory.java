@@ -5,13 +5,23 @@ import java.time.LocalDateTime;
 import java.util.*;
 
 /**
- * Gerencia o inventário de caixas com operações FEFO/FIFO
+ * Manages the collection of boxes in the inventory.
+ * <p>
+ * This class handles operations such as restocking returned items,
+ * dispatching stock according to FEFO/FIFO rules,
+ * and relocating boxes within warehouses.
+ * </p>
  */
 public class Inventory {
+
+    /** List of boxes currently stored in the inventory. */
     private final List<Box> boxes = new ArrayList<>();
 
     /**
-     * Cria uma nova caixa a partir de uma devolução
+     * Creates a new {@link Box} from a product return.
+     *
+     * @param r the {@link Return} to convert into a box
+     * @return the created box representing the returned items
      */
     public Box createBoxFromReturn(Return r) {
         Objects.requireNonNull(r);
@@ -23,7 +33,9 @@ public class Inventory {
     }
 
     /**
-     * Insere caixa no inventário mantendo ordem FEFO/FIFO
+     * Inserts a box into the inventory while keeping FEFO/FIFO order.
+     *
+     * @param b the box to insert
      */
     public void insertBoxFEFO(Box b) {
         Objects.requireNonNull(b);
@@ -32,10 +44,11 @@ public class Inventory {
     }
 
     /**
-     * Operação de restock - tenta colocar item devolvido no inventário
-     * @param r Devolução a processar
-     * @param warehouses Lista de armazéns disponíveis
-     * @return true se o restock foi bem sucedido
+     * Performs a restock operation by adding a returned item back into the inventory.
+     *
+     * @param r           the {@link Return} to process
+     * @param warehouses  the list of available warehouses
+     * @return {@code true} if the restock was successful, {@code false} otherwise
      */
     public boolean restock(Return r, List<Warehouse> warehouses) {
         Box newBox = createBoxFromReturn(r);
@@ -52,22 +65,23 @@ public class Inventory {
 
         if (storedPhysically) {
             insertBoxFEFO(newBox);
-            System.out.printf("  ✅ Restock: Item %s (Box %s) colocado em Warehouse %s, Aisle %s, Bay %s.%n",
+            System.out.printf("  ✅ Restock: Item %s (Box %s) stored in Warehouse %s, Aisle %s, Bay %s.%n",
                     newBox.getSku(), newBox.getBoxId(), warehouseIdWhereStored,
                     newBox.getAisle(), newBox.getBay());
             return true;
         } else {
-            System.out.printf("  ⚠️ Restock Falhou: Não foi encontrado espaço para Box %s (SKU %s) nos armazéns.%n",
+            System.out.printf("  ⚠️ Restock failed: No space found for Box %s (SKU %s) in warehouses.%n",
                     newBox.getBoxId(), newBox.getSku());
             return false;
         }
     }
 
     /**
-     * Despacha quantidade de um SKU seguindo FEFO/FIFO
-     * @param sku SKU a despachar
-     * @param qty Quantidade a despachar
-     * @return Quantidade efetivamente despachada
+     * Dispatches a quantity of a given SKU following FEFO/FIFO order.
+     *
+     * @param sku the SKU to dispatch
+     * @param qty the quantity to dispatch
+     * @return the actual quantity dispatched
      */
     public int dispatch(String sku, int qty) {
         if (sku == null || qty <= 0) return 0;
@@ -78,7 +92,7 @@ public class Inventory {
         Iterator<Box> it = boxes.iterator();
         while (it.hasNext() && remaining > 0) {
             Box b = it.next();
-            if (!sku.equals(b.getSku()) || b.getAisle() == null || b.getBay() == null ) {
+            if (!sku.equals(b.getSku()) || b.getAisle() == null || b.getBay() == null) {
                 continue;
             }
 
@@ -97,7 +111,12 @@ public class Inventory {
     }
 
     /**
-     * Relocaliza uma caixa para nova posição
+     * Relocates a box to a new aisle and bay.
+     *
+     * @param boxId   the ID of the box to move
+     * @param newAisle the new aisle
+     * @param newBay   the new bay
+     * @return {@code true} if relocation succeeded, {@code false} otherwise
      */
     public boolean relocate(String boxId, String newAisle, String newBay) {
         if (boxId == null || newAisle == null || newBay == null) return false;
@@ -119,14 +138,19 @@ public class Inventory {
             boxToRelocate.setBay(newBay);
             insertBoxFEFO(boxToRelocate);
 
-            System.out.printf("  Relocate: Box %s movida para Aisle %s, Bay %s.%n", boxId, newAisle, newBay);
+            System.out.printf("  Relocate: Box %s moved to Aisle %s, Bay %s.%n", boxId, newAisle, newBay);
             return true;
         } else {
-            System.out.printf("  Relocate Falhou: Box %s não encontrada no inventário.%n", boxId);
+            System.out.printf("  Relocate failed: Box %s not found in inventory.%n", boxId);
             return false;
         }
     }
 
+    /**
+     * Returns an unmodifiable view of all boxes in the inventory.
+     *
+     * @return a read-only list of boxes
+     */
     public List<Box> getBoxes() {
         return Collections.unmodifiableList(new ArrayList<>(boxes));
     }

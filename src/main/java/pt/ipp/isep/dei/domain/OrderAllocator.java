@@ -4,96 +4,95 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * Responsável por alocar inventário às encomendas usando FEFO/FIFO
+ * Allocates boxes from inventory to orders using STRICT or PARTIAL rules.
+ * <p>
+ * Orders are processed by priority and due date. Boxes are chosen by FEFO (expiry first)
+ * or FIFO (received first). Results are returned as an {@link AllocationResult}.
+ * </p>
  */
-
-
 public class OrderAllocator {
 
+    /** Allocation mode: STRICT (all or nothing) or PARTIAL (allow partial allocation). */
     public enum Mode { STRICT, PARTIAL }
 
     private Map<String, Item> items;
 
+    /** Creates an OrderAllocator with an empty item list. */
     public OrderAllocator() {
         this.items = new HashMap<>();
     }
 
     /**
-     * Define os itens disponíveis para cálculo de pesos
+     * Sets the items map (used to calculate weights).
+     * @param items a map of items (can be null)
      */
     public void setItems(Map<String, Item> items) {
         this.items = items != null ? items : new HashMap<>();
     }
 
     /**
-     * Aloca stock das boxes às encomendas conforme o modo selecionado
+     * Allocates stock from boxes to order lines.
+     * <p>
+     * In STRICT mode, a line must be fully satisfied or it gets nothing.
+     * In PARTIAL mode, partial allocations are allowed.
+     * </p>
+     *
+     * @param orders the list of orders
+     * @param inventory the list of boxes (inventory)
+     * @param mode allocation mode
+     * @return allocation results with eligibility and allocations
      */
     public AllocationResult allocateOrders(List<Order> orders, List<Box> inventory, Mode mode) {
         AllocationResult result = new AllocationResult();
 
-        // Criar CÓPIAS MUTÁVEIS para evitar UnsupportedOperationException em List.of(...)
+        // Copy lists to avoid errors with List.of(...)
         List<Order> ordersToProcess = new ArrayList<>(orders == null ? Collections.emptyList() : orders);
         List<Box> stock = new ArrayList<>(inventory == null ? Collections.emptyList() : inventory);
 
         if (ordersToProcess.isEmpty()) {
-            System.out.println("⚠️  Não há orders para processar");
-            return result; // Teste 01 espera listas vazias
+            System.out.println("⚠️ No orders to process");
+            return result;
         }
 
-        // Não sair imediatamente: se inventário estiver vazio, gerar eligibilities UNDISPATCHABLE
+        // If no stock, mark all lines as UNDISPATCHABLE
         if (stock.isEmpty()) {
-            System.out.println("⚠️  O inventário está vazio");
+            System.out.println("⚠️ Inventory is empty");
             for (Order o : ordersToProcess) {
-                List<OrderLine> linesSorted = o.lines.stream()
-                        .sorted(Comparator.comparingInt(l -> l.lineNo))
-                        .collect(Collectors.toList());
-                for (OrderLine l : linesSorted) {
-                    Eligibility e = new Eligibility(
-                            o.orderId, l.lineNo, l.sku, l.requestedQty, 0, Status.UNDISPATCHABLE
+                for (OrderLine l : o.lines) {
+                    result.eligibilityList.add(
+                            new Eligibility(o.orderId, l.lineNo, l.sku, l.requestedQty, 0, Status.UNDISPATCHABLE)
                     );
-                    result.eligibilityList.add(e);
                 }
             }
-            return result; // Teste 02: agora preenche eligibilityList
+            return result;
         }
 
-        System.out.printf("📦 Processando %d orders com %d boxes no inventário...%n",
+        System.out.printf("📦 Processing %d orders with %d boxes...%n",
                 ordersToProcess.size(), stock.size());
 
-        // Ordenar encomendas: prioridade (1 melhor), depois dueDate e id
+        // Sort orders by priority, due date, then ID
         ordersToProcess.sort(Comparator
                 .comparingInt((Order o) -> o.priority)
                 .thenComparing(o -> o.dueDate)
                 .thenComparing(o -> o.orderId));
 
-        // Agrupar inventário por SKU
+        // Group boxes by SKU
         Map<String, List<Box>> inventoryBySku = stock.stream()
                 .collect(Collectors.groupingBy(Box::getSku));
 
-        int totalLinesProcessed = 0;
-        int totalAllocations = 0;
-
         for (Order order : ordersToProcess) {
-
-            // Processar linhas por lineNo ascendente (não mutar a lista original de linhas)
             List<OrderLine> linesSorted = order.lines.stream()
                     .sorted(Comparator.comparingInt(l -> l.lineNo))
                     .collect(Collectors.toList());
 
             for (OrderLine line : linesSorted) {
-                totalLinesProcessed++;
                 int remaining = line.requestedQty;
                 int allocated = 0;
                 List<Allocation> lineAllocations = new ArrayList<>();
 
                 List<Box> boxesForSku = inventoryBySku.getOrDefault(line.sku, Collections.emptyList());
 
-                if (boxesForSku.isEmpty()) {
-                    System.out.printf("  ❌ SKU %s não encontrado no inventário para order %s%n",
-                            line.sku, order.orderId);
-                }
-
-                // FEFO/FIFO: caixas COM validade primeiro (por expiry asc). Sem validade → FIFO por received asc.
+                // Sort boxes (FEFO/FIFO)
                 List<Box> sortedBoxes = boxesForSku.stream()
                         .filter(b -> b.getQtyAvailable() > 0)
                         .sorted(Comparator
@@ -106,50 +105,29 @@ public class OrderAllocator {
                                 })
                         ).toList();
 
-                // Alocação de quantidades
+                // Allocate
                 for (Box box : sortedBoxes) {
                     if (remaining <= 0) break;
-                    if (box.getQtyAvailable() <= 0) continue;
-
                     int take = Math.min(remaining, box.getQtyAvailable());
                     if (take <= 0) continue;
 
-                    double allocationWeight = getItemWeight(line.sku) * take;
+                    double weight = getItemWeight(line.sku) * take;
+                    lineAllocations.add(new Allocation(order.orderId, line.lineNo, line.sku, take, weight,
+                            box.getBoxId(), box.getAisle(), box.getBay()));
 
-                    Allocation allocation = new Allocation(
-                            order.orderId,
-                            line.lineNo,
-                            line.sku,
-                            take,
-                            allocationWeight,
-                            box.getBoxId(),
-                            box.getAisle(),
-                            box.getBay()
-                    );
-                    lineAllocations.add(allocation);
-
-                    // Consome quantidade da box (campo é mutável no teu modelo)
                     box.qtyAvailable -= take;
                     remaining -= take;
                     allocated += take;
-                    totalAllocations++;
-
-                    System.out.printf("  ✅ Alocado: Order %s Line %d - %d unidades de %s (Box %s)%n",
-                            order.orderId, line.lineNo, take, line.sku, box.getBoxId());
                 }
 
-                // Determinar status conforme o modo
+                // Determine status
                 Status status;
                 if (mode == Mode.STRICT) {
                     if (allocated == line.requestedQty) {
                         status = Status.ELIGIBLE;
-                        System.out.printf("  🟢 ELIGIBLE: Order %s Line %d - %d/%d unidades%n",
-                                order.orderId, line.lineNo, allocated, line.requestedQty);
                     } else {
                         status = Status.UNDISPATCHABLE;
-                        System.out.printf("  🔴 UNDISPATCHABLE: Order %s Line %d - %d/%d unidades%n",
-                                order.orderId, line.lineNo, allocated, line.requestedQty);
-                        // Repor stock (reversão) e descartar alocações parciais em STRICT
+                        // Undo partial allocation
                         for (Allocation a : lineAllocations) {
                             inventoryBySku.getOrDefault(line.sku, Collections.emptyList()).stream()
                                     .filter(b -> b.getBoxId().equals(a.boxId))
@@ -159,81 +137,54 @@ public class OrderAllocator {
                         lineAllocations.clear();
                         allocated = 0;
                     }
-                } else { // Mode.PARTIAL
-                    if (allocated == 0) {
+                } else { // PARTIAL
+                    if (allocated == 0)
                         status = Status.UNDISPATCHABLE;
-                    } else if (allocated < line.requestedQty) {
+                    else if (allocated < line.requestedQty)
                         status = Status.PARTIAL;
-                    } else {
+                    else
                         status = Status.ELIGIBLE;
-                    }
-                    System.out.printf("  %s: Order %s Line %d - %d/%d unidades%n",
-                            status, order.orderId, line.lineNo, allocated, line.requestedQty);
                 }
 
-                // Registos de resultado
-                Eligibility eligibility = new Eligibility(
-                        order.orderId,
-                        line.lineNo,
-                        line.sku,
-                        line.requestedQty,
-                        allocated,
-                        status
+                result.eligibilityList.add(
+                        new Eligibility(order.orderId, line.lineNo, line.sku,
+                                line.requestedQty, allocated, status)
                 );
-                result.eligibilityList.add(eligibility);
                 result.allocations.addAll(lineAllocations);
             }
         }
-
-        System.out.printf("📊 Concluído: %d linhas processadas, %d alocações geradas%n",
-                totalLinesProcessed, totalAllocations);
-
-        // Estatísticas finais
-        Map<Status, Long> statusCount = result.eligibilityList.stream()
-                .collect(Collectors.groupingBy(e -> e.status, Collectors.counting()));
-
-        System.out.println("📈 Estatísticas Finais:");
-        statusCount.forEach((status, count) ->
-                System.out.printf("  %s: %d linhas%n", status, count));
 
         return result;
     }
 
     /**
-     * Obtém o peso unitário de um item
+     * Gets the weight of an item or returns 1.0 if not found.
+     * @param sku the SKU
+     * @return unit weight
      */
     private double getItemWeight(String sku) {
-        if (items == null || items.isEmpty()) {
-            System.out.printf("⚠️  Mapa de items vazio para SKU %s%n", sku);
-            return 1.0;
-        }
-
+        if (items == null || items.isEmpty()) return 1.0;
         Item item = items.get(sku);
-        if (item == null) {
-            System.out.printf("⚠️  SKU %s não encontrado%n", sku);
-            return 1.0;
-        }
-
-        return item.getUnitWeight();
+        return item != null ? item.getUnitWeight() : 1.0;
     }
 
     /**
-     * Mostra informações do inventário para debug
+     * Prints inventory summary by SKU.
+     * @param inventory list of boxes
      */
     public void printInventoryInfo(List<Box> inventory) {
         if (inventory == null || inventory.isEmpty()) {
-            System.out.println("📭 Inventário vazio");
+            System.out.println("📭 Empty inventory");
             return;
         }
 
-        System.out.println("📦 Informação do Inventário:");
+        System.out.println("📦 Inventory Info:");
         Map<String, List<Box>> bySku = inventory.stream()
                 .collect(Collectors.groupingBy(Box::getSku));
 
         bySku.forEach((sku, boxes) -> {
             int totalQty = boxes.stream().mapToInt(Box::getQtyAvailable).sum();
-            int boxCount = boxes.size();
-            System.out.printf("  %s: %d boxes, %d unidades totais%n", sku, boxCount, totalQty);
+            System.out.printf("  %s: %d boxes, %d units%n", sku, boxes.size(), totalQty);
         });
     }
 }

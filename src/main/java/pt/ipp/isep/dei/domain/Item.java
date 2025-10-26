@@ -1,7 +1,7 @@
 package pt.ipp.isep.dei.domain;
 
 /**
- * Representa um item/produto no inventário
+ * Represents an Item from inventory
  */
 public class Item {
     private final String sku;
