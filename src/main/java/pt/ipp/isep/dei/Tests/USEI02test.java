@@ -10,13 +10,13 @@ import java.util.stream.Collectors;
 public class USEI02test implements Runnable {
 
     private final Map<String, Boolean> testResults = new HashMap<>();
-    private Map<String, Item> itemsMap; // Necessário para pesos
+    private Map<String, Item> itemsMap; // Necessary for weights
 
     public static void main(String[] args) {
         new USEI02test().run();
     }
 
-    // Inicializa o mapa de itens antes de correr os testes
+    // Initialize the items map before running tests
     public USEI02test() {
         itemsMap = createMockItems();
     }
@@ -25,32 +25,32 @@ public class USEI02test implements Runnable {
     @Override
     public void run() {
         System.out.println("======================================================");
-        System.out.println("    Relatório de Testes - USEI02 Order Allocation     ");
+        System.out.println("    Test Report - USEI02 Order Allocation     ");
         System.out.println("======================================================");
 
-        testResults.put("Cenário 01: Sem Encomendas", testSemEncomendas());
-        testResults.put("Cenário 02: Inventário Vazio", testInventarioVazio());
-        testResults.put("Cenário 03: Stock Suficiente (Strict)", testStockSuficienteStrict());
-        testResults.put("Cenário 04: Stock Insuficiente (Strict)", testStockInsuficienteStrict());
-        testResults.put("Cenário 05: Stock Parcial (Strict)", testStockParcialStrict());
-        testResults.put("Cenário 06: Stock Suficiente (Partial)", testStockSuficientePartial());
-        testResults.put("Cenário 07: Stock Insuficiente (Partial)", testStockInsuficientePartial());
-        testResults.put("Cenário 08: Stock Parcial (Partial)", testStockParcialPartial());
-        testResults.put("Cenário 09: Prioridade de Encomendas", testPrioridadeEncomendas());
-        testResults.put("Cenário 10: Prioridade de Linhas", testPrioridadeLinhas());
-        testResults.put("Cenário 11: Alocação FEFO", testAlocacaoFEFO());
-        testResults.put("Cenário 12: Alocação FIFO", testAlocacaoFIFO());
-        testResults.put("Cenário 13: Alocação Mista FEFO/FIFO", testAlocacaoMista());
-        testResults.put("Cenário 14: Alocação entre Múltiplas Caixas", testAlocacaoMultiplasCaixas());
-        testResults.put("Cenário 15: SKU não existe no Inventário", testSkuNaoExiste());
+        testResults.put("Scenario 01: No Orders", testSemEncomendas());
+        testResults.put("Scenario 02: Empty Inventory", testInventarioVazio());
+        testResults.put("Scenario 03: Sufficient Stock (Strict)", testStockSuficienteStrict());
+        testResults.put("Scenario 04: Insufficient Stock (Strict)", testStockInsuficienteStrict());
+        testResults.put("Scenario 05: Partial Stock (Strict)", testStockParcialStrict());
+        testResults.put("Scenario 06: Sufficient Stock (Partial)", testStockSuficientePartial());
+        testResults.put("Scenario 07: Insufficient Stock (Partial)", testStockInsuficientePartial());
+        testResults.put("Scenario 08: Partial Stock (Partial)", testStockParcialPartial());
+        testResults.put("Scenario 09: Order Priority", testPrioridadeEncomendas());
+        testResults.put("Scenario 10: Line Priority", testPrioridadeLinhas());
+        testResults.put("Scenario 11: FEFO Allocation", testAlocacaoFEFO());
+        testResults.put("Scenario 12: FIFO Allocation", testAlocacaoFIFO());
+        testResults.put("Scenario 13: Mixed FEFO/FIFO Allocation", testAlocacaoMista());
+        testResults.put("Scenario 14: Allocation across Multiple Boxes", testAlocacaoMultiplasCaixas());
+        testResults.put("Scenario 15: SKU does not exist in Inventory", testSkuNaoExiste());
 
         printSummary();
     }
 
-    // --- Cenários de Teste ---
+    // --- Test Scenarios ---
 
     private boolean testSemEncomendas() {
-        printScenarioHeader("Cenário 01: Sem Encomendas");
+        printScenarioHeader("Scenario 01: No Orders");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = new ArrayList<>();
@@ -58,13 +58,13 @@ public class USEI02test implements Runnable {
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.STRICT);
 
         boolean passed = result.eligibilityList.isEmpty() && result.allocations.isEmpty();
-        printResults("Listas de Eligibility e Allocations devem estar vazias.", passed ? "Sim" : "Não");
+        printResults("Eligibility and Allocations lists should be empty.", passed ? "Yes" : "No");
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testInventarioVazio() {
-        printScenarioHeader("Cenário 02: Inventário Vazio");
+        printScenarioHeader("Scenario 02: Empty Inventory");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 5))));
@@ -75,17 +75,17 @@ public class USEI02test implements Runnable {
                 result.eligibilityList.get(0).status == Status.UNDISPATCHABLE &&
                 result.eligibilityList.get(0).allocatedQty == 0 &&
                 result.allocations.isEmpty();
-        printResults("Eligibility deve ser UNDISPATCHABLE, Allocations vazias.", passed ? "Correto" : "Incorreto: " + result.eligibilityList);
+        printResults("Eligibility should be UNDISPATCHABLE, Allocations empty.", passed ? "Correct" : "Incorrect: " + result.eligibilityList);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testStockSuficienteStrict() {
-        printScenarioHeader("Cenário 03: Stock Suficiente (Strict)");
+        printScenarioHeader("Scenario 03: Sufficient Stock (Strict)");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 5))));
-        // É importante criar uma CÓPIA MUTÁVEL do inventário para o teste
+        // It's important to create a MUTABLE COPY of the inventory for the test
         List<Box> inventory = new ArrayList<>(List.of(
                 createBox("B1", "SKU1", 10, null, LocalDateTime.now(), "1", "1")
         ));
@@ -97,13 +97,13 @@ public class USEI02test implements Runnable {
                 result.allocations.size() == 1 &&
                 result.allocations.get(0).qty == 5 &&
                 result.allocations.get(0).boxId.equals("B1");
-        printResults("Eligibility ELIGIBLE (5/5), 1 Allocation de B1.", passed ? "Correto" : "Incorreto: " + result.eligibilityList + " / " + result.allocations);
+        printResults("Eligibility ELIGIBLE (5/5), 1 Allocation from B1.", passed ? "Correct" : "Incorrect: " + result.eligibilityList + " / " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testStockInsuficienteStrict() {
-        printScenarioHeader("Cenário 04: Stock Insuficiente (Strict)");
+        printScenarioHeader("Scenario 04: Insufficient Stock (Strict)");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 15))));
@@ -114,15 +114,15 @@ public class USEI02test implements Runnable {
 
         boolean passed = result.eligibilityList.size() == 1 &&
                 result.eligibilityList.get(0).status == Status.UNDISPATCHABLE &&
-                result.eligibilityList.get(0).allocatedQty == 0 && // Strict não aloca nada se não for completo
+                result.eligibilityList.get(0).allocatedQty == 0 && // Strict allocates nothing if not complete
                 result.allocations.isEmpty();
-        printResults("Eligibility UNDISPATCHABLE (0/15), Allocations vazias.", passed ? "Correto" : "Incorreto: " + result.eligibilityList + " / " + result.allocations);
+        printResults("Eligibility UNDISPATCHABLE (0/15), Allocations empty.", passed ? "Correct" : "Incorrect: " + result.eligibilityList + " / " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testStockParcialStrict() {
-        printScenarioHeader("Cenário 05: Stock Parcial (Strict)");
+        printScenarioHeader("Scenario 05: Partial Stock (Strict)");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 10))));
@@ -131,18 +131,18 @@ public class USEI02test implements Runnable {
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.STRICT);
 
-        // Mesmo resultado que insuficiente no modo STRICT
+        // Same result as insufficient in STRICT mode
         boolean passed = result.eligibilityList.size() == 1 &&
                 result.eligibilityList.get(0).status == Status.UNDISPATCHABLE &&
                 result.eligibilityList.get(0).allocatedQty == 0 &&
                 result.allocations.isEmpty();
-        printResults("Eligibility UNDISPATCHABLE (0/10), Allocations vazias.", passed ? "Correto" : "Incorreto: " + result.eligibilityList + " / " + result.allocations);
+        printResults("Eligibility UNDISPATCHABLE (0/10), Allocations empty.", passed ? "Correct" : "Incorrect: " + result.eligibilityList + " / " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testStockSuficientePartial() {
-        printScenarioHeader("Cenário 06: Stock Suficiente (Partial)");
+        printScenarioHeader("Scenario 06: Sufficient Stock (Partial)");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 5))));
@@ -151,74 +151,74 @@ public class USEI02test implements Runnable {
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Mesmo resultado que Strict quando há stock suficiente
+        // Same result as Strict when stock is sufficient
         boolean passed = result.eligibilityList.size() == 1 &&
                 result.eligibilityList.get(0).status == Status.ELIGIBLE &&
                 result.eligibilityList.get(0).allocatedQty == 5 &&
                 result.allocations.size() == 1 &&
                 result.allocations.get(0).qty == 5;
-        printResults("Eligibility ELIGIBLE (5/5), 1 Allocation.", passed ? "Correto" : "Incorreto: " + result.eligibilityList + " / " + result.allocations);
+        printResults("Eligibility ELIGIBLE (5/5), 1 Allocation.", passed ? "Correct" : "Incorrect: " + result.eligibilityList + " / " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testStockInsuficientePartial() {
-        printScenarioHeader("Cenário 07: Stock Insuficiente (Partial)");
+        printScenarioHeader("Scenario 07: Insufficient Stock (Partial)");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_NOSTOCK", 10))));
         List<Box> inventory = new ArrayList<>(List.of(
-                createBox("B1", "SKU1", 5, null, LocalDateTime.now(), "1", "1") // Outro SKU
+                createBox("B1", "SKU1", 5, null, LocalDateTime.now(), "1", "1") // Different SKU
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Mesmo resultado que Strict quando não há stock NENHUM do SKU
+        // Same result as Strict when there is NO stock of the SKU
         boolean passed = result.eligibilityList.size() == 1 &&
                 result.eligibilityList.get(0).status == Status.UNDISPATCHABLE &&
                 result.eligibilityList.get(0).allocatedQty == 0 &&
                 result.allocations.isEmpty();
-        printResults("Eligibility UNDISPATCHABLE (0/10), Allocations vazias.", passed ? "Correto" : "Incorreto: " + result.eligibilityList + " / " + result.allocations);
+        printResults("Eligibility UNDISPATCHABLE (0/10), Allocations empty.", passed ? "Correct" : "Incorrect: " + result.eligibilityList + " / " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testStockParcialPartial() {
-        printScenarioHeader("Cenário 08: Stock Parcial (Partial)");
+        printScenarioHeader("Scenario 08: Partial Stock (Partial)");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 10))));
         List<Box> inventory = new ArrayList<>(List.of(
-                createBox("B1", "SKU1", 7, null, LocalDateTime.now(), "1", "1") // Só 7 unidades
+                createBox("B1", "SKU1", 7, null, LocalDateTime.now(), "1", "1") // Only 7 units
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Deve alocar o que existe
+        // Should allocate what exists
         boolean passed = result.eligibilityList.size() == 1 &&
                 result.eligibilityList.get(0).status == Status.PARTIAL &&
-                result.eligibilityList.get(0).allocatedQty == 7 && // Alocou 7
+                result.eligibilityList.get(0).allocatedQty == 7 && // Allocated 7
                 result.allocations.size() == 1 &&
-                result.allocations.get(0).qty == 7 && // Confirma allocation
+                result.allocations.get(0).qty == 7 && // Confirm allocation
                 result.allocations.get(0).boxId.equals("B1");
-        printResults("Eligibility PARTIAL (7/10), 1 Allocation de 7.", passed ? "Correto" : "Incorreto: " + result.eligibilityList + " / " + result.allocations);
+        printResults("Eligibility PARTIAL (7/10), 1 Allocation of 7.", passed ? "Correct" : "Incorrect: " + result.eligibilityList + " / " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testPrioridadeEncomendas() {
-        printScenarioHeader("Cenário 09: Prioridade de Encomendas");
+        printScenarioHeader("Scenario 09: Order Priority");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         Order ord1_p2 = createOrder("ORD1", 2, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 5)));
-        Order ord2_p1 = createOrder("ORD2", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 5))); // Maior prioridade
-        Order ord3_p1_due = createOrder("ORD3", 1, LocalDate.now().minusDays(1), List.of(new OrderLine(1, "SKU1", 5))); // Maior prioridade e Due Date anterior
-        List<Order> orders = List.of(ord1_p2, ord2_p1, ord3_p1_due); // Fora de ordem
+        Order ord2_p1 = createOrder("ORD2", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 5))); // Higher priority
+        Order ord3_p1_due = createOrder("ORD3", 1, LocalDate.now().minusDays(1), List.of(new OrderLine(1, "SKU1", 5))); // Higher priority and earlier Due Date
+        List<Order> orders = List.of(ord1_p2, ord2_p1, ord3_p1_due); // Out of order
         List<Box> inventory = new ArrayList<>(List.of(
-                createBox("B1", "SKU1", 12, null, LocalDateTime.now(), "1", "1") // Stock para 2.4 encomendas
+                createBox("B1", "SKU1", 12, null, LocalDateTime.now(), "1", "1") // Stock for 2.4 orders
         ));
 
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.STRICT);
 
-        // Verifica se ORD3 e ORD2 foram ELIGIBLE e ORD1 foi UNDISPATCHABLE
+        // Check if ORD3 and ORD2 were ELIGIBLE and ORD1 was UNDISPATCHABLE
         Map<String, Status> statuses = result.eligibilityList.stream()
                 .collect(Collectors.toMap(e -> e.orderId, e -> e.status));
 
@@ -226,116 +226,116 @@ public class USEI02test implements Runnable {
                 statuses.getOrDefault("ORD3", null) == Status.ELIGIBLE &&
                 statuses.getOrDefault("ORD2", null) == Status.ELIGIBLE &&
                 statuses.getOrDefault("ORD1", null) == Status.UNDISPATCHABLE &&
-                result.allocations.size() == 2; // Alocou para ORD3 e ORD2
+                result.allocations.size() == 2; // Allocated for ORD3 and ORD2
 
-        printResults("Ordem de alocação esperada: ORD3 (Eligible), ORD2 (Eligible), ORD1 (Undispatchable)", passed ? "Correta" : "Incorreta: " + statuses);
+        printResults("Expected allocation order: ORD3 (Eligible), ORD2 (Eligible), ORD1 (Undispatchable)", passed ? "Correct" : "Incorrect: " + statuses);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testPrioridadeLinhas() {
-        printScenarioHeader("Cenário 10: Prioridade de Linhas");
+        printScenarioHeader("Scenario 10: Line Priority");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
         Order order = createOrder("ORD1", 1, LocalDate.now(), List.of(
-                new OrderLine(2, "SKU1", 5), // Linha 2 primeiro na lista
-                new OrderLine(1, "SKU1", 5)  // Linha 1 depois
+                new OrderLine(2, "SKU1", 5), // Line 2 first in list
+                new OrderLine(1, "SKU1", 5)  // Line 1 after
         ));
         List<Box> inventory = new ArrayList<>(List.of(
-                createBox("B1", "SKU1", 7, null, LocalDateTime.now(), "1", "1") // Stock para 1 linha completa + parcial
+                createBox("B1", "SKU1", 7, null, LocalDateTime.now(), "1", "1") // Stock for 1 complete line + partial
         ));
 
         AllocationResult result = allocator.allocateOrders(List.of(order), inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Verifica se a linha 1 foi processada primeiro e ficou ELIGIBLE, e a linha 2 ficou PARTIAL
+        // Check if line 1 was processed first and became ELIGIBLE, and line 2 became PARTIAL
         Map<Integer, Eligibility> eligMap = result.eligibilityList.stream()
                 .collect(Collectors.toMap(e -> e.lineNo, e -> e));
 
         boolean passed = result.eligibilityList.size() == 2 &&
                 eligMap.get(1).status == Status.ELIGIBLE && eligMap.get(1).allocatedQty == 5 &&
-                eligMap.get(2).status == Status.PARTIAL && eligMap.get(2).allocatedQty == 2 && // Restante 7-5=2
-                result.allocations.size() == 2; // Uma allocation para cada linha
+                eligMap.get(2).status == Status.PARTIAL && eligMap.get(2).allocatedQty == 2 && // Remainder 7-5=2
+                result.allocations.size() == 2; // One allocation for each line
 
-        printResults("Linha 1 ELIGIBLE (5/5), Linha 2 PARTIAL (2/5).", passed ? "Correto" : "Incorreto: " + eligMap);
+        printResults("Line 1 ELIGIBLE (5/5), Line 2 PARTIAL (2/5).", passed ? "Correct" : "Incorrect: " + eligMap);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testAlocacaoFEFO() {
-        printScenarioHeader("Cenário 11: Alocação FEFO");
+        printScenarioHeader("Scenario 11: FEFO Allocation");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
-        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_P", 8)))); // Pedido 8
+        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_P", 8)))); // Request 8
         List<Box> inventory = new ArrayList<>(List.of(
-                createBox("B_EXP_DEPOIS", "SKU_P", 5, LocalDate.now().plusDays(10), LocalDateTime.now(), "1", "1"),
-                createBox("B_EXP_ANTES", "SKU_P", 5, LocalDate.now().plusDays(5), LocalDateTime.now(), "1", "2") // Deve ser usada primeiro
+                createBox("B_EXP_LATER", "SKU_P", 5, LocalDate.now().plusDays(10), LocalDateTime.now(), "1", "1"),
+                createBox("B_EXP_SOONER", "SKU_P", 5, LocalDate.now().plusDays(5), LocalDateTime.now(), "1", "2") // Should be used first
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Deve alocar 5 de B_EXP_ANTES e 3 de B_EXP_DEPOIS
+        // Should allocate 5 from B_EXP_SOONER and 3 from B_EXP_LATER
         boolean passed = result.allocations.size() == 2 &&
-                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_EXP_ANTES") && a.qty == 5) &&
-                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_EXP_DEPOIS") && a.qty == 3) &&
+                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_EXP_SOONER") && a.qty == 5) &&
+                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_EXP_LATER") && a.qty == 3) &&
                 result.eligibilityList.get(0).status == Status.ELIGIBLE;
 
-        printResults("Alocou 5 de B_EXP_ANTES e 3 de B_EXP_DEPOIS.", passed ? "Correto" : "Incorreto: " + result.allocations);
+        printResults("Allocated 5 from B_EXP_SOONER and 3 from B_EXP_LATER.", passed ? "Correct" : "Incorrect: " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testAlocacaoFIFO() {
-        printScenarioHeader("Cenário 12: Alocação FIFO");
+        printScenarioHeader("Scenario 12: FIFO Allocation");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
-        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_NP", 8)))); // Pedido 8
+        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_NP", 8)))); // Request 8
         List<Box> inventory = new ArrayList<>(List.of(
-                createBox("B_CHEGOU_DEPOIS", "SKU_NP", 5, null, LocalDateTime.now().minusDays(1), "1", "1"),
-                createBox("B_CHEGOU_ANTES", "SKU_NP", 5, null, LocalDateTime.now().minusDays(5), "1", "2") // Deve ser usada primeiro
+                createBox("B_ARRIVED_LATER", "SKU_NP", 5, null, LocalDateTime.now().minusDays(1), "1", "1"),
+                createBox("B_ARRIVED_SOONER", "SKU_NP", 5, null, LocalDateTime.now().minusDays(5), "1", "2") // Should be used first
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Deve alocar 5 de B_CHEGOU_ANTES e 3 de B_CHEGOU_DEPOIS
+        // Should allocate 5 from B_ARRIVED_SOONER and 3 from B_ARRIVED_LATER
         boolean passed = result.allocations.size() == 2 &&
-                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_CHEGOU_ANTES") && a.qty == 5) &&
-                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_CHEGOU_DEPOIS") && a.qty == 3) &&
+                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_ARRIVED_SOONER") && a.qty == 5) &&
+                result.allocations.stream().anyMatch(a -> a.boxId.equals("B_ARRIVED_LATER") && a.qty == 3) &&
                 result.eligibilityList.get(0).status == Status.ELIGIBLE;
 
-        printResults("Alocou 5 de B_CHEGOU_ANTES e 3 de B_CHEGOU_DEPOIS.", passed ? "Correto" : "Incorreto: " + result.allocations);
+        printResults("Allocated 5 from B_ARRIVED_SOONER and 3 from B_ARRIVED_LATER.", passed ? "Correct" : "Incorrect: " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testAlocacaoMista() {
-        printScenarioHeader("Cenário 13: Alocação Mista FEFO/FIFO");
+        printScenarioHeader("Scenario 13: Mixed FEFO/FIFO Allocation");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
-        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_MIX", 12)))); // Pedido 12
+        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_MIX", 12)))); // Request 12
         List<Box> inventory = new ArrayList<>(List.of(
-                createBox("B_FIFO_ANTIGO", "SKU_MIX", 5, null, LocalDateTime.now().minusDays(10), "1", "1"), // FIFO 1
-                createBox("B_FEFO_URGENTE", "SKU_MIX", 5, LocalDate.now().plusDays(2), LocalDateTime.now().minusDays(5), "1", "2"), // FEFO 1 (mais urgente)
+                createBox("B_FIFO_OLD", "SKU_MIX", 5, null, LocalDateTime.now().minusDays(10), "1", "1"), // FIFO 1
+                createBox("B_FEFO_URGENT", "SKU_MIX", 5, LocalDate.now().plusDays(2), LocalDateTime.now().minusDays(5), "1", "2"), // FEFO 1 (most urgent)
                 createBox("B_FEFO_NORMAL", "SKU_MIX", 5, LocalDate.now().plusDays(20), LocalDateTime.now().minusDays(1), "1", "3"), // FEFO 2
-                createBox("B_FIFO_RECENTE", "SKU_MIX", 5, null, LocalDateTime.now().minusDays(2), "1", "4")  // FIFO 2
+                createBox("B_FIFO_RECENT", "SKU_MIX", 5, null, LocalDateTime.now().minusDays(2), "1", "4")  // FIFO 2
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Ordem esperada de alocação: B_FEFO_URGENTE (5), B_FEFO_NORMAL (5), B_FIFO_ANTIGO (2)
+        // Expected allocation order: B_FEFO_URGENT (5), B_FEFO_NORMAL (5), B_FIFO_OLD (2)
         boolean passed = result.allocations.size() == 3 &&
-                result.allocations.get(0).boxId.equals("B_FEFO_URGENTE") && result.allocations.get(0).qty == 5 &&
+                result.allocations.get(0).boxId.equals("B_FEFO_URGENT") && result.allocations.get(0).qty == 5 &&
                 result.allocations.get(1).boxId.equals("B_FEFO_NORMAL") && result.allocations.get(1).qty == 5 &&
-                result.allocations.get(2).boxId.equals("B_FIFO_ANTIGO") && result.allocations.get(2).qty == 2 &&
+                result.allocations.get(2).boxId.equals("B_FIFO_OLD") && result.allocations.get(2).qty == 2 &&
                 result.eligibilityList.get(0).status == Status.ELIGIBLE;
 
-        printResults("Alocou FEFO_URGENTE(5), FEFO_NORMAL(5), FIFO_ANTIGO(2).", passed ? "Correto" : "Incorreto: " + result.allocations);
+        printResults("Allocated FEFO_URGENT(5), FEFO_NORMAL(5), FIFO_OLD(2).", passed ? "Correct" : "Incorrect: " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
 
     private boolean testAlocacaoMultiplasCaixas() {
-        printScenarioHeader("Cenário 14: Alocação entre Múltiplas Caixas");
+        printScenarioHeader("Scenario 14: Allocation across Multiple Boxes");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
-        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 18)))); // Pedido 18
+        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU1", 18)))); // Request 18
         List<Box> inventory = new ArrayList<>(List.of(
                 createBox("B1", "SKU1", 5, null, LocalDateTime.now().minusDays(3), "1", "1"),
                 createBox("B2", "SKU1", 5, null, LocalDateTime.now().minusDays(2), "1", "2"),
@@ -344,7 +344,7 @@ public class USEI02test implements Runnable {
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Deve alocar 5 de B1, 5 de B2, 5 de B3, 3 de B4
+        // Should allocate 5 from B1, 5 from B2, 5 from B3, 3 from B4
         boolean passed = result.allocations.size() == 4 &&
                 result.allocations.stream().anyMatch(a -> a.boxId.equals("B1") && a.qty == 5) &&
                 result.allocations.stream().anyMatch(a -> a.boxId.equals("B2") && a.qty == 5) &&
@@ -352,44 +352,44 @@ public class USEI02test implements Runnable {
                 result.allocations.stream().anyMatch(a -> a.boxId.equals("B4") && a.qty == 3) &&
                 result.eligibilityList.get(0).status == Status.ELIGIBLE;
 
-        printResults("Alocou B1(5), B2(5), B3(5), B4(3).", passed ? "Correto" : "Incorreto: " + result.allocations);
+        printResults("Allocated B1(5), B2(5), B3(5), B4(3).", passed ? "Correct" : "Incorrect: " + result.allocations);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testSkuNaoExiste() {
-        printScenarioHeader("Cenário 15: SKU não existe no Inventário");
+        printScenarioHeader("Scenario 15: SKU does not exist in Inventory");
         OrderAllocator allocator = new OrderAllocator();
         allocator.setItems(itemsMap);
-        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_FANTASMA", 5))));
+        List<Order> orders = List.of(createOrder("ORD1", 1, LocalDate.now(), List.of(new OrderLine(1, "SKU_GHOST", 5))));
         List<Box> inventory = new ArrayList<>(List.of(
                 createBox("B1", "SKU1", 10, null, LocalDateTime.now(), "1", "1")
         ));
         AllocationResult result = allocator.allocateOrders(orders, inventory, OrderAllocator.Mode.PARTIAL);
 
-        // Mesmo resultado que Stock Insuficiente
+        // Same result as Insufficient Stock
         boolean passed = result.eligibilityList.size() == 1 &&
                 result.eligibilityList.get(0).status == Status.UNDISPATCHABLE &&
                 result.eligibilityList.get(0).allocatedQty == 0 &&
                 result.allocations.isEmpty();
-        printResults("Eligibility UNDISPATCHABLE (0/5), Allocations vazias.", passed ? "Correto" : "Incorreto: " + result.eligibilityList);
+        printResults("Eligibility UNDISPATCHABLE (0/5), Allocations empty.", passed ? "Correct" : "Incorrect: " + result.eligibilityList);
         printTestStatus(passed);
         return passed;
     }
 
 
-    // --- Métodos Auxiliares ---
+    // --- Helper Methods ---
 
     private Map<String, Item> createMockItems() {
         Map<String, Item> items = new HashMap<>();
-        // Adiciona itens usados nos testes com pesos (o peso afeta USEI03, não USEI02 diretamente, mas é bom ter)
+        // Add items used in tests with weights (weight affects USEI03, not USEI02 directly, but good to have)
         items.put("SKU1", new Item("SKU1", "Item SKU1", "Cat A", "unit", 1.5));
-        items.put("SKU_P", new Item("SKU_P", "Item Perecível", "Cat P", "unit", 2.0));
-        items.put("SKU_NP", new Item("SKU_NP", "Item Não Perecível", "Cat NP", "unit", 1.0));
-        items.put("SKU_MIX", new Item("SKU_MIX", "Item Misto", "Cat M", "unit", 3.0));
+        items.put("SKU_P", new Item("SKU_P", "Perishable Item", "Cat P", "unit", 2.0));
+        items.put("SKU_NP", new Item("SKU_NP", "Non-Perishable Item", "Cat NP", "unit", 1.0));
+        items.put("SKU_MIX", new Item("SKU_MIX", "Mixed Item", "Cat M", "unit", 3.0));
         items.put("SKUA", new Item("SKUA", "Item A", "Cat X", "unit", 0.5));
         items.put("SKUB", new Item("SKUB", "Item B", "Cat Y", "unit", 0.8));
-        // Adiciona mais SKUs se necessário para outros testes
+        // Add more SKUs if needed for other tests
         return items;
     }
 
@@ -400,9 +400,9 @@ public class USEI02test implements Runnable {
         return order;
     }
 
-    // Cria um Box simples
+    // Creates a simple Box
     private Box createBox(String boxId, String sku, int qty, LocalDate expiry, LocalDateTime received, String aisle, String bay) {
-        // Cria cópia mutável da quantidade para simular consumo
+        // Creates mutable copy of quantity to simulate consumption
         return new Box(boxId, sku, qty, expiry, received, aisle, bay);
     }
 
@@ -418,15 +418,15 @@ public class USEI02test implements Runnable {
 
     private void printTestStatus(boolean passed) {
         if (passed) {
-            System.out.println("\n  --> Resultado do Cenário: ✅ PASSOU");
+            System.out.println("\n  --> Scenario Result: ✅ PASSED");
         } else {
-            System.err.println("\n  --> Resultado do Cenário: ❌ FALHOU");
+            System.err.println("\n  --> Scenario Result: ❌ FAILED");
         }
     }
 
     private void printSummary() {
         System.out.println("\n======================================================");
-        System.out.println("             Sumário do Relatório de Testes USEI02      ");
+        System.out.println("             USEI02 Test Report Summary      ");
         System.out.println("======================================================");
         int passCount = 0;
         int failCount = 0;
@@ -436,7 +436,7 @@ public class USEI02test implements Runnable {
         for (String testName : sortedTestNames) {
             Boolean resultValue = testResults.get(testName);
             boolean passed = resultValue != null && resultValue;
-            String result = passed ? "✅ PASSOU" : "❌ FALHOU";
+            String result = passed ? "✅ PASSED" : "❌ FAILED";
             System.out.printf("  %s: %s%n", testName, result);
             if (passed) {
                 passCount++;
@@ -445,9 +445,9 @@ public class USEI02test implements Runnable {
             }
         }
         System.out.println("------------------------------------------------------");
-        System.out.printf("  Total: %d Passaram, %d Falharam%n", passCount, failCount);
+        System.out.printf("  Total: %d Passed, %d Failed%n", passCount, failCount);
         System.out.println("======================================================");
-        System.out.println("             Fim do Relatório de Testes USEI02        ");
+        System.out.println("             End of USEI02 Test Report        ");
         System.out.println("======================================================");
     }
 }

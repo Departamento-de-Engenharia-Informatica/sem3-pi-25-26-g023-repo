@@ -19,46 +19,46 @@ public class USEI05test implements Runnable {
         new USEI05test().run();
     }
 
-    // Gera um nome único para o ficheiro de log de cada teste
+    // Generates a unique log file name for each test
     private String getUniqueLogFile() {
         testCounter++;
         return "audit_test_usei05_" + testCounter + ".log";
     }
 
-    // Apaga o ficheiro de log específico
+    // Deletes the specific log file
     private void clearTestLog(String logFile) {
         try {
             Files.deleteIfExists(Paths.get(logFile));
         } catch (IOException e) {
-            System.err.println("Aviso: Não foi possível apagar o ficheiro de log de teste: " + logFile);
+            System.err.println("Warning: Could not delete test log file: " + logFile);
         }
     }
 
     @Override
     public void run() {
         System.out.println("======================================================");
-        System.out.println("   Relatório de Testes - USEI05 Returns & Quarantine   ");
+        System.out.println("   Test Report - USEI05 Returns & Quarantine   ");
         System.out.println("======================================================");
 
-        testResults.put("Cenário 01: Quarentena Vazia", testQuarentenaVazia());
-        testResults.put("Cenário 02: Processar Item Descartado (Damaged)", testItemDescartadoDamaged());
-        testResults.put("Cenário 03: Processar Item Descartado (Expired)", testItemDescartadoExpired());
-        testResults.put("Cenário 04: Processar Item Restockable (Customer Remorse)", testItemRestockableRemorse());
-        testResults.put("Cenário 05: Processar Item Restockable (Cycle Count)", testItemRestockableCycleCount());
-        testResults.put("Cenário 06: Processar Múltiplos Itens (LIFO)", testProcessarMultiplosLIFO());
-        testResults.put("Cenário 07: Restock Falha (Sem Espaço)", testRestockSemEspaco());
-        testResults.put("Cenário 08: Restock com Verificação FEFO/FIFO", testRestockOrdemInventario());
+        testResults.put("Scenario 01: Empty Quarantine", testQuarentenaVazia());
+        testResults.put("Scenario 02: Process Discarded Item (Damaged)", testItemDescartadoDamaged());
+        testResults.put("Scenario 03: Process Discarded Item (Expired)", testItemDescartadoExpired());
+        testResults.put("Scenario 04: Process Restockable Item (Customer Remorse)", testItemRestockableRemorse());
+        testResults.put("Scenario 05: Process Restockable Item (Cycle Count)", testItemRestockableCycleCount());
+        testResults.put("Scenario 06: Process Multiple Items (LIFO)", testProcessarMultiplosLIFO());
+        testResults.put("Scenario 07: Restock Failure (No Space)", testRestockSemEspaco());
+        testResults.put("Scenario 08: Restock with FEFO/FIFO Check", testRestockOrdemInventario());
 
         printSummary();
 
-        // Limpa todos os ficheiros de log de teste no final
+        // Cleans up all test log files at the end
         cleanupTestLogs();
     }
 
-    // --- Cenários de Teste ---
+    // --- Test Scenarios ---
 
     private boolean testQuarentenaVazia() {
-        printScenarioHeader("Cenário 01: Quarentena Vazia");
+        printScenarioHeader("Scenario 01: Empty Quarantine");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -71,14 +71,14 @@ public class USEI05test implements Runnable {
         wms.processReturns();
 
         boolean passed = inventory.getBoxes().isEmpty() && readLogLines(logFile).isEmpty();
-        printResults("Inventário deve estar vazio.", inventory.getBoxes().isEmpty() ? "Sim" : "Não");
-        printResults("Log de auditoria deve estar vazio.", readLogLines(logFile).isEmpty() ? "Sim" : "Não");
+        printResults("Inventory should be empty.", inventory.getBoxes().isEmpty() ? "Yes" : "No");
+        printResults("Audit log should be empty.", readLogLines(logFile).isEmpty() ? "Yes" : "No");
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testItemDescartadoDamaged() {
-        printScenarioHeader("Cenário 02: Processar Item Descartado (Damaged)");
+        printScenarioHeader("Scenario 02: Process Discarded Item (Damaged)");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -99,14 +99,14 @@ public class USEI05test implements Runnable {
                 logLines.get(0).contains("action=Discarded") &&
                 logLines.get(0).contains("qty=5");
 
-        printResults("Inventário deve estar vazio.", inventory.getBoxes().isEmpty() ? "Sim" : "Não");
-        printResults("Log deve conter 1 linha 'Discarded' para R001.", passed ? "Sim" : "Não: " + logLines);
+        printResults("Inventory should be empty.", inventory.getBoxes().isEmpty() ? "Yes" : "No");
+        printResults("Log should contain 1 'Discarded' line for R001.", passed ? "Yes" : "No: " + logLines);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testItemDescartadoExpired() {
-        printScenarioHeader("Cenário 03: Processar Item Descartado (Expired)");
+        printScenarioHeader("Scenario 03: Process Discarded Item (Expired)");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -127,14 +127,14 @@ public class USEI05test implements Runnable {
                 logLines.get(0).contains("action=Discarded") &&
                 logLines.get(0).contains("qty=3");
 
-        printResults("Inventário deve estar vazio.", inventory.getBoxes().isEmpty() ? "Sim" : "Não");
-        printResults("Log deve conter 1 linha 'Discarded' para R002.", passed ? "Sim" : "Não: " + logLines);
+        printResults("Inventory should be empty.", inventory.getBoxes().isEmpty() ? "Yes" : "No");
+        printResults("Log should contain 1 'Discarded' line for R002.", passed ? "Yes" : "No: " + logLines);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testItemRestockableRemorse() {
-        printScenarioHeader("Cenário 04: Processar Item Restockable (Customer Remorse)");
+        printScenarioHeader("Scenario 04: Process Restockable Item (Customer Remorse)");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -162,15 +162,15 @@ public class USEI05test implements Runnable {
                 logLines.get(0).contains("action=Restocked") &&
                 logLines.get(0).contains("qty=7");
 
-        printResults("Inventário deve conter 1 caixa 'RET-R003'.", restockedBox.isPresent() ? "Sim" : "Não");
-        restockedBox.ifPresent(box -> printResults("Caixa 'RET-R003' tem localização?", (box.getAisle() != null && box.getBay() != null) ? "Sim: "+box.getAisle()+"-"+box.getBay() : "Não"));
-        printResults("Log deve conter 1 linha 'Restocked' para R003.", (logLines.size() == 1 && logLines.get(0).contains("Restocked")) ? "Sim" : "Não: " + logLines);
+        printResults("Inventory should contain 1 box 'RET-R003'.", restockedBox.isPresent() ? "Yes" : "No");
+        restockedBox.ifPresent(box -> printResults("Box 'RET-R003' has location?", (box.getAisle() != null && box.getBay() != null) ? "Yes: "+box.getAisle()+"-"+box.getBay() : "No"));
+        printResults("Log should contain 1 'Restocked' line for R003.", (logLines.size() == 1 && logLines.get(0).contains("Restocked")) ? "Yes" : "No: " + logLines);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testItemRestockableCycleCount() {
-        printScenarioHeader("Cenário 05: Processar Item Restockable (Cycle Count)");
+        printScenarioHeader("Scenario 05: Process Restockable Item (Cycle Count)");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -199,15 +199,15 @@ public class USEI05test implements Runnable {
                 logLines.get(0).contains("action=Restocked") &&
                 logLines.get(0).contains("qty=4");
 
-        printResults("Inventário deve conter 1 caixa 'RET-R004'.", restockedBox.isPresent() ? "Sim" : "Não");
-        restockedBox.ifPresent(box -> printResults("Caixa 'RET-R004' tem localização e expiry?", (box.getAisle() != null && box.getBay() != null && box.getExpiryDate() != null) ? "Sim" : "Não"));
-        printResults("Log deve conter 1 linha 'Restocked' para R004.", (logLines.size() == 1 && logLines.get(0).contains("Restocked")) ? "Sim" : "Não: " + logLines);
+        printResults("Inventory should contain 1 box 'RET-R004'.", restockedBox.isPresent() ? "Yes" : "No");
+        restockedBox.ifPresent(box -> printResults("Box 'RET-R004' has location and expiry?", (box.getAisle() != null && box.getBay() != null && box.getExpiryDate() != null) ? "Yes" : "No"));
+        printResults("Log should contain 1 'Restocked' line for R004.", (logLines.size() == 1 && logLines.get(0).contains("Restocked")) ? "Yes" : "No: " + logLines);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testProcessarMultiplosLIFO() {
-        printScenarioHeader("Cenário 06: Processar Múltiplos Itens (LIFO)");
+        printScenarioHeader("Scenario 06: Process Multiple Items (LIFO)");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -235,14 +235,14 @@ public class USEI05test implements Runnable {
                 inventory.getBoxes().size() == 1 &&
                 inventory.getBoxes().get(0).getBoxId().equals("RET-R006");
 
-        printResults("Log deve ter 3 linhas na ordem R007(D), R006(R), R005(D).", passed ? "Sim" : "Não: " + logLines);
-        printResults("Inventário deve ter apenas a caixa RET-R006.", (inventory.getBoxes().size() == 1 && inventory.getBoxes().get(0).getBoxId().equals("RET-R006")) ? "Sim" : "Não: "+ inventory.getBoxes());
+        printResults("Log should have 3 lines in order R007(D), R006(R), R005(D).", passed ? "Yes" : "No: " + logLines);
+        printResults("Inventory should only have box RET-R006.", (inventory.getBoxes().size() == 1 && inventory.getBoxes().get(0).getBoxId().equals("RET-R006")) ? "Yes" : "No: "+ inventory.getBoxes());
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testRestockSemEspaco() {
-        printScenarioHeader("Cenário 07: Restock Falha (Sem Espaço)");
+        printScenarioHeader("Scenario 07: Restock Failure (No Space)");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -266,14 +266,14 @@ public class USEI05test implements Runnable {
                 logLines.get(0).contains("returnId=R008") &&
                 logLines.get(0).contains("Discarded (No Space)");
 
-        printResults("Inventário deve estar vazio.", inventory.getBoxes().isEmpty() ? "Sim" : "Não");
-        printResults("Log deve conter 1 linha 'Discarded (No Space)' para R008.", passed ? "Sim" : "Não: " + logLines);
+        printResults("Inventory should be empty.", inventory.getBoxes().isEmpty() ? "Yes" : "No");
+        printResults("Log should contain 1 'Discarded (No Space)' line for R008.", passed ? "Yes" : "No: " + logLines);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testRestockOrdemInventario() {
-        printScenarioHeader("Cenário 08: Restock com Verificação FEFO/FIFO");
+        printScenarioHeader("Scenario 08: Restock with FEFO/FIFO Check");
         String logFile = getUniqueLogFile();
         clearTestLog(logFile);
 
@@ -302,12 +302,12 @@ public class USEI05test implements Runnable {
 
         boolean passed = finalBoxIds.equals(expectedIds);
 
-        printResults("Ordem esperada no inventário: RET-R009, B_EXIST, RET-R010, RET-R011", passed ? "Correta" : "Incorreta: " + finalBoxIds);
+        printResults("Expected order in inventory: RET-R009, B_EXIST, RET-R010, RET-R011", passed ? "Correct" : "Incorrect: " + finalBoxIds);
         printTestStatus(passed);
         return passed;
     }
 
-    // --- Métodos Auxiliares ---
+    // --- Helper Methods ---
 
     private Return createReturn(String id, String sku, int qty, String reason, LocalDateTime timestamp, LocalDateTime expiry) {
         return new Return(id, sku, qty, reason, timestamp, expiry);
@@ -344,7 +344,7 @@ public class USEI05test implements Runnable {
                 return new ArrayList<>();
             }
         } catch (IOException e) {
-            System.err.println("Erro ao ler ficheiro de log " + filePath + ": " + e.getMessage());
+            System.err.println("Error reading log file " + filePath + ": " + e.getMessage());
             return new ArrayList<>();
         }
     }
@@ -355,7 +355,7 @@ public class USEI05test implements Runnable {
             try {
                 Files.deleteIfExists(Paths.get(logFile));
             } catch (IOException e) {
-                // Ignora erros na limpeza
+                // Ignore cleanup errors
             }
         }
     }
@@ -372,15 +372,15 @@ public class USEI05test implements Runnable {
 
     private void printTestStatus(boolean passed) {
         if (passed) {
-            System.out.println("\n  --> Resultado do Cenário: ✅ PASSOU");
+            System.out.println("\n  --> Scenario Result: ✅ PASSED");
         } else {
-            System.err.println("\n  --> Resultado do Cenário: ❌ FALHOU");
+            System.err.println("\n  --> Scenario Result: ❌ FAILED");
         }
     }
 
     private void printSummary() {
         System.out.println("\n======================================================");
-        System.out.println("             Sumário do Relatório de Testes USEI05      ");
+        System.out.println("             USEI05 Test Report Summary      ");
         System.out.println("======================================================");
         int passCount = 0;
         int failCount = 0;
@@ -390,7 +390,7 @@ public class USEI05test implements Runnable {
         for (String testName : sortedTestNames) {
             Boolean resultValue = testResults.get(testName);
             boolean passed = resultValue != null && resultValue;
-            String result = passed ? "✅ PASSOU" : "❌ FALHOU";
+            String result = passed ? "✅ PASSED" : "❌ FAILED";
             System.out.printf("  %s: %s%n", testName, result);
             if (passed) {
                 passCount++;
@@ -399,9 +399,9 @@ public class USEI05test implements Runnable {
             }
         }
         System.out.println("------------------------------------------------------");
-        System.out.printf("  Total: %d Passaram, %d Falharam%n", passCount, failCount);
+        System.out.printf("  Total: %d Passed, %d Failed%n", passCount, failCount);
         System.out.println("======================================================");
-        System.out.println("             Fim do Relatório de Testes USEI05        ");
+        System.out.println("             End of USEI05 Test Report        ");
         System.out.println("======================================================");
     }
 }

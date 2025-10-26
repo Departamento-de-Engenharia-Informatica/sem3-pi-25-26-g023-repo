@@ -11,107 +11,105 @@ import java.util.*;
 public class TravelTimeUI implements Runnable {
 
     private final TravelTimeController controller;
-    private final StationRepository estacaoRepo;
-    private final LocomotiveRepository locomotivaRepo;
+    private final StationRepository stationRepo;
+    private final LocomotiveRepository locomotiveRepo;
 
-    public TravelTimeUI(TravelTimeController controller, StationRepository estacaoRepo, LocomotiveRepository locomotivaRepo) {
+    public TravelTimeUI(TravelTimeController controller, StationRepository stationRepo, LocomotiveRepository locomotiveRepo) {
         this.controller = controller;
-        this.estacaoRepo = estacaoRepo;
-        this.locomotivaRepo = locomotivaRepo;
+        this.stationRepo = stationRepo;
+        this.locomotiveRepo = locomotiveRepo;
     }
 
     @Override
     public void run() {
         Scanner scanner = new Scanner(System.in);
         System.out.println("\n" + "=".repeat(50));
-        System.out.println("     USLP03 - Calcular Tempo de Viagem (Caminho Rápido)"); // Título ajustado
+        System.out.println("     USLP03 - Calculate Travel Time (Fastest Path)");
         System.out.println("=".repeat(50));
 
         try {
-            // 1. Listar e pedir Estação de Partida
-            System.out.println("\n--- Estações Disponíveis ---");
-            List<Station> estacoes = estacaoRepo.findAll();
-            if (estacoes.isEmpty()) {
-                System.out.println("❌ ERRO: Não há estações carregadas.");
+            // 1. List and select Departure Station
+            System.out.println("\n--- Available Stations ---");
+            List<Station> stations = stationRepo.findAll();
+            if (stations.isEmpty()) {
+                System.out.println("❌ ERROR: No stations found.");
                 return;
             }
-            estacoes.forEach(System.out::println);
-            System.out.print("➡️  Insira o ID da Estação de PARTIDA: ");
-            int idPartida = scanner.nextInt();
-            scanner.nextLine(); // Consumir newline
+            stations.forEach(System.out::println);
+            System.out.print("➡️  Enter the ID of the DEPARTURE Station: ");
+            int departureId = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
 
-            // 1.1 Validar se estação de partida existe
-            if (estacaoRepo.findById(idPartida).isEmpty()) {
-                System.out.printf("❌ ERRO: Estação com ID %d não encontrada.\n", idPartida);
-                return;
-            }
-
-            // 2. Listar Destinos Possíveis (Conexões Diretas)
-            System.out.println("\n--- Destinos Diretamente Conectados ---");
-            List<Station> destinosPossiveis = controller.getDirectlyConnectedStations(idPartida); // Chama o novo método do controller
-
-            if (destinosPossiveis.isEmpty()) {
-                System.out.println("   Nenhuma estação diretamente conectada encontrada a partir desta origem.");
+            // 1.1 Validate departure station
+            if (stationRepo.findById(departureId).isEmpty()) {
+                System.out.printf("❌ ERROR: Station with ID %d not found.%n", departureId);
                 return;
             }
 
-            final Set<Integer> idsDestinosValidos = new HashSet<>(); // Para validação rápida
-            destinosPossiveis.forEach(est -> {
-                System.out.println(est); // Mostra "ID: X - Nome"
-                idsDestinosValidos.add(est.getIdEstacao());
+            // 2. List directly connected destinations
+            System.out.println("\n--- Directly Connected Destinations ---");
+            List<Station> connectedStations = controller.getDirectlyConnectedStations(departureId);
+
+            if (connectedStations.isEmpty()) {
+                System.out.println("   No directly connected stations found from this origin.");
+                return;
+            }
+
+            final Set<Integer> validDestinationIds = new HashSet<>();
+            connectedStations.forEach(st -> {
+                System.out.println(st);
+                validDestinationIds.add(st.getIdEstacao());
             });
 
-            // 3. Pedir Estação de Chegada (validando contra a lista)
-            int idChegada = -1;
-            boolean destinoValido = false;
-            while (!destinoValido) {
-                System.out.print("\n➡️  Insira o ID da Estação de CHEGADA (da lista acima): ");
+            // 3. Ask for Arrival Station (validated)
+            int arrivalId = -1;
+            boolean validDestination = false;
+            while (!validDestination) {
+                System.out.print("\n➡️  Enter the ID of the ARRIVAL Station (from the list above): ");
                 try {
-                    idChegada = scanner.nextInt();
-                    scanner.nextLine(); // Consumir newline
+                    arrivalId = scanner.nextInt();
+                    scanner.nextLine(); // Consume newline
 
-                    if (idChegada == idPartida) {
-                        System.out.println("❌ ERRO: A estação de chegada não pode ser igual à de partida.");
-                    } else if (idsDestinosValidos.contains(idChegada)) {
-                        destinoValido = true;
+                    if (arrivalId == departureId) {
+                        System.out.println("❌ ERROR: Arrival station cannot be the same as departure station.");
+                    } else if (validDestinationIds.contains(arrivalId)) {
+                        validDestination = true;
                     } else {
-                        System.out.println("❌ ERRO: ID inválido. Escolha um ID da lista de destinos conectados.");
+                        System.out.println("❌ ERROR: Invalid ID. Please select an ID from the list of connected destinations.");
                     }
                 } catch (InputMismatchException e) {
-                    System.out.println("❌ ERRO: Input inválido. Por favor, insira apenas números.");
-                    scanner.nextLine(); // Limpar buffer
+                    System.out.println("❌ ERROR: Invalid input. Please enter numbers only.");
+                    scanner.nextLine(); // Clear buffer
                 }
             }
 
-
-            // 4. Listar e pedir Locomotiva (como antes)
-            System.out.println("\n--- Locomotivas Disponíveis ---");
-            List<Locomotive> locomotivas = locomotivaRepo.findAll();
-            if (locomotivas.isEmpty()) {
-                System.out.println("❌ ERRO: Não há locomotivas carregadas.");
+            // 4. List and select Locomotive
+            System.out.println("\n--- Available Locomotives ---");
+            List<Locomotive> locomotives = locomotiveRepo.findAll();
+            if (locomotives.isEmpty()) {
+                System.out.println("❌ ERROR: No locomotives found.");
                 return;
             }
-            locomotivas.forEach(System.out::println);
-            System.out.print("➡️  Insira o ID da Locomotiva selecionada: ");
-            int idLocomotiva = scanner.nextInt();
-            scanner.nextLine(); // Consumir newline
+            locomotives.forEach(System.out::println);
+            System.out.print("➡️  Enter the ID of the selected Locomotive: ");
+            int locomotiveId = scanner.nextInt();
+            scanner.nextLine(); // Consume newline
 
-            // 5. Chamar Controller (método original) e Imprimir Resultado
-            System.out.println("\n⚙️  A calcular o caminho mais rápido...");
-            String resultado = controller.calculateTravelTime(idPartida, idChegada, idLocomotiva); // Chama o método original
+            // 5. Call Controller and print result
+            System.out.println("\n⚙️  Calculating fastest route...");
+            String result = controller.calculateTravelTime(departureId, arrivalId, locomotiveId);
 
             System.out.println("\n" + "=".repeat(50));
-            System.out.println("              Resultado do Cálculo");
+            System.out.println("              Travel Time Result");
             System.out.println("=".repeat(50));
-            System.out.println(resultado); // Imprime o relatório formatado ou a mensagem de erro
+            System.out.println(result);
             System.out.println("=".repeat(50));
-
 
         } catch (InputMismatchException e) {
-            System.out.println("\n❌ ERRO: Input inválido. Por favor, insira apenas números.");
-            scanner.nextLine(); // Limpar o buffer do scanner
+            System.out.println("\n❌ ERROR: Invalid input. Please enter numbers only.");
+            scanner.nextLine(); // Clear scanner buffer
         } catch (Exception e) {
-            System.out.println("\n❌ ERRO inesperado ao executar USLP03: " + e.getMessage());
+            System.out.println("\n❌ UNEXPECTED ERROR while executing USLP03: " + e.getMessage());
             e.printStackTrace();
         }
     }

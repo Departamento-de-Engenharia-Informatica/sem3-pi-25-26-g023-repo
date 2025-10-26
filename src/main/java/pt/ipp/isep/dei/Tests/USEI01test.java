@@ -18,97 +18,97 @@ public class USEI01test implements Runnable {
     @Override
     public void run() {
         System.out.println("======================================================");
-        System.out.println("     Relatório de Testes - USEI01 Wagon Unloading      ");
+        System.out.println("     Test Report - USEI01 Wagon Unloading      ");
         System.out.println("======================================================");
 
-        testResults.put("Cenário 01: Descarregar vagão vazio", testVagaoVazio());
-        testResults.put("Cenário 02: Descarregar vagão simples (FIFO)", testVagaoSimplesFIFO());
-        testResults.put("Cenário 03: Descarregar vagão simples (FEFO)", testVagaoSimplesFEFO());
-        testResults.put("Cenário 04: Descarregar vagão misto (FEFO/FIFO)", testVagaoMisto());
-        testResults.put("Cenário 05: Descarregar múltiplos vagões", testMultiplosVagoes());
-        testResults.put("Cenário 06: Descarregar excedendo capacidade da Bay", testExcederCapacidadeBay());
-        testResults.put("Cenário 07: Descarregar excedendo capacidade do Warehouse", testExcederCapacidadeWarehouse());
-        testResults.put("Cenário 08: Descarregar sem Warehouses disponíveis", testSemWarehouses());
-        testResults.put("Cenário 09: Descarregar com caixas duplicadas (deve falhar ou ignorar)", testCaixasDuplicadas()); // Assumindo validação
+        testResults.put("Scenario 01: Unload empty wagon", testVagaoVazio());
+        testResults.put("Scenario 02: Unload simple wagon (FIFO)", testVagaoSimplesFIFO());
+        testResults.put("Scenario 03: Unload simple wagon (FEFO)", testVagaoSimplesFEFO());
+        testResults.put("Scenario 04: Unload mixed wagon (FEFO/FIFO)", testVagaoMisto());
+        testResults.put("Scenario 05: Unload multiple wagons", testMultiplosVagoes());
+        testResults.put("Scenario 06: Unload exceeding Bay capacity", testExcederCapacidadeBay());
+        testResults.put("Scenario 07: Unload exceeding Warehouse capacity", testExcederCapacidadeWarehouse());
+        testResults.put("Scenario 08: Unload with no available Warehouses", testSemWarehouses());
+        testResults.put("Scenario 09: Unload with duplicate boxes (should fail or ignore)", testCaixasDuplicadas()); // Assuming validation
 
         printSummary();
     }
 
-    // --- Cenários de Teste ---
+    // --- Test Scenarios ---
 
     private boolean testVagaoVazio() {
-        printScenarioHeader("Cenário 01: Descarregar vagão vazio");
+        printScenarioHeader("Scenario 01: Unload empty wagon");
         Inventory inventory = new Inventory();
-        List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10); // 1 WH, 1 Aisle, 1 Bay c/ cap 10
+        List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10); // 1 WH, 1 Aisle, 1 Bay w/ cap 10
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses); // Mock Quarantine/AuditLog
         Wagon wagon = new Wagon("WGN_EMPTY");
         wms.unloadWagons(List.of(wagon));
 
         boolean passed = inventory.getBoxes().isEmpty();
-        printResults("Inventário deve permanecer vazio.", passed ? "Sim" : "Não");
+        printResults("Inventory should remain empty.", passed ? "Yes" : "No");
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testVagaoSimplesFIFO() {
-        printScenarioHeader("Cenário 02: Descarregar vagão simples (FIFO)");
+        printScenarioHeader("Scenario 02: Unload simple wagon (FIFO)");
         Inventory inventory = new Inventory();
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses);
         Wagon wagon = new Wagon("WGN_FIFO");
-        Box boxA = createBox("B001", "SKU01", 5, null, LocalDateTime.now().minusDays(2), null, null); // Mais antiga
-        Box boxB = createBox("B002", "SKU01", 3, null, LocalDateTime.now().minusDays(1), null, null); // Mais recente
-        wagon.addBox(boxB); // Adiciona fora de ordem
+        Box boxA = createBox("B001", "SKU01", 5, null, LocalDateTime.now().minusDays(2), null, null); // Older
+        Box boxB = createBox("B002", "SKU01", 3, null, LocalDateTime.now().minusDays(1), null, null); // Newer
+        wagon.addBox(boxB); // Add out of order
         wagon.addBox(boxA);
         wms.unloadWagons(List.of(wagon));
 
-        List<Box> expectedOrder = List.of(boxA, boxB); // Espera A antes de B
+        List<Box> expectedOrder = List.of(boxA, boxB); // Expect A before B
         List<Box> actualOrder = inventory.getBoxes();
         boolean passed = actualOrder.size() == 2 && actualOrder.get(0).getBoxId().equals("B001") && actualOrder.get(1).getBoxId().equals("B002");
 
-        printResults("Ordem esperada no inventário (FIFO): B001 -> B002", passed ? "Correta" : "Incorreta: " + actualOrder);
+        printResults("Expected order in inventory (FIFO): B001 -> B002", passed ? "Correct" : "Incorrect: " + actualOrder);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testVagaoSimplesFEFO() {
-        printScenarioHeader("Cenário 03: Descarregar vagão simples (FEFO)");
+        printScenarioHeader("Scenario 03: Unload simple wagon (FEFO)");
         Inventory inventory = new Inventory();
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses);
         Wagon wagon = new Wagon("WGN_FEFO");
-        Box boxA = createBox("B003", "SKU02", 5, LocalDate.now().plusDays(10), LocalDateTime.now().minusDays(1), null, null); // Expira depois
-        Box boxB = createBox("B004", "SKU02", 3, LocalDate.now().plusDays(5), LocalDateTime.now().minusDays(2), null, null);  // Expira antes
-        wagon.addBox(boxA); // Adiciona fora de ordem FEFO
+        Box boxA = createBox("B003", "SKU02", 5, LocalDate.now().plusDays(10), LocalDateTime.now().minusDays(1), null, null); // Expires later
+        Box boxB = createBox("B004", "SKU02", 3, LocalDate.now().plusDays(5), LocalDateTime.now().minusDays(2), null, null);  // Expires sooner
+        wagon.addBox(boxA); // Add out of FEFO order
         wagon.addBox(boxB);
         wms.unloadWagons(List.of(wagon));
 
-        List<Box> expectedOrder = List.of(boxB, boxA); // Espera B (expira antes) antes de A
+        List<Box> expectedOrder = List.of(boxB, boxA); // Expect B (expires sooner) before A
         List<Box> actualOrder = inventory.getBoxes();
         boolean passed = actualOrder.size() == 2 && actualOrder.get(0).getBoxId().equals("B004") && actualOrder.get(1).getBoxId().equals("B003");
 
-        printResults("Ordem esperada no inventário (FEFO): B004 -> B003", passed ? "Correta" : "Incorreta: " + actualOrder);
+        printResults("Expected order in inventory (FEFO): B004 -> B003", passed ? "Correct" : "Incorrect: " + actualOrder);
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testVagaoMisto() {
-        printScenarioHeader("Cenário 04: Descarregar vagão misto (FEFO/FIFO)");
+        printScenarioHeader("Scenario 04: Unload mixed wagon (FEFO/FIFO)");
         Inventory inventory = new Inventory();
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses);
         Wagon wagon = new Wagon("WGN_MIX");
-        Box boxA_exp = createBox("B005", "SKU03", 5, LocalDate.now().plusDays(10), LocalDateTime.now().minusDays(5), null, null); // Perecível 1
-        Box boxB_exp = createBox("B006", "SKU03", 3, LocalDate.now().plusDays(5), LocalDateTime.now().minusDays(1), null, null);  // Perecível 2 (expira antes)
-        Box boxC_fifo = createBox("B007", "SKU03", 2, null, LocalDateTime.now().minusDays(3), null, null); // Não perecível 1
-        Box boxD_fifo = createBox("B008", "SKU03", 4, null, LocalDateTime.now().minusDays(4), null, null); // Não perecível 2 (chegou antes)
+        Box boxA_exp = createBox("B005", "SKU03", 5, LocalDate.now().plusDays(10), LocalDateTime.now().minusDays(5), null, null); // Perishable 1
+        Box boxB_exp = createBox("B006", "SKU03", 3, LocalDate.now().plusDays(5), LocalDateTime.now().minusDays(1), null, null);  // Perishable 2 (expires sooner)
+        Box boxC_fifo = createBox("B007", "SKU03", 2, null, LocalDateTime.now().minusDays(3), null, null); // Non-perishable 1
+        Box boxD_fifo = createBox("B008", "SKU03", 4, null, LocalDateTime.now().minusDays(4), null, null); // Non-perishable 2 (arrived sooner)
         wagon.addBox(boxA_exp);
         wagon.addBox(boxC_fifo);
         wagon.addBox(boxB_exp);
         wagon.addBox(boxD_fifo);
         wms.unloadWagons(List.of(wagon));
 
-        // Ordem esperada: Perecíveis por FEFO, depois Não Perecíveis por FIFO
+        // Expected order: Perishables by FEFO, then Non-Perishables by FIFO
         List<String> expectedIds = List.of("B006", "B005", "B008", "B007");
         List<Box> actualOrder = inventory.getBoxes();
         boolean passed = actualOrder.size() == 4 &&
@@ -117,15 +117,15 @@ public class USEI01test implements Runnable {
                 actualOrder.get(2).getBoxId().equals(expectedIds.get(2)) &&
                 actualOrder.get(3).getBoxId().equals(expectedIds.get(3));
 
-        printResults("Ordem esperada (FEFO>FIFO): B006, B005, B008, B007", passed ? "Correta" : "Incorreta: " + actualOrder.stream().map(Box::getBoxId).toList());
+        printResults("Expected order (FEFO>FIFO): B006, B005, B008, B007", passed ? "Correct" : "Incorrect: " + actualOrder.stream().map(Box::getBoxId).toList());
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testMultiplosVagoes() {
-        printScenarioHeader("Cenário 05: Descarregar múltiplos vagões");
+        printScenarioHeader("Scenario 05: Unload multiple wagons");
         Inventory inventory = new Inventory();
-        List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 20); // Mais capacidade
+        List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 20); // More capacity
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses);
         Wagon wagon1 = new Wagon("WGN1");
         Box boxA = createBox("B101", "SKUA", 5, null, LocalDateTime.now().minusDays(2), null, null);
@@ -134,15 +134,15 @@ public class USEI01test implements Runnable {
         wagon1.addBox(boxB);
 
         Wagon wagon2 = new Wagon("WGN2");
-        Box boxC = createBox("B103", "SKUA", 2, null, LocalDateTime.now().minusDays(3), null, null); // Mais antigo que A
-        Box boxD = createBox("B104", "SKUB", 4, LocalDate.now().plusDays(2), LocalDateTime.now().minusDays(4), null, null); // Expira antes de B
+        Box boxC = createBox("B103", "SKUA", 2, null, LocalDateTime.now().minusDays(3), null, null); // Older than A
+        Box boxD = createBox("B104", "SKUB", 4, LocalDate.now().plusDays(2), LocalDateTime.now().minusDays(4), null, null); // Expires before B
         wagon2.addBox(boxC);
         wagon2.addBox(boxD);
 
-        wms.unloadWagons(List.of(wagon1, wagon2)); // Descarrega ambos
+        wms.unloadWagons(List.of(wagon1, wagon2)); // Unload both
 
         List<Box> actualOrder = inventory.getBoxes();
-        // Ordem esperada: D (FEFO), B (FEFO), C (FIFO), A (FIFO)
+        // Expected order: D (FEFO), B (FEFO), C (FIFO), A (FIFO)
         List<String> expectedIds = List.of("B104", "B102", "B103", "B101");
         boolean passed = actualOrder.size() == 4 &&
                 actualOrder.get(0).getBoxId().equals(expectedIds.get(0)) &&
@@ -150,15 +150,15 @@ public class USEI01test implements Runnable {
                 actualOrder.get(2).getBoxId().equals(expectedIds.get(2)) &&
                 actualOrder.get(3).getBoxId().equals(expectedIds.get(3));
 
-        printResults("Ordem esperada (FEFO>FIFO multi-vagão): B104, B102, B103, B101", passed ? "Correta" : "Incorreta: " + actualOrder.stream().map(Box::getBoxId).toList());
+        printResults("Expected order (FEFO>FIFO multi-wagon): B104, B102, B103, B101", passed ? "Correct" : "Incorrect: " + actualOrder.stream().map(Box::getBoxId).toList());
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testExcederCapacidadeBay() {
-        printScenarioHeader("Cenário 06: Descarregar excedendo capacidade da Bay");
+        printScenarioHeader("Scenario 06: Unload exceeding Bay capacity");
         Inventory inventory = new Inventory();
-        // Warehouse com 1 Aisle, 2 Bays (Bay1 cap=2, Bay2 cap=3)
+        // Warehouse with 1 Aisle, 2 Bays (Bay1 cap=2, Bay2 cap=3)
         List<Warehouse> warehouses = new ArrayList<>();
         Warehouse wh = new Warehouse("W1");
         Bay bay1 = new Bay("W1", 1, 1, 2);
@@ -169,7 +169,7 @@ public class USEI01test implements Runnable {
 
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses);
         Wagon wagon = new Wagon("WGN_SPLIT");
-        // 4 caixas, devem ir 2 para Bay1 e 2 para Bay2
+        // 4 boxes, 2 should go to Bay1 and 2 to Bay2
         Box box1 = createBox("BX1", "SKUC", 1, null, LocalDateTime.now().minusDays(4), null, null);
         Box box2 = createBox("BX2", "SKUC", 1, null, LocalDateTime.now().minusDays(3), null, null);
         Box box3 = createBox("BX3", "SKUC", 1, null, LocalDateTime.now().minusDays(2), null, null);
@@ -180,18 +180,18 @@ public class USEI01test implements Runnable {
 
         boolean bay1Correct = bay1.getBoxes().size() == 2 && bay1.getBoxes().get(0).getBoxId().equals("BX1") && bay1.getBoxes().get(1).getBoxId().equals("BX2");
         boolean bay2Correct = bay2.getBoxes().size() == 2 && bay2.getBoxes().get(0).getBoxId().equals("BX3") && bay2.getBoxes().get(1).getBoxId().equals("BX4");
-        boolean inventoryCorrect = inventory.getBoxes().size() == 4; // Verifica se todas foram adicionadas ao inventário lógico
+        boolean inventoryCorrect = inventory.getBoxes().size() == 4; // Check if all were added to logical inventory
         boolean passed = bay1Correct && bay2Correct && inventoryCorrect;
 
-        printResults("Bay1 deve ter 2 caixas (BX1, BX2)", bay1Correct ? "Correto" : "Incorreto: " + bay1.getBoxes().stream().map(Box::getBoxId).toList());
-        printResults("Bay2 deve ter 2 caixas (BX3, BX4)", bay2Correct ? "Correto" : "Incorreto: " + bay2.getBoxes().stream().map(Box::getBoxId).toList());
-        printResults("Inventário total deve ter 4 caixas", inventoryCorrect ? "Correto" : "Incorreto: " + inventory.getBoxes().size());
+        printResults("Bay1 should have 2 boxes (BX1, BX2)", bay1Correct ? "Correct" : "Incorrect: " + bay1.getBoxes().stream().map(Box::getBoxId).toList());
+        printResults("Bay2 should have 2 boxes (BX3, BX4)", bay2Correct ? "Correct" : "Incorrect: " + bay2.getBoxes().stream().map(Box::getBoxId).toList());
+        printResults("Total inventory should have 4 boxes", inventoryCorrect ? "Correct" : "Incorrect: " + inventory.getBoxes().size());
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testExcederCapacidadeWarehouse() {
-        printScenarioHeader("Cenário 07: Descarregar excedendo capacidade do Warehouse");
+        printScenarioHeader("Scenario 07: Unload exceeding Warehouse capacity");
         Inventory inventory = new Inventory();
         // 2 Warehouses: WH1 (1 aisle, 1 bay, cap=2), WH2 (1 aisle, 1 bay, cap=2)
         List<Warehouse> warehouses = new ArrayList<>();
@@ -204,7 +204,7 @@ public class USEI01test implements Runnable {
 
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses);
         Wagon wagon = new Wagon("WGN_OVERLOAD");
-        // 5 caixas. 2 vão para WH1, 2 para WH2, 1 não cabe.
+        // 5 boxes. 2 go to WH1, 2 to WH2, 1 doesn't fit.
         Box box1 = createBox("B201", "SKUD", 1, null, LocalDateTime.now().minusDays(5), null, null);
         Box box2 = createBox("B202", "SKUD", 1, null, LocalDateTime.now().minusDays(4), null, null);
         Box box3 = createBox("B203", "SKUD", 1, null, LocalDateTime.now().minusDays(3), null, null);
@@ -212,33 +212,33 @@ public class USEI01test implements Runnable {
         Box box5 = createBox("B205", "SKUD", 1, null, LocalDateTime.now().minusDays(1), null, null);
         wagon.addBox(box1); wagon.addBox(box2); wagon.addBox(box3); wagon.addBox(box4); wagon.addBox(box5);
 
-        // Limpa o log de teste antes de executar
+        // Clear the test log before executing
         AuditLog testLog = new AuditLog("audit_test_overload.log");
-        try { new java.io.File("audit_test_overload.log").delete(); } catch (Exception e) {} // Apaga log anterior se existir
-        wms = new WMS(new Quarantine(), inventory, testLog, warehouses); // Usa o log de teste
+        try { new java.io.File("audit_test_overload.log").delete(); } catch (Exception e) {} // Delete previous log if it exists
+        wms = new WMS(new Quarantine(), inventory, testLog, warehouses); // Use the test log
         wms.unloadWagons(List.of(wagon));
 
         boolean wh1Correct = wh1.getBays().get(0).getBoxes().size() == 2;
         boolean wh2Correct = wh2.getBays().get(0).getBoxes().size() == 2;
-        boolean inventoryCorrect = inventory.getBoxes().size() == 4; // Apenas 4 devem ter sido adicionadas
-        // Verifica se a falha foi logada (simplificado - idealmente leria o ficheiro)
-        // Aqui apenas assumimos que a mensagem de erro foi impressa
-        boolean logExpected = true; // Assume que a mensagem de erro no console é suficiente para passar
+        boolean inventoryCorrect = inventory.getBoxes().size() == 4; // Only 4 should have been added
+        // Check if the failure was logged (simplified - ideally would read the file)
+        // Here we just assume the error message was printed to the console
+        boolean logExpected = true; // Assume error message in console is sufficient to pass
 
         boolean passed = wh1Correct && wh2Correct && inventoryCorrect && logExpected;
 
-        printResults("WH1 deve ter 2 caixas", wh1Correct ? "Correto" : "Incorreto");
-        printResults("WH2 deve ter 2 caixas", wh2Correct ? "Correto" : "Incorreto");
-        printResults("Inventário total deve ter 4 caixas", inventoryCorrect ? "Correto" : "Incorreto: " + inventory.getBoxes().size());
-        printResults("Mensagem/Log de erro esperado para caixa B205", logExpected ? "Assumido (Verificar consola/log)" : "Não verificado");
+        printResults("WH1 should have 2 boxes", wh1Correct ? "Correct" : "Incorrect");
+        printResults("WH2 should have 2 boxes", wh2Correct ? "Correct" : "Incorrect");
+        printResults("Total inventory should have 4 boxes", inventoryCorrect ? "Correct" : "Incorrect: " + inventory.getBoxes().size());
+        printResults("Expected error message/log for box B205", logExpected ? "Assumed (Check console/log)" : "Not verified");
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testSemWarehouses() {
-        printScenarioHeader("Cenário 08: Descarregar sem Warehouses disponíveis");
+        printScenarioHeader("Scenario 08: Unload with no available Warehouses");
         Inventory inventory = new Inventory();
-        List<Warehouse> warehouses = new ArrayList<>(); // Lista vazia
+        List<Warehouse> warehouses = new ArrayList<>(); // Empty list
         AuditLog testLog = new AuditLog("audit_test_nowh.log");
         try { new java.io.File("audit_test_nowh.log").delete(); } catch (Exception e) {}
         WMS wms = new WMS(new Quarantine(), inventory, testLog, warehouses);
@@ -248,55 +248,55 @@ public class USEI01test implements Runnable {
         wms.unloadWagons(List.of(wagon));
 
         boolean inventoryEmpty = inventory.getBoxes().isEmpty();
-        // Idealmente, verificar se o log contém a mensagem de erro esperada.
-        boolean logExpected = true; // Assume que a mensagem de erro no console/log é suficiente
+        // Ideally, check if the log contains the expected error message.
+        boolean logExpected = true; // Assume the error message in console/log is sufficient
 
         boolean passed = inventoryEmpty && logExpected;
 
-        printResults("Inventário deve permanecer vazio", inventoryEmpty ? "Correto" : "Incorreto");
-        printResults("Mensagem/Log de erro esperado", logExpected ? "Assumido (Verificar consola/log)" : "Não verificado");
+        printResults("Inventory should remain empty", inventoryEmpty ? "Correct" : "Incorrect");
+        printResults("Expected error message/log", logExpected ? "Assumed (Check console/log)" : "Not verified");
         printTestStatus(passed);
         return passed;
     }
 
     private boolean testCaixasDuplicadas() {
-        printScenarioHeader("Cenário 09: Descarregar com caixas duplicadas (deve falhar ou ignorar)");
-        // Este teste depende de como a validação de ID duplicado é implementada.
-        // Assumindo que WMS ou InventoryManager valida antes de inserir.
-        // Se a validação for na inserção no BDDAD, este teste não se aplica aqui.
+        printScenarioHeader("Scenario 09: Unload with duplicate boxes (should fail or ignore)");
+        // This test depends on how duplicate ID validation is implemented.
+        // Assuming WMS or InventoryManager validates before inserting.
+        // If validation is on BDDAD insertion, this test doesn't apply here.
         Inventory inventory = new Inventory();
         List<Warehouse> warehouses = createWarehousesBasicos(1, 1, 10);
         WMS wms = new WMS(new Quarantine(), inventory, new AuditLog("audit_test.log"), warehouses);
         Wagon wagon = new Wagon("WGN_DUPS");
         Box boxA = createBox("B401", "SKUF", 5, null, LocalDateTime.now().minusDays(2), null, null);
-        Box boxB_dup = createBox("B401", "SKUF", 3, null, LocalDateTime.now().minusDays(1), null, null); // ID Duplicado
+        Box boxB_dup = createBox("B401", "SKUF", 3, null, LocalDateTime.now().minusDays(1), null, null); // Duplicate ID
         wagon.addBox(boxA);
         wagon.addBox(boxB_dup);
 
-        // Tentativa de descarga
+        // Unload attempt
         try {
             wms.unloadWagons(List.of(wagon));
-            // Se chegar aqui sem exceção, verifica se apenas uma foi adicionada
+            // If it gets here without exception, check if only one was added
             boolean passed = inventory.getBoxes().size() == 1 && inventory.getBoxes().get(0).getBoxId().equals("B401");
-            printResults("Inventário deve conter apenas uma caixa B401", passed ? "Correto" : "Incorreto: " + inventory.getBoxes().size());
+            printResults("Inventory should contain only one B401 box", passed ? "Correct" : "Incorrect: " + inventory.getBoxes().size());
             printTestStatus(passed);
             return passed;
         } catch (IllegalArgumentException e) {
-            // Se uma exceção for lançada devido ao ID duplicado (bom comportamento)
-            boolean passed = e.getMessage().contains("B401"); // Verifica se a mensagem de erro menciona o ID
-            printResults("Exceção esperada para ID duplicado B401", passed ? "Lançada corretamente" : "Exceção inesperada/incorreta: " + e.getMessage());
+            // If an exception is thrown due to duplicate ID (good behavior)
+            boolean passed = e.getMessage().contains("B401"); // Check if the error message mentions the ID
+            printResults("Expected exception for duplicate ID B401", passed ? "Thrown correctly" : "Unexpected/incorrect exception: " + e.getMessage());
             printTestStatus(passed);
             return passed;
         } catch (Exception e) {
-            // Outra exceção inesperada
-            printResults("Erro inesperado durante teste de duplicados", "Falhou: " + e.getMessage());
+            // Another unexpected exception
+            printResults("Unexpected error during duplicate test", "Failed: " + e.getMessage());
             printTestStatus(false);
             return false;
         }
     }
 
 
-    // --- Métodos Auxiliares ---
+    // --- Helper Methods ---
 
     private void printScenarioHeader(String title) {
         System.out.println("\n------------------------------------------------------");
@@ -304,12 +304,12 @@ public class USEI01test implements Runnable {
         System.out.println("------------------------------------------------------");
     }
 
-    // Cria um Box simples
+    // Creates a simple Box
     private Box createBox(String boxId, String sku, int qty, LocalDate expiry, LocalDateTime received, String aisle, String bay) {
         return new Box(boxId, sku, qty, expiry, received, aisle, bay);
     }
 
-    // Cria uma estrutura básica de warehouses, aisles e bays
+    // Creates a basic structure of warehouses, aisles, and bays
     private List<Warehouse> createWarehousesBasicos(int numWH, int numAislesPerWH, int numBaysPerAisle, int bayCapacity) {
         List<Warehouse> warehouses = new ArrayList<>();
         for (int i = 1; i <= numWH; i++) {
@@ -323,30 +323,30 @@ public class USEI01test implements Runnable {
         }
         return warehouses;
     }
-    // Overload para capacidade default
+    // Overload for default capacity
     private List<Warehouse> createWarehousesBasicos(int numWH, int numAislesPerWH, int bayCapacity) {
         return createWarehousesBasicos(numWH, numAislesPerWH, 5, bayCapacity); // Default 5 bays per aisle
     }
 
 
-    // Imprime um resultado específico
+    // Prints a specific result
     private void printResults(String description, Object result) {
         System.out.printf("    - %s: %s%n", description, result.toString());
     }
 
-    // Imprime o estado final do teste
+    // Prints the final test status
     private void printTestStatus(boolean passed) {
         if (passed) {
-            System.out.println("\n  --> Resultado do Cenário: ✅ PASSOU");
+            System.out.println("\n  --> Scenario Result: ✅ PASSED");
         } else {
-            System.err.println("\n  --> Resultado do Cenário: ❌ FALHOU");
+            System.err.println("\n  --> Scenario Result: ❌ FAILED");
         }
     }
 
-    // Imprime o sumário final
+    // Prints the final summary
     private void printSummary() {
         System.out.println("\n======================================================");
-        System.out.println("             Sumário do Relatório de Testes USEI01      ");
+        System.out.println("             USEI01 Test Report Summary      ");
         System.out.println("======================================================");
         int passCount = 0;
         int failCount = 0;
@@ -356,7 +356,7 @@ public class USEI01test implements Runnable {
         for (String testName : sortedTestNames) {
             Boolean resultValue = testResults.get(testName);
             boolean passed = resultValue != null && resultValue;
-            String result = passed ? "✅ PASSOU" : "❌ FALHOU";
+            String result = passed ? "✅ PASSED" : "❌ FAILED";
             System.out.printf("  %s: %s%n", testName, result);
             if (passed) {
                 passCount++;
@@ -365,9 +365,9 @@ public class USEI01test implements Runnable {
             }
         }
         System.out.println("------------------------------------------------------");
-        System.out.printf("  Total: %d Passaram, %d Falharam%n", passCount, failCount);
+        System.out.printf("  Total: %d Passed, %d Failed%n", passCount, failCount);
         System.out.println("======================================================");
-        System.out.println("             Fim do Relatório de Testes USEI01        ");
+        System.out.println("             End of USEI01 Test Report        ");
         System.out.println("======================================================");
     }
 }
