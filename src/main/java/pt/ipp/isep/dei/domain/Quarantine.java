@@ -10,6 +10,7 @@ public class Quarantine {
 
     /** Adds a return to quarantine. */
     public void addReturn(Return r) {
+
         stack.push(r);
     }
 
@@ -23,11 +24,13 @@ public class Quarantine {
 
     /** Checks if quarantine is empty. */
     public boolean isEmpty() {
+
         return stack.isEmpty();
     }
 
     /** Returns the number of returns in quarantine. */
     public int size() {
+
         return stack.size();
     }
 }

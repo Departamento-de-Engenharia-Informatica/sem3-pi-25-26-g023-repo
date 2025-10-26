@@ -42,10 +42,14 @@ public class BayLocation implements Comparable<BayLocation> {
     }
 
 
-    public int getAisle() { return aisle; }
+    public int getAisle() {
+        return aisle;
+    }
 
 
-    public int getBay() { return bay; }
+    public int getBay() {
+        return bay;
+    }
 
     /**
      * Parses an integer safely from a string.
@@ -74,6 +78,7 @@ public class BayLocation implements Comparable<BayLocation> {
      * @return {@code true} if valid, otherwise {@code false}
      */
     public boolean isValid() {
+
         return aisle > 0 && bay > 0;
     }
 
@@ -89,6 +94,7 @@ public class BayLocation implements Comparable<BayLocation> {
 
     @Override
     public int hashCode() {
+
         return Objects.hash(aisle, bay);
     }
 

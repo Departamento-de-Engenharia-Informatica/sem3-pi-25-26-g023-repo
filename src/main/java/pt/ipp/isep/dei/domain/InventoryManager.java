@@ -275,14 +275,17 @@ public class InventoryManager {
     }
 
     public Inventory getInventory() {
+
         return inventory;
     }
 
     public Map<String, Item> getItemsMap() {
+
         return Collections.unmodifiableMap(items);
     }
 
     public List<Item> getItems() {
+
         return new ArrayList<>(items.values());
     }
 }

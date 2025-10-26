@@ -11,6 +11,7 @@ public class USEI01test implements Runnable {
     private final Map<String, Boolean> testResults = new HashMap<>();
 
     public static void main(String[] args) {
+
         new USEI01test().run();
     }
 

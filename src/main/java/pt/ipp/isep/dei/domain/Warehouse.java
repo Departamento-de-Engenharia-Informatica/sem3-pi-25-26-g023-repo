@@ -17,6 +17,7 @@ public class Warehouse {
      * @param warehouseId unique identifier for the warehouse
      */
     public Warehouse(String warehouseId) {
+
         this.warehouseId = warehouseId;
     }
 
@@ -24,6 +25,7 @@ public class Warehouse {
      * @return the warehouse identifier
      */
     public String getWarehouseId() {
+
         return warehouseId;
     }
 
@@ -60,6 +62,7 @@ public class Warehouse {
      * @return true if all bays are full, false otherwise
      */
     public boolean isFull() {
+
         return bays.stream().allMatch(b -> b.getBoxes().size() >= b.getCapacityBoxes());
     }
 
@@ -67,6 +70,7 @@ public class Warehouse {
      * @return list of all bays in the warehouse
      */
     public List<Bay> getBays() {
+
         return bays;
     }
 }

@@ -19,23 +19,29 @@ public class Item {
     }
 
     public String getSku() {
+
         return sku;
     }
     public String getName() {
+
         return name;
     }
     public String getCategory() {
+
         return category;
     }
     public String getUnit() {
+
         return unit;
     }
     public double getUnitWeight() {
+
         return unitWeight;
     }
 
     @Override
     public String toString() {
+
         return String.format("%s (%s) - %.2f %s", name, category, unitWeight, unit);
     }
 }

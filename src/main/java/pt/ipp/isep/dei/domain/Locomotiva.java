@@ -16,6 +16,7 @@ public class Locomotiva {
     }
 
     public String getModelo() {
+
         return modelo;
     }
 
@@ -25,6 +26,7 @@ public class Locomotiva {
 
     @Override
     public String toString() {
+
         return String.format("ID: %d - Modelo %s (%s)", idLocomotiva, modelo, tipo);
     }
 }

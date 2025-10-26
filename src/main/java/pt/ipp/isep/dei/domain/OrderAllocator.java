@@ -19,6 +19,7 @@ public class OrderAllocator {
 
     /** Creates an OrderAllocator with an empty item list. */
     public OrderAllocator() {
+
         this.items = new HashMap<>();
     }
 
@@ -27,6 +28,7 @@ public class OrderAllocator {
      * @param items a map of items (can be null)
      */
     public void setItems(Map<String, Item> items) {
+
         this.items = items != null ? items : new HashMap<>();
     }
 

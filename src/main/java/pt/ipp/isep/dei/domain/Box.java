@@ -77,26 +77,44 @@ public class Box implements Comparable<Box> {
                 receivedDate, aisle, bay);
     }
 
-    public String getBoxId() { return boxId; }
+    public String getBoxId() {
+        return boxId;
+    }
 
-    public String getSku() { return sku; }
+    public String getSku() {
+        return sku;
+    }
 
-    public int getQtyAvailable() { return qtyAvailable; }
+    public int getQtyAvailable() {
+        return qtyAvailable;
+    }
 
-    public String getAisle() { return aisle; }
+    public String getAisle() {
+        return aisle;
+    }
 
 
-    public String getBay() { return bay; }
+    public String getBay() {
+        return bay;
+    }
 
-    public LocalDate getExpiryDate() { return expiryDate; }
+    public LocalDate getExpiryDate() {
+        return expiryDate;
+    }
 
-    public LocalDateTime getReceivedDate() { return receivedDate; }
+    public LocalDateTime getReceivedDate() {
+        return receivedDate;
+    }
 
     /** Sets the aisle location. */
-    public void setAisle(String aisle) { this.aisle = aisle; }
+    public void setAisle(String aisle) {
+        this.aisle = aisle;
+    }
 
     /** Sets the bay location. */
-    public void setBay(String bay) { this.bay = bay; }
+    public void setBay(String bay) {
+        this.bay = bay;
+    }
 
     /**
      * Compares boxes using FEFO for perishable items

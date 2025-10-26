@@ -28,6 +28,7 @@ public class RailwayPath {
      * @return unmodifiable list of segments in this path
      */
     public List<SegmentoLinha> getSegments() {
+
         return Collections.unmodifiableList(segments);
     }
 
@@ -35,6 +36,7 @@ public class RailwayPath {
      * @return total distance of the path in kilometers
      */
     public double getTotalDistance() {
+
         return totalDistance;
     }
 
@@ -49,6 +51,7 @@ public class RailwayPath {
      * @return total travel time converted to minutes
      */
     public long getTotalTimeMinutes() {
+
         return Math.round(totalTimeHours * 60);
     }
 
@@ -56,6 +59,7 @@ public class RailwayPath {
      * @return true if this path contains no segments
      */
     public boolean isEmpty() {
+
         return segments.isEmpty();
     }
 

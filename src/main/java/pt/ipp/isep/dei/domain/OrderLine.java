@@ -56,6 +56,7 @@ public class OrderLine {
      * @return the sequential line number within the order
      */
     public int getLineNo() {
+
         return lineNo;
     }
 
@@ -65,6 +66,7 @@ public class OrderLine {
      * @return the product SKU identifier
      */
     public String getSku() {
+
         return sku;
     }
 

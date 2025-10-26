@@ -15,6 +15,7 @@ public class Wagon {
      * @param wagonId unique identifier for the wagon
      */
     public Wagon(String wagonId) {
+
         this.wagonId = wagonId;
     }
 
@@ -23,6 +24,7 @@ public class Wagon {
      * @param b the box to add
      */
     public void addBox(Box b) {
+
         boxes.add(b);
     }
 
@@ -30,6 +32,7 @@ public class Wagon {
      * @return all boxes in the wagon
      */
     public List<Box> getBoxes() {
+
         return boxes;
     }
 

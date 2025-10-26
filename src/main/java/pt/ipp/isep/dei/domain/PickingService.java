@@ -13,6 +13,7 @@ public class PickingService {
 
     /** Creates a new picking service. */
     public PickingService() {
+
         this.itemsMap = new HashMap<>();
     }
 

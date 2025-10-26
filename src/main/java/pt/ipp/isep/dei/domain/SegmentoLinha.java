@@ -16,22 +16,27 @@ public class SegmentoLinha {
     }
 
     public int getIdSegmento() {
+
         return idSegmento;
     }
 
     public int getIdEstacaoInicio() {
+
         return idEstacaoInicio;
     }
 
     public int getIdEstacaoFim() {
+
         return idEstacaoFim;
     }
 
     public double getComprimento() {
+
         return comprimento;
     }
 
     public double getVelocidadeMaxima() {
+
         return velocidadeMaxima;
     }
 }
