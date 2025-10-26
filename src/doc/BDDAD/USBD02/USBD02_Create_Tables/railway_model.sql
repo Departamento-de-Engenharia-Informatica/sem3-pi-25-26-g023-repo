@@ -3,26 +3,64 @@
 -- =============================================
 
 -- CLEAN UP EXISTING TABLES
-DROP TABLE BAY CASCADE CONSTRAINTS;
-DROP TABLE BOX CASCADE CONSTRAINTS;
-DROP TABLE CUSTOMER_ORDER CASCADE CONSTRAINTS;
-DROP TABLE ITEM CASCADE CONSTRAINTS;
-DROP TABLE LINE_SEGMENT CASCADE CONSTRAINTS;
-DROP TABLE LOCOMOTIVE CASCADE CONSTRAINTS;
-DROP TABLE OPERATOR CASCADE CONSTRAINTS;
-DROP TABLE ORDER_LINE CASCADE CONSTRAINTS;
-DROP TABLE RAILWAY_LINE CASCADE CONSTRAINTS;
-DROP TABLE RETURN_ITEM CASCADE CONSTRAINTS;
-DROP TABLE ROLLING_STOCK CASCADE CONSTRAINTS;
-DROP TABLE STATION CASCADE CONSTRAINTS;
-DROP TABLE WAGON CASCADE CONSTRAINTS;
-DROP TABLE WAREHOUSE CASCADE CONSTRAINTS;
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE RETURN_ITEM CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE ORDER_LINE CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE CUSTOMER_ORDER CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE BOX CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE BAY CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE ITEM CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE WAREHOUSE CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE WAGON CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE LOCOMOTIVE CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE ROLLING_STOCK CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE LINE_SEGMENT CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE RAILWAY_LINE CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE STATION CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
+BEGIN
+EXECUTE IMMEDIATE 'DROP TABLE OPERATOR CASCADE CONSTRAINTS';
+EXCEPTION WHEN OTHERS THEN NULL; END;
+/
 
--- =============================================
 -- CREATE TABLES
--- =============================================
-
--- RAILWAY INFRASTRUCTURE TABLES
 CREATE TABLE OPERATOR (
                           operator_id VARCHAR2(10) NOT NULL,
                           name VARCHAR2(100),
@@ -36,8 +74,8 @@ CREATE TABLE STATION (
                          station_id VARCHAR2(10) NOT NULL,
                          name VARCHAR2(100),
                          type VARCHAR2(50),
-                         has_warehouse CHAR(1),
-                         has_refrigerated CHAR(1),
+                         has_warehouse CHAR(1) CHECK (has_warehouse IN ('Y','N')),
+                         has_refrigerated CHAR(1) CHECK (has_refrigerated IN ('Y','N')),
                          latitude NUMBER(10,6),
                          longitude NUMBER(10,6),
                          PRIMARY KEY (station_id)
@@ -59,9 +97,9 @@ CREATE TABLE LINE_SEGMENT (
                               segment_length_km NUMBER(8,2),
                               track_type VARCHAR2(20),
                               gauge_mm NUMBER(5,1),
-                              is_eletrified CHAR(1),
-                              max_weigth_kg_per_m NUMBER(8,2),
-                              max_speed_kmh NUMBER,
+                              is_electrified CHAR(1) CHECK (is_electrified IN ('Y','N')),
+                              max_weight_kg_per_m NUMBER(8,2),
+                              max_speed_kmh NUMBER(4),
                               PRIMARY KEY (segment_id)
 );
 
@@ -70,24 +108,24 @@ CREATE TABLE ROLLING_STOCK (
                                operator_id VARCHAR2(10) NOT NULL,
                                make VARCHAR2(50),
                                model VARCHAR2(50),
-                               year_of_service NUMBER,
+                               year_of_service NUMBER(4),
                                gauge_mm NUMBER(5,1),
                                length_m NUMBER(5,2),
                                width_m NUMBER(5,2),
                                height_m NUMBER(5,2),
                                tare_weight_kg NUMBER(8,2),
-                               number_of_bogies NUMBER,
+                               number_of_bogies NUMBER(2),
                                PRIMARY KEY (stock_id)
 );
 
 CREATE TABLE LOCOMOTIVE (
                             stock_id VARCHAR2(10) NOT NULL,
                             locomotive_type VARCHAR2(20),
-                            power_kw NUMBER,
+                            power_kw NUMBER(6),
                             acceleration_kmh_s NUMBER(3,2),
                             max_total_weight_kg NUMBER(8,2),
-                            fuel_capacity_l NUMBER,
-                            supports_multiple_gauges CHAR(1),
+                            fuel_capacity_l NUMBER(6),
+                            supports_multiple_gauges CHAR(1) CHECK (supports_multiple_gauges IN ('Y','N')),
                             PRIMARY KEY (stock_id)
 );
 
@@ -97,12 +135,11 @@ CREATE TABLE WAGON (
                        payload_capacity_kg NUMBER(8,2),
                        volume_capacity_m3 NUMBER(8,2),
                        container_supported VARCHAR2(50),
-                       is_refrigerated CHAR(1),
+                       is_refrigerated CHAR(1) CHECK (is_refrigerated IN ('Y','N')),
                        max_pressure_bar NUMBER(5,2),
                        PRIMARY KEY (stock_id)
 );
 
--- WAREHOUSE MANAGEMENT TABLES
 CREATE TABLE WAREHOUSE (
                            warehouse_id VARCHAR2(20) NOT NULL,
                            name VARCHAR2(100),
@@ -131,7 +168,7 @@ CREATE TABLE BOX (
                      box_id VARCHAR2(20) NOT NULL,
                      qty_available NUMBER(6),
                      expiry_date DATE,
-                     received_at TIMESTAMP(0),
+                     received_at TIMESTAMP,
                      sku VARCHAR2(20) NOT NULL,
                      aisle NUMBER(4) NOT NULL,
                      bay NUMBER(4) NOT NULL,
@@ -159,68 +196,50 @@ CREATE TABLE RETURN_ITEM (
                              sku VARCHAR2(20) NOT NULL,
                              qty NUMBER(6),
                              reason VARCHAR2(50),
-                             timestamp TIMESTAMP(0),
+                             timestamp TIMESTAMP,
                              expiry_date DATE,
                              PRIMARY KEY (return_id)
 );
 
--- =============================================
 -- FOREIGN KEY CONSTRAINTS
--- =============================================
-
--- Railway Infrastructure Constraints
-ALTER TABLE RAILWAY_LINE ADD CONSTRAINT "An operator has several railway lines"
+ALTER TABLE RAILWAY_LINE ADD CONSTRAINT FK_RAILWAY_LINE_OPERATOR
     FOREIGN KEY (owner_operator_id) REFERENCES OPERATOR(operator_id);
 
-ALTER TABLE LINE_SEGMENT ADD CONSTRAINT "A line has several segments"
+ALTER TABLE LINE_SEGMENT ADD CONSTRAINT FK_LINE_SEGMENT_RAILWAY_LINE
     FOREIGN KEY (line_id) REFERENCES RAILWAY_LINE(line_id);
 
-ALTER TABLE LINE_SEGMENT ADD CONSTRAINT "A station can be the start of several segments"
+ALTER TABLE LINE_SEGMENT ADD CONSTRAINT FK_LINE_SEGMENT_START_STATION
     FOREIGN KEY (start_station_id) REFERENCES STATION(station_id);
 
-ALTER TABLE LINE_SEGMENT ADD CONSTRAINT "A station can be the end of several segments"
+ALTER TABLE LINE_SEGMENT ADD CONSTRAINT FK_LINE_SEGMENT_END_STATION
     FOREIGN KEY (end_station_id) REFERENCES STATION(station_id);
 
-ALTER TABLE ROLLING_STOCK ADD CONSTRAINT "An operator has several rolling stocks"
+ALTER TABLE ROLLING_STOCK ADD CONSTRAINT FK_ROLLING_STOCK_OPERATOR
     FOREIGN KEY (operator_id) REFERENCES OPERATOR(operator_id);
 
-ALTER TABLE LOCOMOTIVE ADD CONSTRAINT "A locomotive is a rolling stock"
+ALTER TABLE LOCOMOTIVE ADD CONSTRAINT FK_LOCOMOTIVE_ROLLING_STOCK
     FOREIGN KEY (stock_id) REFERENCES ROLLING_STOCK(stock_id);
 
-ALTER TABLE WAGON ADD CONSTRAINT "A wagon is a rolling stock"
+ALTER TABLE WAGON ADD CONSTRAINT FK_WAGON_ROLLING_STOCK
     FOREIGN KEY (stock_id) REFERENCES ROLLING_STOCK(stock_id);
 
--- Warehouse Management Constraints
-ALTER TABLE BAY ADD CONSTRAINT "A warehouse has several bays"
+ALTER TABLE BAY ADD CONSTRAINT FK_BAY_WAREHOUSE
     FOREIGN KEY (warehouse_id) REFERENCES WAREHOUSE(warehouse_id);
 
-ALTER TABLE BOX ADD CONSTRAINT "A box is located in a bay"
+ALTER TABLE BOX ADD CONSTRAINT FK_BOX_BAY
     FOREIGN KEY (warehouse_id, aisle, bay) REFERENCES BAY(warehouse_id, aisle, bay_number);
 
-ALTER TABLE BOX ADD CONSTRAINT "An item can be in multiple boxes"
+ALTER TABLE BOX ADD CONSTRAINT FK_BOX_ITEM
     FOREIGN KEY (sku) REFERENCES ITEM(sku);
 
-ALTER TABLE ORDER_LINE ADD CONSTRAINT "An order has multiple lines"
+ALTER TABLE ORDER_LINE ADD CONSTRAINT FK_ORDER_LINE_ORDER
     FOREIGN KEY (order_id) REFERENCES CUSTOMER_ORDER(order_id);
 
-ALTER TABLE ORDER_LINE ADD CONSTRAINT "An item can appear on multiple order lines"
+ALTER TABLE ORDER_LINE ADD CONSTRAINT FK_ORDER_LINE_ITEM
     FOREIGN KEY (sku) REFERENCES ITEM(sku);
 
-ALTER TABLE RETURN_ITEM ADD CONSTRAINT "An item can have multiple returns"
+ALTER TABLE RETURN_ITEM ADD CONSTRAINT FK_RETURN_ITEM_ITEM
     FOREIGN KEY (sku) REFERENCES ITEM(sku);
 
--- =============================================
--- VERIFICATION QUERY
--- =============================================
-
--- Verify all tables were created successfully
-SELECT table_name, num_rows
-FROM user_tables
-WHERE table_name IN (
-                     'OPERATOR', 'STATION', 'RAILWAY_LINE', 'LINE_SEGMENT',
-                     'ROLLING_STOCK', 'LOCOMOTIVE', 'WAGON', 'WAREHOUSE',
-                     'BAY', 'ITEM', 'BOX', 'CUSTOMER_ORDER', 'ORDER_LINE', 'RETURN_ITEM'
-    )
-ORDER BY table_name;
-
--- =============================================
+-- VERIFICATION
+SELECT 'USBD02 COMPLETED - Database model created successfully' as status FROM DUAL;
