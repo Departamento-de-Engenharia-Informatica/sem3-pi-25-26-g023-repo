@@ -5,9 +5,10 @@ package pt.ipp.isep.dei.domain;
  * <p>
  * Each locomotive has:
  * <ul>
- *     <li>A unique ID.</li>
- *     <li>A model name.</li>
- *     <li>A type, either "diesel" or "electric".</li>
+ * <li>A unique ID.</li>
+ * <li>A model name.</li>
+ * <li>A type, either "diesel" or "electric".</li>
+ * <li>A maximum speed in km/h.</li> // <-- NOVO
  * </ul>
  * This class is immutable; all fields are final and can only be set via the constructor.
  */
@@ -16,6 +17,7 @@ public class Locomotive {
     private final int idLocomotiva;
     private final String modelo;
     private final String tipo; // "diesel" or "electric"
+    private final double maxSpeed; // <-- NOVO CAMPO (km/h)
 
     /**
      * Constructs a Locomotive object.
@@ -23,11 +25,13 @@ public class Locomotive {
      * @param idLocomotiva Unique identifier of the locomotive.
      * @param modelo       Model name of the locomotive.
      * @param tipo         Type of the locomotive ("diesel" or "eletrica").
+     * @param maxSpeed     Maximum speed of the locomotive in km/h. // <-- NOVO PARÂMETRO
      */
-    public Locomotive(int idLocomotiva, String modelo, String tipo) {
+    public Locomotive(int idLocomotiva, String modelo, String tipo, double maxSpeed) { // <-- ASSINATURA ALTERADA
         this.idLocomotiva = idLocomotiva;
         this.modelo = modelo;
         this.tipo = tipo;
+        this.maxSpeed = maxSpeed; // <-- ATRIBUIÇÃO
     }
 
     /**
@@ -57,13 +61,23 @@ public class Locomotive {
         return tipo;
     }
 
+    /** // <-- NOVO GETTER
+     * Returns the maximum speed of the locomotive in km/h.
+     *
+     * @return Maximum speed in km/h.
+     */
+    public double getMaxSpeed() {
+        return maxSpeed;
+    }
+
     /**
      * Returns a string representation of the locomotive.
      *
-     * @return A string in the format: "ID: {id} - Model {model} ({type})".
+     * @return A string in the format: "ID: {id} - Model {model} ({type}) - Max Speed: {speed} km/h". // <-- ALTERADO
      */
     @Override
     public String toString() {
-        return String.format("ID: %d - Modelo %s (%s)", idLocomotiva, modelo, tipo);
+        // Incluir a velocidade máxima na representação textual
+        return String.format("ID: %d - Modelo %s (%s) - Max Speed: %.1f km/h", idLocomotiva, modelo, tipo, maxSpeed); // <-- ALTERADO
     }
 }

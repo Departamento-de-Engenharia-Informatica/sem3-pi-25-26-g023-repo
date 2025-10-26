@@ -19,9 +19,19 @@ public class RailwayNetworkService {
     }
 
     /**
-     * Finds the fastest path between two stations using Dijkstra's algorithm.
+     * Finds the fastest path between two stations using Dijkstra's algorithm,
+     * considering the selected locomotive's maximum speed. // <-- ALTERADO
+     *
+     * @param idPartida ID da estação de partida.
+     * @param idChegada ID da estação de chegada.
+     * @param locomotive A locomotiva selecionada para a viagem. // <-- NOVO PARÂMETRO
+     * @return O caminho mais rápido (RailwayPath) ou null se não houver caminho.
      */
-    public RailwayPath findFastestPath(int idPartida, int idChegada) {
+    public RailwayPath findFastestPath(int idPartida, int idChegada, Locomotive locomotive) { // <-- ASSINATURA ALTERADA
+        if (locomotive == null) {
+            throw new IllegalArgumentException("Locomotive cannot be null for path calculation.");
+        }
+
         List<Station> allStations = estacaoRepo.findAll();
         List<LineSegment> allSegments = segmentoRepo.findAll();
 
@@ -55,9 +65,20 @@ public class RailwayNetworkService {
                 }
 
                 if (v != -1) { // Se 'seg' está ligado a 'u'
-                    double travelTime = seg.getComprimento() / seg.getVelocidadeMaxima();
+                    // --- ALTERAÇÃO PRINCIPAL ---
+                    // Calcular a velocidade efetiva: o mínimo entre a velocidade do segmento e a da locomotiva
+                    double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), locomotive.getMaxSpeed());
 
-                    // Ignorar segmentos inválidos (velocidade 0 ou negativa)
+                    // Calcular o tempo de viagem para este segmento
+                    double travelTime;
+                    if (effectiveSpeed <= 0 || seg.getComprimento() <= 0) {
+                        travelTime = Double.POSITIVE_INFINITY; // Ou tratar como segmento inválido
+                    } else {
+                        travelTime = seg.getComprimento() / effectiveSpeed; // Tempo em horas
+                    }
+                    // --- FIM DA ALTERAÇÃO PRINCIPAL ---
+
+                    // Ignorar segmentos inválidos (velocidade 0 ou negativa, ou tempo infinito)
                     if (travelTime <= 0 || Double.isInfinite(travelTime) || Double.isNaN(travelTime)) {
                         continue;
                     }
@@ -69,8 +90,11 @@ public class RailwayNetworkService {
                         predecessorNode.put(v, u); // Guarda o nó de onde viemos
 
                         // Atualiza prioridade na Fila
-                        pq.remove(new AbstractMap.SimpleEntry<>(v, timeTo.get(v))); // Remove entrada antiga se existir
-                        pq.add(new AbstractMap.SimpleEntry<>(v, newTime));
+                        // Precisamos remover a entrada antiga antes de adicionar a nova para garantir a atualização correta da prioridade
+                        // Criamos entradas temporárias para a remoção funcionar corretamente
+                        Map.Entry<Integer, Double> oldEntry = new AbstractMap.SimpleEntry<>(v, timeTo.get(v));
+                        pq.remove(oldEntry); // Tenta remover a entrada antiga (pode não existir se foi a primeira vez)
+                        pq.add(new AbstractMap.SimpleEntry<>(v, newTime)); // Adiciona a nova entrada com a prioridade atualizada
                     }
                 }
             }
@@ -86,7 +110,16 @@ public class RailwayNetworkService {
         double totalDistance = 0;
         int curr = idChegada;
         while (curr != idPartida) {
+            // Tratamento de erro caso predecessor não seja encontrado (ciclo ou erro no algoritmo)
+            if (!predecessorNode.containsKey(curr)) {
+                System.err.println("Erro ao reconstruir o caminho: Nó predecessor não encontrado para " + curr);
+                return null; // Não foi possível reconstruir o caminho
+            }
             LineSegment seg = edgeTo.get(curr);
+            if (seg == null) {
+                System.err.println("Erro ao reconstruir o caminho: Segmento não encontrado para chegar a " + curr);
+                return null; // Segmento associado está em falta
+            }
             path.add(seg);
             totalDistance += seg.getComprimento();
             curr = predecessorNode.get(curr); // Move-se para o nó anterior

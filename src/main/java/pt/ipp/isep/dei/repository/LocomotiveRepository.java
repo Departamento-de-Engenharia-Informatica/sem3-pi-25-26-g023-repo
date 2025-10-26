@@ -39,7 +39,8 @@ public class LocomotiveRepository {
      */
     public List<Locomotive> findAll() {
         List<Locomotive> locomotivas = new ArrayList<>();
-        String sql = "SELECT stock_id, model, type FROM ROLLING_STOCK WHERE type IN ('Electric', 'Diesel') ORDER BY stock_id";
+        // ALTERADO: Adicionado max_speed à query
+        String sql = "SELECT stock_id, model, type, max_speed FROM ROLLING_STOCK WHERE type IN ('Electric', 'Diesel') ORDER BY stock_id";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
@@ -49,12 +50,14 @@ public class LocomotiveRepository {
                 String stockIdStr = rs.getString("stock_id");
                 String model = rs.getString("model");
                 String typeDb = rs.getString("type");
+                double maxSpeed = rs.getDouble("max_speed"); // <-- NOVO: Ler max_speed
 
                 String tipoJava = mapTypeToDomain(typeDb);
 
                 try {
                     int stockIdInt = Integer.parseInt(stockIdStr);
-                    locomotivas.add(new Locomotive(stockIdInt, model, tipoJava));
+                    // ALTERADO: Usar o novo construtor com maxSpeed
+                    locomotivas.add(new Locomotive(stockIdInt, model, tipoJava, maxSpeed));
                 } catch (NumberFormatException e) {
                     System.err.println("⚠️ Warning: Unable to convert stock_id '" + stockIdStr + "' to int. Locomotive ignored.");
                 }
@@ -78,7 +81,8 @@ public class LocomotiveRepository {
      */
     public Optional<Locomotive> findById(int id) {
         String idStr = String.valueOf(id);
-        String sql = "SELECT stock_id, model, type FROM ROLLING_STOCK WHERE type IN ('Electric', 'Diesel') AND stock_id = ?";
+        // ALTERADO: Adicionado max_speed à query
+        String sql = "SELECT stock_id, model, type, max_speed FROM ROLLING_STOCK WHERE type IN ('Electric', 'Diesel') AND stock_id = ?";
         Locomotive locomotiva = null;
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -91,11 +95,13 @@ public class LocomotiveRepository {
                     String stockIdStr = rs.getString("stock_id");
                     String model = rs.getString("model");
                     String typeDb = rs.getString("type");
+                    double maxSpeed = rs.getDouble("max_speed"); // <-- NOVO: Ler max_speed
                     String tipoJava = mapTypeToDomain(typeDb);
 
                     try {
                         int stockIdInt = Integer.parseInt(stockIdStr);
-                        locomotiva = new Locomotive(stockIdInt, model, tipoJava);
+                        // ALTERADO: Usar o novo construtor com maxSpeed
+                        locomotiva = new Locomotive(stockIdInt, model, tipoJava, maxSpeed);
                     } catch (NumberFormatException e) {
                         System.err.println("⚠️ Warning: Unable to convert stock_id '" + stockIdStr + "' to int when fetching by ID. Locomotive ignored.");
                     }
