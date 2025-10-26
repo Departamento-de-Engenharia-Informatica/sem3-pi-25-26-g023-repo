@@ -241,9 +241,10 @@ public class PickingUI {
     private List<Order> loadOrders() {
         try {
             // Use the InventoryManager to load orders
+            // Dentro da classe PickingUI.java, método loadOrders() - CORRIGIDO
             return inventoryManager.loadOrders(
                     "src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv",
-                    "src.main.java.pt/ipp/isep/dei/FicheirosCSV/order_lines.csv"
+                    "src/main/java/pt/ipp/isep/dei/FicheirosCSV/order_lines.csv" // <-- CORRIGIDO
             );
         } catch (Exception e) {
             System.out.println("❌ Error loading orders: " + e.getMessage());

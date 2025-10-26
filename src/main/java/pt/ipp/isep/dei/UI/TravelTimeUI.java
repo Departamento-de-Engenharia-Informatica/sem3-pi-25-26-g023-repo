@@ -56,17 +56,17 @@ public class TravelTimeUI implements Runnable {
             System.out.println("\n--- Available Stations ---");
             List<Station> stations = stationRepo.findAll();
             if (stations.isEmpty()) {
-                System.out.println("❌ ERROR: No stations found.");
+                System.out.println(" ERROR: No stations found.");
                 return;
             }
             stations.forEach(System.out::println);
-            System.out.print("➡️  Enter the ID of the DEPARTURE Station: ");
+            System.out.print("️  Enter the ID of the DEPARTURE Station: ");
             int departureId = scanner.nextInt();
             scanner.nextLine(); // Consume newline
 
             // 1.1 Validate departure station
             if (stationRepo.findById(departureId).isEmpty()) {
-                System.out.printf("❌ ERROR: Station with ID %d not found.%n", departureId);
+                System.out.printf(" ERROR: Station with ID %d not found.%n", departureId);
                 return;
             }
 
@@ -89,21 +89,21 @@ public class TravelTimeUI implements Runnable {
             int arrivalId = -1;
             boolean validDestination = false;
             while (!validDestination) {
-                System.out.print("\n➡️  Enter the ID of the ARRIVAL Station (from the list above): ");
+                System.out.print("\n Enter the ID of the ARRIVAL Station (from the list above): ");
                 try {
                     arrivalId = scanner.nextInt();
-                    scanner.nextLine(); // Consume newline
+                    scanner.nextLine();
 
                     if (arrivalId == departureId) {
-                        System.out.println("❌ ERROR: Arrival station cannot be the same as departure station.");
+                        System.out.println(" ERROR: Arrival station cannot be the same as departure station.");
                     } else if (validDestinationIds.contains(arrivalId)) {
                         validDestination = true;
                     } else {
-                        System.out.println("❌ ERROR: Invalid ID. Please select an ID from the list of connected destinations.");
+                        System.out.println(" ERROR: Invalid ID. Please select an ID from the list of connected destinations.");
                     }
                 } catch (InputMismatchException e) {
-                    System.out.println("❌ ERROR: Invalid input. Please enter numbers only.");
-                    scanner.nextLine(); // Clear buffer
+                    System.out.println(" ERROR: Invalid input. Please enter numbers only.");
+                    scanner.nextLine();
                 }
             }
 
@@ -111,13 +111,13 @@ public class TravelTimeUI implements Runnable {
             System.out.println("\n--- Available Locomotives ---");
             List<Locomotive> locomotives = locomotiveRepo.findAll();
             if (locomotives.isEmpty()) {
-                System.out.println("❌ ERROR: No locomotives found.");
+                System.out.println(" ERROR: No locomotives found.");
                 return;
             }
             locomotives.forEach(System.out::println);
-            System.out.print("➡️  Enter the ID of the selected Locomotive: ");
+            System.out.print("  Enter the ID of the selected Locomotive: ");
             int locomotiveId = scanner.nextInt();
-            scanner.nextLine(); // Consume newline
+            scanner.nextLine();
 
             // 5. Call Controller and print result
             System.out.println("\n⚙️  Calculating fastest route...");
@@ -131,7 +131,7 @@ public class TravelTimeUI implements Runnable {
 
         } catch (InputMismatchException e) {
             System.out.println("\n❌ ERROR: Invalid input. Please enter numbers only.");
-            scanner.nextLine(); // Clear scanner buffer
+            scanner.nextLine();
         } catch (Exception e) {
             System.out.println("\n❌ UNEXPECTED ERROR while executing USLP03: " + e.getMessage());
             e.printStackTrace();

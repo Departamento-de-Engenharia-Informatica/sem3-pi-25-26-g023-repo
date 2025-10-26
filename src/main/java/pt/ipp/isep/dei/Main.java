@@ -81,7 +81,6 @@ public class Main {
             // New Network Service
             RailwayNetworkService networkService = new RailwayNetworkService(estacaoRepo, segmentoRepo);
 
-            // *** CHANGE HERE: Pass the segmentoRepo as well ***
             TravelTimeController travelTimeController = new TravelTimeController(
                     estacaoRepo,
                     locomotivaRepo,

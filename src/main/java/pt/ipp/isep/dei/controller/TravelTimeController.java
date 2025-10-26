@@ -45,7 +45,7 @@ public class TravelTimeController {
 
     /**
      * Calculates the fastest travel time between two stations using the selected locomotive.
-     * Considers the locomotive's maximum speed. // <-- ALTERADO
+     * Considers the locomotive's maximum speed.
      *
      * @param idEstacaoPartida ID of the departure station.
      * @param idEstacaoChegada ID of the arrival station.
@@ -72,7 +72,7 @@ public class TravelTimeController {
 
         Locomotive selectedLocomotive = optLocomotiva.get(); // Obter a locomotiva
 
-        // ALTERADO: Passar o objeto Locomotive para o serviço
+        // Passar o objeto Locomotive para o serviço
         RailwayPath path = networkService.findFastestPath(idEstacaoPartida, idEstacaoChegada, selectedLocomotive);
 
         if (path == null || path.isEmpty()) {
@@ -80,13 +80,13 @@ public class TravelTimeController {
                     optPartida.get().getNome(), optChegada.get().getNome());
         }
 
-        // Passar também a locomotiva para a formatação (já era feito)
+        // Passar também a locomotiva para a formatação
         return formatPathResult(path, optPartida.get(), optChegada.get(), selectedLocomotive);
     }
 
     /**
      * Returns a formatted string listing stations directly connected to the departure station.
-     * Includes estimated travel time based on a default locomotive speed for display purposes. // <-- ALTERADO
+     * Includes estimated travel time based on a default locomotive speed for display purposes.
      *
      * @deprecated Use {@link #getDirectlyConnectedStations(int)} for data retrieval and format in the UI.
      *
@@ -112,18 +112,18 @@ public class TravelTimeController {
         } else {
             // Para estimar o tempo, podemos pegar a primeira locomotiva ou usar uma velocidade padrão
             Optional<Locomotive> defaultLoco = locomotivaRepo.findAll().stream().findFirst();
-            double speedForEstimation = defaultLoco.isPresent() ? defaultLoco.get().getMaxSpeed() : 100.0; // Usa 100km/h se não houver locomotivas
+            double speedForEstimation = defaultLoco.map(Locomotive::getMaxSpeed).orElse(100.0); // Usa 100km/h se não houver locomotivas
 
             for (Station destino : reachableStations) {
                 Optional<LineSegment> directSegment = segmentoRepo.findDirectSegment(idEstacaoPartida, destino.getIdEstacao());
                 if (directSegment.isPresent()) {
                     LineSegment seg = directSegment.get();
-                    // ALTERADO: Estimar tempo usando min(velocidade_segmento, velocidade_estimada_loco)
+                    // Estimar tempo usando min(velocidade_segmento, velocidade_estimada_loco)
                     double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), speedForEstimation);
-                    double timeHours = (effectiveSpeed > 0) ? (seg.getComprimento() / effectiveSpeed) : Double.POSITIVE_INFINITY;
-                    long timeMinutes = Math.round(timeHours * 60);
-                    sb.append(String.format("   -> %s (ID: %d) | Dist: %.2f km | Est. Time: ~%d min%n",
-                            destino.getNome(), destino.getIdEstacao(), seg.getComprimento(), timeMinutes));
+                    double timeHours = (effectiveSpeed > 0 && seg.getComprimento() > 0) ? (seg.getComprimento() / effectiveSpeed) : Double.POSITIVE_INFINITY;
+                    long timeMinutes = (!Double.isInfinite(timeHours) && !Double.isNaN(timeHours)) ? Math.round(timeHours * 60) : -1; // -1 indica tempo inválido/infinito
+                    sb.append(String.format("   -> %s (ID: %d) | Dist: %.2f km | Est. Time: ~%s min%n",
+                            destino.getNome(), destino.getIdEstacao(), seg.getComprimento(), (timeMinutes >= 0 ? String.valueOf(timeMinutes) : "N/A")));
                 } else {
                     sb.append(String.format("   -> %s (ID: %d) (Segment info not found)%n", destino.getNome(), destino.getIdEstacao()));
                 }
@@ -176,18 +176,18 @@ public class TravelTimeController {
 
     /**
      * Helper method to format the fastest path result as a readable string.
-     * Inclui a velocidade efetiva usada em cada segmento. // <-- ALTERADO
+     * Inclui a velocidade efetiva usada em cada segmento e o tempo acumulado.
      *
      * @param path       RailwayPath object representing the fastest path.
      * @param partida    Departure station.
      * @param chegada    Arrival station.
      * @param locomotiva Selected locomotive.
-     * @return Formatted string showing each segment, distances, effective speeds, times, and total travel time.
+     * @return Formatted string showing each segment, distances, effective speeds, segment times, cumulative times, and total travel time.
      */
     private String formatPathResult(RailwayPath path, Station partida, Station chegada, Locomotive locomotiva) {
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("Results for travel from %s to %s:%n", partida.getNome(), chegada.getNome()));
-        // ALTERADO: Mostrar velocidade máxima da locomotiva no cabeçalho
+        // Mostrar velocidade máxima da locomotiva no cabeçalho
         sb.append(String.format("   (Selected Locomotive: ID %d - %s, Max Speed: %.1f km/h)%n",
                 locomotiva.getIdLocomotiva(), locomotiva.getModelo(), locomotiva.getMaxSpeed()));
         sb.append("-".repeat(60) + "\n"); // Aumentar linha separadora
@@ -224,32 +224,58 @@ public class TravelTimeController {
             }
 
 
-            // ALTERADO: Calcular velocidade efetiva e tempo para este segmento (como feito no serviço)
+            // Calcular velocidade efetiva e tempo para este segmento (como feito no serviço)
             double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), locomotiva.getMaxSpeed());
             double segmentTimeHours = Double.POSITIVE_INFINITY;
             if (effectiveSpeed > 0 && seg.getComprimento() > 0) {
                 segmentTimeHours = seg.getComprimento() / effectiveSpeed;
             }
-            cumulativeTimeHours += segmentTimeHours; // Acumular tempo
+
+            // Verifica se o tempo do segmento é válido antes de acumular
+            if (!Double.isInfinite(segmentTimeHours) && !Double.isNaN(segmentTimeHours)) {
+                cumulativeTimeHours += segmentTimeHours; // Acumular tempo apenas se válido
+            } else {
+                // Se o tempo do segmento for infinito ou NaN, o tempo acumulado também se torna inválido a partir daqui
+                // Poderíamos parar o loop aqui ou marcar o tempo acumulado como inválido
+                cumulativeTimeHours = Double.POSITIVE_INFINITY;
+            }
+
 
             sb.append(String.format("   Segment %d: %s -> %s%n", i++, startName, endName));
-            // ALTERADO: Mostrar Distância, Velocidade Efetiva e Tempo do Segmento
-            sb.append(String.format("      Dist: %.2f km | Effective Speed: %.1f km/h | Time: %.1f min (Total: %.1f min)%n",
+            // Mostrar Distância, Velocidade Efetiva, Tempo do Segmento e Tempo Acumulado
+            // Mostrar "N/A" para tempos inválidos/infinitos
+            String segmentTimeStr = (!Double.isInfinite(segmentTimeHours) && !Double.isNaN(segmentTimeHours)) ? String.format("%.1f", segmentTimeHours * 60) : "N/A";
+            String cumulativeTimeStr = (!Double.isInfinite(cumulativeTimeHours) && !Double.isNaN(cumulativeTimeHours)) ? String.format("%.1f", cumulativeTimeHours * 60) : "N/A";
+            sb.append(String.format("      Dist: %.2f km | Eff. Speed: %.1f km/h | Time: %s min | Cum. Time: %s min%n",
                     seg.getComprimento(),
                     effectiveSpeed,
-                    segmentTimeHours * 60,
-                    cumulativeTimeHours * 60)); // Mostrar tempo acumulado em minutos
+                    segmentTimeStr,
+                    cumulativeTimeStr));
         }
 
         sb.append("-".repeat(60) + "\n"); // Aumentar linha separadora
 
+        // Usar o tempo total calculado pelo serviço (path.getTotalTimeMinutes/Hours) para o resumo final,
+        // pois reflete o cálculo exato do Dijkstra, enquanto cumulativeTimeHours é recalculado aqui para display.
         long totalMinutes = path.getTotalTimeMinutes();
         long hours = totalMinutes / 60;
         long minutes = totalMinutes % 60;
-        String formattedTime = (hours > 0) ? String.format("%d hours and %d minutes", hours, minutes) : String.format("%d minutes", minutes);
+
+        // Se o tempo total for infinito/inválido (baseado no cálculo do Dijkstra), mostrar N/A
+        String formattedTime;
+        String formattedHours;
+        if (Double.isInfinite(path.getTotalTimeHours()) || Double.isNaN(path.getTotalTimeHours())) {
+            formattedTime = "N/A (unreachable or invalid segment speeds)";
+            formattedHours = "N/A";
+        } else {
+            formattedTime = (hours > 0) ? String.format("%d hours and %d minutes", hours, minutes) : String.format("%d minutes", minutes);
+            formattedHours = String.format("%.2f", path.getTotalTimeHours());
+        }
+
 
         sb.append(String.format("   Total Distance: %.2f km%n", path.getTotalDistance()));
-        sb.append(String.format("   Estimated Total Time: %s (%.2f hours)%n", formattedTime, path.getTotalTimeHours()));
+        // Exibe o tempo total final calculado pelo Dijkstra
+        sb.append(String.format("   Estimated Total Time: %s (%s hours)%n", formattedTime, formattedHours));
         sb.append("=".repeat(60) + "\n"); // Linha final
 
         return sb.toString();
