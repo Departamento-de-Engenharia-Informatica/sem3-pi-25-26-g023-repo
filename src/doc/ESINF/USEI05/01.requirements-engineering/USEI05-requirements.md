@@ -1,70 +1,73 @@
-# USEI05 — Returns & Quarantine
+# USEI05 - Returns & Quarantine
 
-## 1. User Story
-**As a quality operator**,  
-I want returned goods to be placed in **quarantine**,  
-so that I can inspect them in the **reverse order they arrived (latest first)**,  
-process them (either discard or restock),  
-and create an **audit log** with the actions taken on each product.
+## 1. Requirements Engineering
 
-## 2. Context
-Returned products cannot immediately re-enter inventory.  
-They must first be placed in **quarantine** to ensure quality and safety.  
-This procedure avoids damaged or expired goods being mixed with usable stock.
+### 1.1. User Story Description
 
-Once quarantined, items are inspected following **LIFO (Last-In-First-Out)** order — the most recent returns are processed first.  
-After inspection, they are either **discarded** (if damaged/expired) or **restocked** (if usable).  
-Every inspection must be logged to guarantee full traceability.
+**As a quality operator**, I want returned goods to be placed in quarantine and processed in LIFO (Last-In-First-Out) order, so that I can inspect them efficiently, decide whether to discard or restock them, and maintain full traceability through an audit log.
 
-## 3. Actors
-| Actor | Type | Description |
-|--------|------|-------------|
-| **Quality Operator** | Primary | Performs the inspection and triggers the quarantine process. |
-| **Warehouse Management System (WMS)** | System | Validates, stores, and processes returns; manages quarantine, inventory, and audit log. |
+### 1.2. Customer Specifications and Clarifications
 
-## 4. Pre-conditions
-- The file `returns.csv` is successfully loaded and validated in the system.
-- Each return record contains: `returnId`, `sku`, `qty`, `reason`, `timestamp`, and optional `expiryDate`.
-- The warehouse inventory (`Inventory`) and quarantine structures (`Quarantine`) are initialized.
+**From the specifications document:**
 
-## 5. Main Flow of Events
-| Step | Actor / System Action | Description |
-|------|------------------------|-------------|
-| 1 | **Quality Operator** uploads `returns.csv`. | The operator imports customer returns into the system. |
-| 2 | **System** validates the records. | Invalid entries (e.g., negative qty, missing SKU) are rejected with error messages. |
-| 3 | **System** places valid returns into **quarantine** (stack), ordered by descending `timestamp`. |
-| 4 | **Quality Operator** triggers the inspection process. | The operator requests to process the quarantine queue. |
-| 5 | **System** pops the latest return (top of stack) and inspects it. | Inspection determines if the product is usable. |
-| 6a | **If restockable:** The system creates a **new box** with `boxId = "RET-" + returnId`, assigns a location, and inserts it into the inventory using FEFO/FIFO rules. |
-| 6b | **If not restockable:** The system flags the return as **Discarded**. |
-| 7 | **System** logs the action into an **audit file**, including timestamp, returnId, sku, action (Restocked/Discarded), and qty. |
-| 8 | **System** repeats until quarantine is empty. |
-| 9 | **System** produces a summary report of processed returns. |
+> Returned products must be placed in quarantine before being reintroduced into inventory. The quarantine process follows LIFO order, where the most recent returns are inspected first.
 
-## 6. Alternative / Exception Flows
-| # | Condition | Description |
-|---|------------|-------------|
-| A1 | Invalid data in `returns.csv` | The system reports the specific error and skips the record. |
-| A2 | Unknown SKU | Return is rejected and flagged for manual review. |
-| A3 | Expired product | Automatically marked as *Discarded*. |
-| A4 | Partial restock | If only part of the quantity is usable, both quantities (restocked and discarded) are logged separately. |
+> Each return record contains returnId, SKU, quantity, reason, timestamp, and optional expiryDate. The system must validate incoming return data and report errors while processing valid records.
 
-## 7. Post-conditions
-- All valid returns have been either **restocked** or **discarded**.
-- An **audit log file** is generated (or updated), ensuring full traceability.
-- The inventory reflects all restocked items.
-- The quarantine stack is empty after processing.
+> After inspection, products are either discarded (if damaged/expired) or restocked as new boxes with "RET-" prefix in the boxId.
 
-## 8. Acceptance Criteria, Non-functional Requirements and References
-1. Returns are processed in **descending timestamp order** (latest first).
-2. The system supports both **full** and **partial restocks**.
-3. Each processed return generates a log line in the format:
+**From the client clarifications:**
 
-4. Restocked items are inserted as new boxes (`RET-<returnId>`) following **FEFO/FIFO** insertion rules (based on expiryDate and receivedAt).
-5. Discarded items are flagged and never reintroduced into stock.
-6. All operations must be deterministic and produce consistent, traceable outputs.
-7. The system must ensure data integrity during restock/discard operations and guarantee that every action is recorded in the audit log.
-8. The module must be easy to maintain and integrate with the main warehouse inventory system.
-9. Quarantine processing must handle large datasets efficiently, using stack operations (LIFO).
-10. All processing steps must conform to the requirements described in the official project specification.
+> **Question:** How should the system handle partial quantities when only some items from a return are restockable?
+>
+> **Answer:** The system supports partial restocking. If only part of the quantity is usable, both quantities (restocked and discarded) should be logged separately with their respective actions.
+
+> **Question:** What happens when a returned product has expired?
+>
+> **Answer:** Expired products are automatically marked as Discarded during the inspection process and cannot be restocked.
+
+> **Question:** Is the quarantine processing automatic or manual?
+>
+> **Answer:** The quality operator must manually trigger the inspection process after returns are placed in quarantine. The system processes returns in LIFO order but requires operator initiation.
+
+### 1.3. Acceptance Criteria
+
+- **AC1:** Returns are processed in descending timestamp order (latest first - LIFO)
+- **AC2:** Invalid return records (unknown SKU, negative quantity, missing required fields) are rejected with clear error messages
+- **AC3:** Restocked items are inserted as new boxes with "RET-" prefix following FEFO/FIFO rules based on product type
+- **AC4:** Discarded items are permanently removed from circulation and flagged appropriately
+- **AC5:** All inspection actions (Restocked/Discarded) are logged in an audit file with complete details
+- **AC6:** Partial restocking is supported with separate logging for restocked and discarded quantities
+
+### 1.4. Found out Dependencies
+
+- Returns data must be imported and validated via returns.csv
+- SKUs must exist in items.csv
+- Warehouse inventory must be initialized for restocking operations
+- Quarantine data structure must support LIFO operations
+- Audit logging system must be available
+
+### 1.5 Input and Output Data
+
+**Input Data:**
+- Return records: returns.csv (returnId, SKU, qty, reason, timestamp, expiryDate optional)
+- Product data: items.csv (SKU, name, category, unit, volume, unitWeight)
+- Warehouse inventory data for restocking
+
+**Output Data:**
+- Updated inventory with restocked items (as new boxes with "RET-" prefix)
+- Quarantine status (empty after processing)
+- Audit log file with inspection results
+- Summary report of processed returns
+
+### 1.6. System Sequence Diagram (SSD)
+![System Sequence Diagram](svg/USEI05-SSD.svg)
+
+### 1.7. Other Relevant Remarks
+- Quarantine follows LIFO (stack) structure for processing returns
+- Restocked items become new boxes in inventory following standard FEFO/FIFO rules
+- Expired products are automatically discarded without operator intervention
+- All operations are logged for traceability and audit purposes
+- The system supports both full and partial restocking scenarios
+- Quarantine processing must be manually initiated by the quality operator
 
