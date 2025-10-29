@@ -59,22 +59,59 @@ INSERT INTO LINE_SEGMENT (segment_id, line_id, start_station_id, end_station_id,
                                                                                                                                                                                   ('SEG012', 'L006', 'ST021', 'ST016', 20.8, 'Double', 1668, 'Y', 8000, 100),
                                                                                                                                                                                   ('SEG013', 'L007', 'ST016', 'ST011', 4.3, 'Double', 1668, 'Y', 8000, 100);
 
--- 5. INSERT ROLLING_STOCK DATA (4 Locomotives + 10 Wagons)
+-- 5. INSERT ROLLING_STOCK DATA (4 Locomotives + 34 Wagons)
 INSERT INTO ROLLING_STOCK (stock_id, operator_id, make, model, year_of_service, gauge_mm, length_m, width_m, height_m, tare_weight_kg, number_of_bogies) VALUES
+                                                                                                                                                             -- Locomotives (4)
                                                                                                                                                              ('RS001', 'MEDWAY', 'Siemens', 'Eurosprinter', 1995, 1668, 19.2, 3.0, 4.375, 87000, 2),
                                                                                                                                                              ('RS002', 'MEDWAY', 'Siemens', 'Eurosprinter', 1995, 1668, 19.2, 3.0, 4.375, 87000, 2),
                                                                                                                                                              ('RS003', 'MEDWAY', 'Siemens', 'Eurosprinter', 1996, 1668, 19.2, 3.0, 4.375, 87000, 2),
                                                                                                                                                              ('RS004', 'MEDWAY', 'Sorefame - Alsthom', 'CP 1900', 1981, 1668, 19.084, 3.062, 4.31, 117000, 2),
-                                                                                                                                                             ('WG001', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG002', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG003', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG004', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG005', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG006', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG007', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG008', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG009', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2),
-                                                                                                                                                             ('WG010', 'MEDWAY', 'Wagon Manufacturer', 'Container Model', 2020, 1668, 14.0, 2.8, 2.9, 22000, 2);
+
+                                                                                                                                                             -- Container Wagons Regmms (16)
+                                                                                                                                                             ('WG001', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG002', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG003', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG004', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG005', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG006', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG007', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG008', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG009', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG010', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG011', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG012', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG013', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG014', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG015', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+                                                                                                                                                             ('WG016', 'MEDWAY', 'Metalsines', 'Regmms 32 94 356 3', 1987, 1668, 14.04, 3.104, 2.535, 21200, 2),
+
+                                                                                                                                                             -- Cereal Wagons Tadgs (4)
+                                                                                                                                                             ('WG017', 'MEDWAY', 'Metalsines', 'Tadgs 32 94 082 3', 1990, 1668, 17.24, 3.072, 4.27, 24000, 2),
+                                                                                                                                                             ('WG018', 'MEDWAY', 'Metalsines', 'Tadgs 32 94 082 3', 1990, 1668, 17.24, 3.072, 4.27, 24000, 2),
+                                                                                                                                                             ('WG019', 'MEDWAY', 'Metalsines', 'Tadgs 32 94 082 3', 1990, 1668, 17.24, 3.072, 4.27, 24000, 2),
+                                                                                                                                                             ('WG020', 'MEDWAY', 'Metalsines', 'Tadgs 32 94 082 3', 1990, 1668, 17.24, 3.072, 4.27, 24000, 2),
+
+                                                                                                                                                             -- Cereal Wagons Tdgs (6)
+                                                                                                                                                             ('WG021', 'MEDWAY', 'Equimetal', 'Tdgs 41 94 074 1', 1977, 1668, 9.64, 3.12, 4.1655, 13800, 2),
+                                                                                                                                                             ('WG022', 'MEDWAY', 'Equimetal', 'Tdgs 41 94 074 1', 1977, 1668, 9.64, 3.12, 4.1655, 13800, 2),
+                                                                                                                                                             ('WG023', 'MEDWAY', 'Equimetal', 'Tdgs 41 94 074 1', 1977, 1668, 9.64, 3.12, 4.1655, 13800, 2),
+                                                                                                                                                             ('WG024', 'MEDWAY', 'Equimetal', 'Tdgs 41 94 074 1', 1977, 1668, 9.64, 3.12, 4.1655, 13800, 2),
+                                                                                                                                                             ('WG025', 'MEDWAY', 'Equimetal', 'Tdgs 41 94 074 1', 1977, 1668, 9.64, 3.12, 4.1655, 13800, 2),
+                                                                                                                                                             ('WG026', 'MEDWAY', 'Equimetal', 'Tdgs 41 94 074 1', 1977, 1668, 9.64, 3.12, 4.1655, 13800, 2),
+
+                                                                                                                                                             -- Covered Wagons Gabs (5)
+                                                                                                                                                             ('WG027', 'MEDWAY', 'Sepsa Cometna', 'Gabs 81 94 181 1', 1977, 1668, 21.70, 3.18, 4.17, 29800, 2),
+                                                                                                                                                             ('WG028', 'MEDWAY', 'Sepsa Cometna', 'Gabs 81 94 181 1', 1977, 1668, 21.70, 3.18, 4.17, 29800, 2),
+                                                                                                                                                             ('WG029', 'MEDWAY', 'Sepsa Cometna', 'Gabs 81 94 181 1', 1977, 1668, 21.70, 3.18, 4.17, 29800, 2),
+                                                                                                                                                             ('WG030', 'MEDWAY', 'Sepsa Cometna', 'Gabs 81 94 181 1', 1977, 1668, 21.70, 3.18, 4.17, 29800, 2),
+                                                                                                                                                             ('WG031', 'MEDWAY', 'Sepsa Cometna', 'Gabs 81 94 181 1', 1977, 1668, 21.70, 3.18, 4.17, 29800, 2),
+
+                                                                                                                                                             -- Container Wagon Lgs (1)
+                                                                                                                                                             ('WG032', 'MEDWAY', 'Metalsines', 'Lgs 22 94 441 6', NULL, 1668, 13.86, 2.85, 1.06, 11900, 1),
+
+                                                                                                                                                             -- Container Wagons Sgnss (2 - uma com bitola diferente)
+                                                                                                                                                             ('WG033', 'MEDWAY', 'Emef', 'Sgnss 12 94 455 2', NULL, 1668, 18.116, 2.95, 1.03, 21600, 2),
+                                                                                                                                                             ('WG034', 'MEDWAY', 'Emef', 'Sgnss 12 94 455 2', NULL, 1435, 18.116, 2.95, 1.03, 21600, 2);
 
 -- 6. INSERT LOCOMOTIVE DATA
 INSERT INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, acceleration_kmh_s, max_total_weight_kg, fuel_capacity_l, supports_multiple_gauges) VALUES
@@ -83,8 +120,9 @@ INSERT INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, acceleration_kmh_s,
                                                                                                                                                      ('RS003', 'Electric', 5600, 0.7, 180000, NULL, 'N'),
                                                                                                                                                      ('RS004', 'Diesel', 1623, 0.4, 200000, 4882, 'N');
 
--- 7. INSERT WAGON DATA
+-- 7. INSERT WAGON DATA (34 Wagons - 3 tipos diferentes)
 INSERT INTO WAGON (stock_id, wagon_type, payload_capacity_kg, volume_capacity_m3, container_supported, is_refrigerated, max_pressure_bar) VALUES
+                                                                                                                                              -- Container Wagons Regmms (16)
                                                                                                                                               ('WG001', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
                                                                                                                                               ('WG002', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
                                                                                                                                               ('WG003', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
@@ -94,7 +132,41 @@ INSERT INTO WAGON (stock_id, wagon_type, payload_capacity_kg, volume_capacity_m3
                                                                                                                                               ('WG007', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
                                                                                                                                               ('WG008', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
                                                                                                                                               ('WG009', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
-                                                                                                                                              ('WG010', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL);
+                                                                                                                                              ('WG010', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG011', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG012', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG013', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG014', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG015', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG016', 'Container Wagon', 60600, 76.3, '20ft,40ft,45ft', 'N', NULL),
+
+                                                                                                                                              -- Cereal Wagons Tadgs (4)
+                                                                                                                                              ('WG017', 'Cereal Wagon', 56000, 75.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG018', 'Cereal Wagon', 56000, 75.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG019', 'Cereal Wagon', 56000, 75.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG020', 'Cereal Wagon', 56000, 75.0, NULL, 'N', NULL),
+
+                                                                                                                                              -- Cereal Wagons Tdgs (6)
+                                                                                                                                              ('WG021', 'Cereal Wagon', 26200, 38.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG022', 'Cereal Wagon', 26200, 38.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG023', 'Cereal Wagon', 26200, 38.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG024', 'Cereal Wagon', 26200, 38.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG025', 'Cereal Wagon', 26200, 38.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG026', 'Cereal Wagon', 26200, 38.0, NULL, 'N', NULL),
+
+                                                                                                                                              -- Covered Wagons Gabs (5)
+                                                                                                                                              ('WG027', 'Covered Wagon', 50200, 110.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG028', 'Covered Wagon', 50200, 110.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG029', 'Covered Wagon', 50200, 110.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG030', 'Covered Wagon', 50200, 110.0, NULL, 'N', NULL),
+                                                                                                                                              ('WG031', 'Covered Wagon', 50200, 110.0, NULL, 'N', NULL),
+
+                                                                                                                                              -- Container Wagon Lgs (1)
+                                                                                                                                              ('WG032', 'Container Wagon', 28100, 76.3, '20ft,40ft', 'N', NULL),
+
+                                                                                                                                              -- Container Wagons Sgnss (2)
+                                                                                                                                              ('WG033', 'Container Wagon', 68400, 76.3, '20ft,40ft,45ft', 'N', NULL),
+                                                                                                                                              ('WG034', 'Container Wagon', 68400, 76.3, '20ft,40ft,45ft', 'N', NULL);
 
 -- 8. INSERT WAREHOUSE DATA
 INSERT INTO WAREHOUSE (warehouse_id, name) VALUES
@@ -125,4 +197,4 @@ INSERT INTO BOX (box_id, qty_available, expiry_date, received_at, sku, aisle, ba
 COMMIT;
 
 -- Verification
-SELECT 'USBD04 COMPLETED - Database populated successfully' as status FROM DUAL;
+SELECT 'USBD04 COMPLETED - Database populated with 4 locomotives and 34 wagons (3 types)' as status FROM DUAL;
