@@ -1,5 +1,5 @@
 -- =============================================
--- USBD04 - Railway System Data Population (CORRIGIDA)
+-- USBD04 - Railway System Data Population
 -- =============================================
 
 -- 1. INSERT OPERATOR DATA
@@ -59,7 +59,7 @@ INSERT INTO LINE_SEGMENT (segment_id, line_id, start_station_id, end_station_id,
                                                                                                                                                                                  (25, 6, 'ST021', 'ST016', 20.8, 'Double', 1668, 'Y', 8000, 100),
                                                                                                                                                                                  (26, 7, 'ST016', 'ST011', 4.3, 'Double', 1668, 'Y', 8000, 100);
 
--- 5. INSERT ROLLING_STOCK DATA (4 Locomotives + 30 Wagons) - CORRIGIDO
+-- 5. INSERT ROLLING_STOCK DATA (4 Locomotives + 30 Wagons)
 INSERT INTO ROLLING_STOCK (stock_id, operator_id, make, model, year_of_service, gauge_mm, length_m, width_m, height_m, tare_weight_kg, number_of_bogies) VALUES
                                                                                                                                                              -- Locomotives
                                                                                                                                                              ('RS001', 'MEDWAY', 'Siemens', 'Eurosprinter', 1995, 1668, 19.2, 3.0, 4.375, 87000, 2),
