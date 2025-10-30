@@ -1,105 +1,81 @@
 # 📖 Data Dictionary (USBD01)
 This data dictionary describes all entities and attributes of the railway system in a consolidated table format.
-
----
-
-| Attribute | Data Type | Description |
-|-----------|-----------|-------------|
-| **OPERATOR** | | |
-| operator_id | VARCHAR2(10) | Unique identifier for the railway operator |
-| name | VARCHAR2(100) | Operator name |
-| type | VARCHAR2(50) | Type of operator (Infrastructure Owner, Train Operator) |
-| contact_email | VARCHAR2(100) | Contact email |
-| phone | VARCHAR2(20) | Phone number |
-| **STATION** | | |
-| station_id | VARCHAR2(10) | Unique identifier for the station |
-| name | VARCHAR2(100) | Station name |
-| type | VARCHAR2(50) | Station type |
-| has_warehouse | CHAR(1) | Whether the station has a warehouse |
-| has_refrigerated | CHAR(1) | Whether the station has refrigerated storage |
-| latitude | NUMBER(10,6) | Geographic latitude |
-| longitude | NUMBER(10,6) | Geographic longitude |
-| **RAILWAY_LINE** | | |
-| line_id | VARCHAR2(10) | Unique identifier for the railway line |
-| name | VARCHAR2(100) | Line name |
-| owner_operator_id | VARCHAR2(10) | Operator responsible for the line |
-| total_length_km | NUMBER(8,2) | Total length of the line in kilometers |
-| **LINE_SEGMENT** | | |
-| segment_id | VARCHAR2(10) | Unique identifier for the line segment |
-| line_id | VARCHAR2(10) | Line to which the segment belongs |
-| start_station_id | VARCHAR2(10) | Starting station of the segment |
-| end_station_id | VARCHAR2(10) | Ending station of the segment |
-| segment_length_km | NUMBER(8,2) | Segment length in kilometers |
-| track_type | VARCHAR2(20) | Track type: Single, Double, Multiple |
-| gauge_mm | NUMBER(5,1) | Track gauge in millimeters |
-| is_electrified | CHAR(1) | Whether the segment is electrified |
-| max_weight_kg_per_m | NUMBER(8,2) | Maximum weight supported (kg/m) |
-| max_speed_kmh | NUMBER(4) | Maximum speed allowed (km/h) |
-| **ROLLING_STOCK** | | |
-| stock_id | VARCHAR2(10) | Unique identifier for rolling stock |
-| operator_id | VARCHAR2(10) | Owner operator |
-| make | VARCHAR2(50) | Manufacturer |
-| model | VARCHAR2(50) | Model name |
-| year_of_service | NUMBER(4) | Year entered into service |
-| gauge_mm | NUMBER(5,1) | Compatible gauge |
-| length_m | NUMBER(5,2) | Length in meters |
-| width_m | NUMBER(5,2) | Width in meters |
-| height_m | NUMBER(5,2) | Height in meters |
-| tare_weight_kg | NUMBER(8,2) | Empty weight in kg |
-| number_of_bogies | NUMBER(2) | Number of bogies |
-| **LOCOMOTIVE** | | |
-| stock_id | VARCHAR2(10) | Locomotive identifier |
-| locomotive_type | VARCHAR2(20) | Type: Diesel, Electric |
-| power_kw | NUMBER(6) | Power in kilowatts |
-| acceleration_kmh_s | NUMBER(3,2) | Acceleration (km/h per second) |
-| max_total_weight_kg | NUMBER(8,2) | Maximum total weight |
-| fuel_capacity_l | NUMBER(6) | Fuel capacity in liters (for diesel) |
-| supports_multiple_gauges | CHAR(1) | Whether it supports multiple gauges |
-| **WAGON** | | |
-| stock_id | VARCHAR2(10) | Wagon identifier |
-| wagon_type | VARCHAR2(30) | Type: Container, Tank, Flatcar, etc. |
-| payload_capacity_kg | NUMBER(8,2) | Maximum payload capacity in kg |
-| volume_capacity_m3 | NUMBER(8,2) | Volume capacity in cubic meters |
-| container_supported | VARCHAR2(50) | Supported container sizes |
-| is_refrigerated | CHAR(1) | Whether it's refrigerated |
-| max_pressure_bar | NUMBER(5,2) | Maximum pressure (for tank cars) |
-| **WAREHOUSE** | | |
-| warehouse_id | VARCHAR2(20) | Unique warehouse identifier |
-| name | VARCHAR2(100) | Warehouse name |
-| **BAY** | | |
-| warehouse_id | VARCHAR2(20) | Warehouse identifier |
-| aisle | NUMBER(4) | Aisle number |
-| bay_number | NUMBER(4) | Bay number |
-| capacity_boxes | NUMBER(4) | Maximum box capacity |
-| **ITEM** | | |
-| sku | VARCHAR2(20) | Stock Keeping Unit |
-| name | VARCHAR2(100) | Product name |
-| category | VARCHAR2(50) | Product category |
-| unit | VARCHAR2(20) | Measurement unit |
-| volume | NUMBER(8,2) | Unit volume |
-| unit_weight | NUMBER(8,2) | Unit weight |
-| **BOX** | | |
-| box_id | VARCHAR2(20) | Unique box identifier |
-| qty_available | NUMBER(6) | Available quantity |
-| expiry_date | DATE | Expiration date (for perishable goods) |
-| received_at | TIMESTAMP | Receipt timestamp |
-| sku | VARCHAR2(20) | Product SKU |
-| aisle | NUMBER(4) | Aisle location |
-| bay | NUMBER(4) | Bay location |
-| warehouse_id | VARCHAR2(20) | Warehouse identifier |
-| **CUSTOMER_ORDER** | | |
-| order_id | VARCHAR2(20) | Order identifier |
-| due_date | DATE | Due date |
-| priority | NUMBER(2) | Priority level |
-| **ORDER_LINE** | | |
-| order_id | VARCHAR2(20) | Order identifier |
-| line_no | NUMBER(3) | Line number |
-| sku | VARCHAR2(20) | Product SKU |
-| qty | NUMBER(6) | Quantity ordered |
-| **RETURN_ITEM** | | |
-| return_id | VARCHAR2(20) | Return identifier |
-| sku | VARCHAR2(20) | Product SKU |
-| qty | NUMBER(6) | Return quantity |
-| reason | VARCHAR2(50) | Return reason |
-| timestamp | TIMESTAMP | Return timestamp |
-| expiry_date | DATE | Expiration date |
+| Term | Definition |
+| :--- | :--- |
+| **Aisle** | A pathway between rows of bays in a warehouse, providing access for picking. The "main corridor" (Entrance) is at Aisle 0. |
+| **Allocation** | The logical process of reserving stock from specific boxes to fulfill order lines, following FEFO/FIFO rules. This happens *before* picking. |
+| **Allocation Mode (Strict/Partial)** | A rule for allocation (USEI02). **Strict** mode only allocates if the *entire* line quantity is available (otherwise, it allocates 0). **Partial** mode allocates whatever stock is available. |
+| **Audit Log** | An external file that records every inspection action (e.g., Restocked, Discarded) for traceability of returns. |
+| **Bay** | A specific storage location (identified by a number) within a warehouse aisle where boxes are physically stored. |
+| **BFD (Best Fit Decreasing)** | A packing heuristic (USEI03). Allocations are sorted by weight (largest first) and then placed into the trolley where they fit *most tightly* (leaving the least remaining space). |
+| **Box** | The base storage unit in the warehouse, representing a "lot fragment" of a single SKU with a specific quantity and optional expiry date. |
+| **Boxcar** | A type of wagon that is enclosed and used for general goods. |
+| **Capacity (Trolley)** | The maximum weight (in kg) that a trolley can hold, as defined by the planner in USEI03. |
+| **Customer Remorse** | A reason for a return (USEI05). The item is in good condition and can be restocked. |
+| **Cycle Count** | A reason for a return (USEI05). An inventory audit found a mismatch. The item is typically restockable. |
+| **Damaged** | A reason for a return (USEI05). The item is broken and must be discarded. |
+| **Deterministic Sweep (Strategy A)** | A pick path sequencing strategy (USEI04). The picker visits all required aisles in ascending order (Aisle 1, then Aisle 2, etc.). |
+| **Discarded** | The status of a returned item that is deemed unsuitable (e.g., damaged, expired) and cannot be put back into inventory. |
+| **Distance Function** | The formula used to calculate travel distance in the warehouse (USEI04). `D = b1 + |a1 - a2| * 3 + b2` for different aisles. |
+| **Effective Speed** | The speed used for travel time calculation (USLP03). It is the *minimum* of the locomotive's max speed and the line segment's max speed. |
+| **Eligibility (Status)** | The status of an order line after an allocation attempt (USEI02). Can be `ELIGIBLE` (fully allocatable), `PARTIAL` (partially allocatable), or `UNDISPATCHABLE` (no stock). |
+| **Electrified** | A characteristic of a line segment, indicating if it allows the circulation of electric locomotives. |
+| **Entrance (Warehouse)** | The starting point for all pick paths, represented as coordinate (0,0) (Aisle 0, Bay 0). |
+| **Expired** | A reason for a return (USEI05). The item has passed its expiry date and must be discarded. |
+| **Expiry Date** | The date on which a perishable product is no longer considered usable. Used for FEFO sorting. |
+| **FEFO (First-Expired-First-Out)** | An inventory principle for perishable goods, ensuring items with the earliest expiry date are dispatched first. This has higher priority than FIFO. |
+| **FF (First Fit)** | A packing heuristic (USEI03). Allocations are placed into the *first* available trolley that has enough capacity, in the order they are received. |
+| **FFD (First Fit Decreasing)** | A packing heuristic (USEI03). Allocations are sorted by weight (largest first) and then the First Fit (FF) logic is applied. |
+| **FIFO (First-In-First-Out)** | An inventory principle for non-perishable goods, ensuring items that were received first (oldest `receivedAt` date) are dispatched first. |
+| **Flatcar** | A type of wagon with a flat, open bed, used for transporting containers or large machinery. |
+| **Freight** | A set of wagons that must be transported from an origin station to a destination station. |
+| **Freight Yard** | A facility used for loading, unloading, sorting, and assembling trains. |
+| **Gauge** | The width between the rails of a railway track (e.g., 1668mm). |
+| **Hopper car** | A type of wagon used for bulk commodities like grain or coal, which can be emptied from the bottom. |
+| **Infrastructure (Railway)** | The physical components of the railway system, including tracks, stations, and terminals. |
+| **Intermodal** | A type of terminal where cargo is transferred between different modes of transport (e.g., train, truck, ship). |
+| **LIFO (Last-In-First-Out)** | The principle used for quarantine (USEI05), where the most recently returned items are inspected and processed first. |
+| **Line Segment** | A component of a Railway Line connecting two stations. It has specific attributes like gauge, electrification, and speed limit. |
+| **Locomotive** | The powered vehicle (diesel or electric) that pulls the freight wagons in a train. |
+| **Nearest-Neighbour (Strategy B)** | A pick path sequencing strategy (USEI04). From the current location, the picker moves to the *closest* unvisited bay, repeating this process until all bays are visited. |
+| **Operator** | The entity responsible for the railway. Can be an "Infrastructure Owner" (owns the tracks) or a "Train Operator" (owns the rolling stock). |
+| **Order** | A customer order for products, which contains one or more Order Lines. It has a priority and a due date used for processing in USEI02. |
+| **Order Line** | A single item (SKU) and its requested quantity within a customer Order. |
+| **Packing Heuristic** | An algorithm (e.g., FF, FFD, BFD) used in USEI03 to pack allocations (items) into trolleys (bins) based on weight capacity. |
+| **Path (Railway)** | The ordered list of stations a train must pass through to travel from its origin to its destination. |
+| **Payload** | The maximum carrying capacity (e.g., in kg) of a wagon. |
+| **Pick Path** | The optimized sequence of warehouse bays a picker must visit to fulfill a picking plan, calculated in USEI04 to minimize walking distance. |
+| **Picker** | A warehouse worker responsible for physically collecting items from bays. |
+| **Picking** | The physical process of collecting products from their warehouse locations (bays) to fulfill allocated orders. |
+| **Picking Assignment** | A single task for a picker, created from an Allocation. It details what item (SKU), how much (qty), and from where (aisle, bay, boxId) to pick. |
+| **Picking Plan** | The output of USEI03; a set of trolleys, each containing the specific picking assignments (allocations) that fit its weight capacity. |
+| **Picking Status** | The state of a `PickingAssignment`. Can be `PENDING` (created), `ASSIGNED` (put in a trolley), or `PICKED` (completed). |
+| **Planner** | A system user (e.g., Warehouse Planner) responsible for running allocation (USEI02) and packing (USEI03). |
+| **Priority (Order)** | A value on an Order used to determine processing sequence in USEI02. Lower numbers are processed first. |
+| **Quality Operator** | A system user responsible for managing returns and quarantine (USEI05). |
+| **Quarantine** | The temporary holding area for returned products awaiting inspection. Items are processed in LIFO order. |
+| **Railway Line** | The complete route connecting two endpoints (e.g., stations), which is composed of one or more Line Segments. |
+| **Railway System** | The complete network of infrastructure, rolling stock, operations, and management for rail freight transport. |
+| **ReceivedAt** | The timestamp when a box was received into the warehouse. Used for FIFO sorting. |
+| **Refrigerated car** | A type of wagon (also called "Reefer") used for perishable goods that require temperature control. |
+| **Relational Model** | The logical design of the database, defining tables, columns, and relationships (USBD02). |
+| **Relocation** | A warehouse operation (mentioned in USEI01) to move a box from one bay to another, maintaining its FEFO/FIFO position. |
+| **Restocked** | The status of a returned item that has been inspected, approved, and placed back into inventory. |
+| **Return** | A product sent back to the warehouse for reasons such as "Damaged," "Expired," or "Customer Remorse." |
+| **Rolling Stock** | All vehicles that move on the railway, including locomotives and wagons. Belongs to a Train Operator. |
+| **Route** | A plan for a freight movement. Can be "simple" (one freight) or "complex" (multiple freights). |
+| **Scheduler** | A system user responsible for planning train timetables. |
+| **Siding** | A designated area or track, often at a station, where trains can pass each other on a single-track line or wait. |
+| **SKU (Stock Keeping Unit)** | A unique identifier for a specific product type in the inventory (e.g., "SKU0001"). |
+| **Station** | A facility on the railway network for loading, unloading, or sorting freight, which may include warehouses. |
+| **Station Master** | A system user who oversees station operations, arrivals, and departures. |
+| **Storage Manager** | A system user (e.g., Station Storage Manager) who manages warehouse operations, likely using the ESINF functionalities. |
+| **Tank car** | A type of wagon designed to transport liquids and gases. |
+| **Terminal** | A type of station, often intermodal, where cargo is transferred between trains, trucks, or ships. |
+| **Terminal Operator** | A system user responsible for warehouse operations, specifically wagon unloading (USEI01). |
+| **Train** | A series of rolling stock (locomotives and wagons) coupled together. |
+| **Train Driver** | A system user who operates the train. |
+| **Trolley** | A cart with a defined maximum weight capacity, used by warehouse pickers to collect items for orders. |
+| **Wagon (Freight Car)** | The non-powered rolling stock used to carry cargo, such as boxcars, flatcars (for containers), or tank cars. |
+| **Warehouse** | The storage facility, connected to the unloading docks, organized into aisles and bays, where product boxes are stored. |
+| **WMS (Warehouse Management System)** | The software system used to log and manage all warehouse operations, including inventory, dispatch, and traceability. |

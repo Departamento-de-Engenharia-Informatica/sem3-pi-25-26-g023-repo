@@ -55,13 +55,16 @@ public class Main {
             System.out.println("Unloading wagons into warehouses and inventory...");
             wms.unloadWagons(wagons);
 
-            // 5️⃣ USEI05 - Process Returns
-            System.out.println("Loading returns...");
+            // 5️⃣ USEI05 - Load Returns (DO NOT PROCESS)
+            System.out.println("Loading returns into quarantine...");
             List<Return> returns = manager.loadReturns("src/main/java/pt/ipp/isep/dei/FicheirosCSV/returns.csv");
             for (Return r : returns) {
                 quarantine.addReturn(r);
             }
-            wms.processReturns();
+            // A LINHA PROBLEMÁTICA "wms.processReturns();" FOI REMOVIDA DAQUI.
+            // O processamento agora só ocorre quando selecionado no menu.
+            System.out.printf("%d returns loaded into quarantine.%n", quarantine.size());
+
 
             // 6️⃣ Load ESINF Orders
             System.out.println("Loading orders...");
