@@ -55,9 +55,9 @@ Freight <-- Stations : picked up from
 Freight --> Routes : has assigned
 
 class RailwayNetwork{
-id
-name
-length
+totalLength
+country
+maxSpeed
 }
 
 class TrainOperators{
@@ -66,37 +66,69 @@ name
 }
 
 class RollingStocks{
+id
+type
+manufacturer
+yearBuilt
+status
 }
 class Trains{
 id
 }
 class Locomotives{
+serialNumber
 id
+make
+model
+entryYear
+type (“diesel”, “electric”)
+power
+acceleration
+fuelCapacity (nullable)
+gauge
 }
 class Wagons{
 id
+type (“boxcar”, “tank”, “flat”, “hopper”, “refrigerated”)
+payloadCapacity
+volumeCapacity
+tareWeight
+gauge
 }
 class Freight{
 id
+originStationId
+destinationStationId
+status
+weight
+volume
 }
 
 class LineSegment{
 id
+name
+gauge
+isElectrified (boolean)
+totalLength
+ownerId
+length
+maxSpeed
+condition
 }
-
-class Box{
-}
-class Order{
-}
-
 
 
 
 class Routes{
 id
+name
+totalDistance
+estimatedTime
 }
 class Path{
 id
+sequenceNumber
+distance
+estimatedDuration
 }
 
 class SingleRailway{
@@ -107,17 +139,26 @@ class DoubleRailway{
 
 
 class Stations{
-id
+name
+location
+capacity
+openingDate
 }
 class Buildings{
 id
 }
 class Terminals{
 id
+type
+}
+class Trains{
+
 }
 
-
 class Warehouses{
+capacityBoxes
+aislesCount
+bayCount
 }
 class RefrigeratedAreas{
 }
@@ -127,6 +168,7 @@ class GrainSilos{
 class Planner{
 id
 name
+department
 }
 class TrainDriver{
 id
@@ -139,6 +181,7 @@ name
 class StationManager{
 id
 name
+contactNumber
 }
 
 class LineOwners{
@@ -148,6 +191,9 @@ name
 
 class FreightYards{
 id
+area
+capacity
+typeOfCargo
 }
 class Sidings{
 id

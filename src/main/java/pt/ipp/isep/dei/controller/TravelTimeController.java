@@ -246,7 +246,7 @@ public class TravelTimeController {
             // Mostrar "N/A" para tempos inválidos/infinitos
             String segmentTimeStr = (!Double.isInfinite(segmentTimeHours) && !Double.isNaN(segmentTimeHours)) ? String.format("%.1f", segmentTimeHours * 60) : "N/A";
             String cumulativeTimeStr = (!Double.isInfinite(cumulativeTimeHours) && !Double.isNaN(cumulativeTimeHours)) ? String.format("%.1f", cumulativeTimeHours * 60) : "N/A";
-            sb.append(String.format("      Dist: %.2f km | Eff. Speed: %.1f km/h | Time: %s min | Cum. Time: %s min%n",
+            sb.append(String.format("      Dist: %.2f km | Eff. Speed: %.1f km/h | Time: %s min \n ",
                     seg.getComprimento(),
                     effectiveSpeed,
                     segmentTimeStr,
