@@ -152,7 +152,12 @@ id
 type
 }
 class Trains{
-
+id
+model
+buildYear
+maxSpeed
+status
+composition
 }
 
 class Warehouses{
