@@ -1,0 +1,273 @@
+@startuml
+'https://plantuml.com/class-diagram
+
+' --- GERAL SETTINGS ---
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing true
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+hide empty methods
+hide circles
+
+' --- DOMAIN MODEL PACKAGES ---
+' (Define all classes and internal relationships first)
+
+package "Railway Infrastructure" {
+    class RailwayNetwork {
+        name
+    }
+    class RailwayLine {
+        lineId
+        name
+    }
+    class LineSegment {
+        segmentId
+        gauge
+        isElectrified
+        length_km
+        maxSpeed_kmh
+        maxWeight_kg_m
+        trackType
+    }
+    class Station {
+        stationId
+        name
+        type
+        latitude
+        longitude
+        hasWarehouse
+        hasRefrigerated
+    }
+    ' Facilities are logical locations
+    abstract class Facility {
+        name
+    }
+    class FreightYard {
+        typeOfCargo
+    }
+    class Terminal {
+        type
+    }
+    class Siding {
+        purpose
+    }
+    ' Buildings are physical structures at a Station
+    abstract class Building {}
+    class RefrigeratedArea {}
+    class GrainSilo {}
+
+    Facility <|-- Station
+    Facility <|-- FreightYard
+    Facility <|-- Terminal
+    Facility <|-- Siding
+
+    Building <|-- RefrigeratedArea
+    Building <|-- GrainSilo
+
+    RailwayNetwork "1" -- "1..*" RailwayLine : "is composed of"
+    RailwayLine "1" -- "1..*" LineSegment : "is composed of"
+    RailwayNetwork "1" -- "2..*" Station : connects >
+
+    Station "1" -- "0..*" RefrigeratedArea : "can have"
+    Station "1" -- "0..*" GrainSilo : "can have"
+}
+
+package "Rolling Stock & Operators" {
+    class TrainOperator {
+        id
+        name
+    }
+    class LineOwner {
+        id
+        name
+    }
+    abstract class RollingStock {
+        stockId
+        make
+        model
+        yearOfService
+        gauge
+        length_m
+        tareWeight_kg
+    }
+    class Locomotive {
+        locomotiveType
+        power_kw
+        acceleration
+        maxTotalWeight_kg
+        fuelCapacity_L (diesel)
+        voltage_V (electric)
+        frequency_Hz (electric)
+    }
+    class Wagon {
+        wagonType
+        payloadCapacity_kg
+        volumeCapacity_m3
+        isRefrigerated
+        maxPressure_bar (for tank)
+        containerSupported
+    }
+
+    RollingStock <|-- Locomotive
+    RollingStock <|-- Wagon
+    TrainOperator "1" -- "0..*" RollingStock : owns
+}
+
+package "Route Planning & Execution (Sprint 2)" {
+    class Freight {
+        freightId
+        status
+    }
+
+    ' A planned route is the template
+    class PlannedRoute {
+        routeId
+        name
+        totalDistance
+    }
+
+    ' A stop on the route template
+    class RouteStop {
+        sequenceNumber
+        isStop (Y/N)
+    }
+
+    ' A specific journey executing a route
+    class TrainJourney {
+        journeyId
+        startDateTime
+        status
+    }
+
+    ' An event recorded during a journey
+    class TrainEvent {
+        timestamp
+        eventType (arrival, departure)
+    }
+
+    TrainJourney "1" -- "1" PlannedRoute : follows >
+    TrainJourney "1" -- "1..*" TrainEvent : records >
+}
+
+package "Warehouse (WMS - Sprint 1)" {
+    class Warehouse extends Building {
+        warehouseId
+        name
+    }
+    class Aisle {
+        aisleId
+    }
+    class Bay {
+        bayId
+        capacityBoxes
+    }
+    class Box {
+        boxId
+        sku
+        qtyAvailable
+        expiryDate
+        receivedAt
+    }
+    class Item {
+        sku
+        name
+        category
+        unitWeight
+    }
+    class CustomerOrder {
+        orderId
+        priority
+        dueDate
+    }
+    class OrderLine {
+        lineNo
+        requestedQty
+    }
+    class Return {
+        returnId
+        reason
+        timestamp
+        isRestockable()
+    }
+    class Quarantine {
+        stack<Return>
+        LIFO_processing()
+    }
+
+    Warehouse "1" -- "1..*" Aisle : has >
+    Aisle "1" -- "1..*" Bay : has >
+    Bay "1" -- "0..*" Box : stores >
+    Box "*" -- "1" Item : contains >
+    CustomerOrder "1" -- "1..*" OrderLine : "is composed of"
+    OrderLine "*" -- "1" Item : requests >
+    Return "*" -- "1" Item : concerns >
+    Quarantine "1" -- "0..*" Return : holds >
+}
+
+package "Station Management (ARQCP - Sprint 2)" {
+    class StationMngtSystem {
+        manageStation()
+    }
+    class Track {
+        trackNumber (1-99)
+    }
+    class LightSign {
+        state (Green, Red, Yellow, BlinkRed)
+    }
+    class Sensor {
+        type (Temperature, Humidity)
+        value
+    }
+    class StationLog {
+        timestamp
+        message
+    }
+
+    Track "1" -- "1" LightSign : is controlled by >
+    StationMngtSystem "1" -- "1" StationLog : writes to >
+}
+
+package "Station Index (ESINF - Sprint 2)" {
+    class StationIndex {
+        searchByArea()
+        searchByRadius()
+        searchNearestN()
+    }
+    class EuropeanStationDataset {
+        (64k records)
+    }
+    class "BST/AVL" as TreeIndex
+    class "2DTree" as SpatialIndex
+
+    StationIndex "1" -- "1" EuropeanStationDataset : is built from >
+    StationIndex "1" -- "*" TreeIndex : uses >
+    StationIndex "1" -- "1" SpatialIndex : uses >
+}
+
+' --- GLOBAL RELATIONSHIPS (CROSS-PACKAGE) ---
+' (All relationships between packages are defined AFTER packages)
+
+' Infrastructure <--> WMS
+' A Herança (extends) já foi definida dentro do pacote WMS.
+' Esta linha define a associação (o que uma Estação pode ter).
+Station "1" -- "0..*" Warehouse : "can have"
+
+' Infrastructure <--> Route Planning
+RouteStop "1" -- "1" Station : "is at"
+RouteStop "1" -- "1" LineSegment : "is reached via"
+TrainEvent "1" -- "1" Station : "occurs at"
+
+' Infrastructure <--> Station Management
+StationMngtSystem "1" -- "1" Station : manages >
+Station "1" -- "1..99" Track : has >
+Station "1" -- "2" Sensor : has >
+
+' Rolling Stock <--> Route Planning
+TrainJourney "1" -- "1..*" Locomotive : "is pulled by"
+Freight "1" -- "1..*" Wagon : "is composed of"
+
+' Rolling Stock <--> Infrastructure
+LineOwner "1" -- "0..*" RailwayLine : owns
+
+@enduml
