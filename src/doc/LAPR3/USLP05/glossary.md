@@ -1,4 +1,4 @@
-# 📖 Business Glossary (USLP01 & USLP05)
+# 📖 Business Glossary (USLP05)
 
 This document provides an alphabetical list of the key business terms and concepts for the "Logistics On Rails" project, covering Sprints 1 and 2, and aligned with the official Domain Model.
 
