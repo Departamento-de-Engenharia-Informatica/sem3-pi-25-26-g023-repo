@@ -288,4 +288,133 @@ public class InventoryManager {
 
         return new ArrayList<>(items.values());
     }
+
+    // --- INÍCIO DO CÓDIGO ATUALIZADO (USEI06 - Sprint 2) ---
+
+    /**
+     * Carrega as estações europeias do ficheiro CSV (USEI06).
+     * @param filePath Caminho para train_stations_europe.csv
+     * @return Lista de EuropeanStation
+     * @throws IOException Se o ficheiro não for encontrado
+     */
+    public List<EuropeanStation> loadEuropeanStations(String filePath) throws IOException {
+        List<EuropeanStation> stations = new ArrayList<>();
+        String line;
+        int validCount = 0;
+        int invalidCount = 0;
+
+        try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
+            // Ler cabeçalho
+            String header = br.readLine();
+
+            while ((line = br.readLine()) != null) {
+                if (line.trim().isEmpty()) {
+                    continue;
+                }
+
+                // *** CORREÇÃO: Usar o parser robusto em vez de line.split(",") ***
+                String[] p = parseCSVLine(line);
+
+                try {
+                    // Mapeamento das colunas (baseado no header)
+                    // p[0] = country
+                    // p[1] = time_zone (ex: "('Europe/Paris',)") - ignorado
+                    // p[2] = time_zone_group
+                    // p[3] = station
+                    // p[4] = latitude
+                    // p[5] = longitude
+                    // p[6] = is_city
+                    // p[7] = is_main_station
+                    // p[8] = is_airport
+
+                    if (p.length < 9) {
+                        throw new IllegalArgumentException("Linha com colunas insuficientes.");
+                    }
+
+                    String country = p[0].trim();
+                    String timeZoneGroup = p[2].trim();
+                    String stationName = p[3].trim();
+                    double latitude = Double.parseDouble(p[4].trim());
+                    double longitude = Double.parseDouble(p[5].trim());
+                    boolean isCity = parseBoolean(p[6].trim());
+                    boolean isMainStation = parseBoolean(p[7].trim());
+                    boolean isAirport = parseBoolean(p[8].trim());
+
+                    // Critérios de Aceitação (USEI06): Validação
+                    if (stationName.isEmpty() || country.isEmpty() || timeZoneGroup.isEmpty()) {
+                        throw new IllegalArgumentException("Station, Country, or TZG is empty.");
+                    }
+                    if (latitude < -90 || latitude > 90) {
+                        throw new IllegalArgumentException("Latitude " + latitude + " out of range [-90, 90].");
+                    }
+                    if (longitude < -180 || longitude > 180) {
+                        throw new IllegalArgumentException("Longitude " + longitude + " out of range [-180, 180].");
+                    }
+
+                    // Se for válido, cria e adiciona o objeto
+                    EuropeanStation station = new EuropeanStation(stationName, country, timeZoneGroup, latitude, longitude, isCity, isMainStation, isAirport);
+                    stations.add(station);
+                    validCount++;
+
+                } catch (Exception e) {
+                    // Rejeita a linha inválida e reporta o problema
+                    System.err.println("⚠️ [USEI06] Invalid station record rejected: " + line + " | Error: " + e.getMessage());
+                    invalidCount++;
+                }
+            }
+        }
+        System.out.printf("✅ [USEI06] Loaded %d valid stations. (%d invalid rows rejected).%n", validCount, invalidCount);
+        return stations;
+    }
+
+    /**
+     * Helper para converter "True"/"False" de CSV para boolean.
+     */
+    private boolean parseBoolean(String text) {
+        return text != null && text.trim().equalsIgnoreCase("True");
+    }
+
+    /**
+     * NOVO MÉTODO: Parser de CSV robusto que lida com aspas.
+     * Este método divide uma linha de CSV, respeitando aspas (").
+     * Uma vírgula dentro de aspas não divide o campo.
+     */
+    private String[] parseCSVLine(String line) {
+        List<String> fields = new ArrayList<>();
+        StringBuilder currentField = new StringBuilder();
+        boolean inQuotes = false;
+
+        for (int i = 0; i < line.length(); i++) {
+            char c = line.charAt(i);
+
+            if (inQuotes) {
+                if (c == '"') {
+                    // Verifica se é uma aspa dupla de escape ("")
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
+                        currentField.append('"');
+                        i++; // Pula a próxima aspa
+                    } else {
+                        inQuotes = false; // Fim do campo com aspas
+                    }
+                } else {
+                    currentField.append(c); // Carácter normal dentro das aspas
+                }
+            } else {
+                if (c == '"') {
+                    inQuotes = true; // Início de um campo com aspas
+                } else if (c == ',') {
+                    fields.add(currentField.toString()); // Fim do campo
+                    currentField.setLength(0); // Limpa para o próximo campo
+                } else {
+                    currentField.append(c); // Carácter normal
+                }
+            }
+        }
+        // Adiciona o último campo
+        fields.add(currentField.toString());
+
+        return fields.toArray(new String[0]);
+    }
+
+    // --- FIM DO CÓDIGO ATUALIZADO (USEI06 - Sprint 2) ---
 }
