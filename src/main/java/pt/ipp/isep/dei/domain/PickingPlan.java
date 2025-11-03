@@ -6,8 +6,18 @@ import java.util.List;
 
 /**
  * Represents a picking plan for warehouse order fulfillment.
+ * (Versão 2.1 - Corrigido o bug String.format)
  */
 public class PickingPlan {
+
+    // --- Códigos de Cores ANSI (Apenas os necessários) ---
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_RED = "\u001B[31m"; // Para utilização > 90%
+    private static final String ANSI_GREEN = "\u001B[32m";
+    private static final String ANSI_YELLOW = "\u001B[33m";
+    private static final String ANSI_CYAN = "\u001B[36m";
+    private static final String ANSI_BOLD = "\u001B[1m";
+
     private final String id;
     private final List<Trolley> trolleys;
     private final HeuristicType heuristic;
@@ -44,10 +54,33 @@ public class PickingPlan {
                 .orElse(0.0);
     }
 
-    /** Returns a summary string of the picking plan. */
+    // -----------------------------------------------------------------
+    // --- CORREÇÃO (Linha 75 - removido o %s extra) ---
+    // -----------------------------------------------------------------
+    /**
+     * Returns a "pretty" summary string of the picking plan.
+     */
     public String getSummary() {
-        return String.format("Picking Plan %s: %d trolleys, %.1f%% avg utilization, %.1f kg total",
-                id, getTotalTrolleys(), getAverageUtilization(), getTotalWeight());
+        // Formata a utilização com cores (Vermelho se > 90%, Amarelo se > 75%, Verde caso contrário)
+        double avgUtil = getAverageUtilization();
+        String utilColor = (avgUtil > 90) ? ANSI_RED : (avgUtil > 75 ? ANSI_YELLOW : ANSI_GREEN);
+
+        // O %s extra foi removido da última linha
+        return String.format(
+                "  Plan ID: %s%s%s\n" +
+                        "  Heuristic Used: %s%s%s\n" +
+                        "  Trolley Capacity: %s%.2f kg%s\n" +
+                        "  " + ANSI_BOLD + "--------------------------------------\n" + ANSI_RESET +
+                        "  Total Trolleys: %s%d%s\n" +
+                        "  Total Weight: %s%.2f kg%s\n" +
+                        "  Avg. Utilization: %s%.1f%%%s", // <-- LINHA CORRIGIDA
+                ANSI_BOLD, id, ANSI_RESET,
+                ANSI_CYAN, heuristic, ANSI_RESET,
+                ANSI_YELLOW, trolleyCapacity, ANSI_RESET,
+                ANSI_BOLD + ANSI_CYAN, getTotalTrolleys(), ANSI_RESET,
+                ANSI_BOLD, getTotalWeight(), ANSI_RESET,
+                ANSI_BOLD + utilColor, avgUtil, ANSI_RESET // <-- Argumentos agora correspondem
+        );
     }
 
     // Getters
@@ -59,6 +92,6 @@ public class PickingPlan {
     /** Returns string representation of the picking plan. */
     @Override
     public String toString() {
-        return getSummary();
+        return getSummary(); // Chama o método "bonito"
     }
 }

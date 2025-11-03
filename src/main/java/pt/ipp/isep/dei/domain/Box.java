@@ -2,49 +2,32 @@ package pt.ipp.isep.dei.domain;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Objects;
 
 /**
- * Represents a physical box in inventory that stores a specific SKU.
- * <p>
- * Each box contains a certain quantity of items and may include
- * information about expiration date, reception date, and location
- * (aisle and bay) in the warehouse.
- * </p>
+ * Represents a physical box in inventory.
+ * (Versão 2.0 - "Bonito" toString)
  */
 public class Box implements Comparable<Box> {
 
-    /** Unique identifier of the box. */
+    // --- Códigos de Cores ANSI ---
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_YELLOW = "\u001B[33m";
+    private static final String ANSI_CYAN = "\u001B[36m";
+    private static final String ANSI_RED = "\u001B[31m";
+    private static final String ANSI_BOLD = "\u001B[1m";
+
     public final String boxId;
-
-    /** SKU (Stock Keeping Unit) stored in this box. */
     public final String sku;
-
-    /** Quantity of items currently available in the box. */
     public int qtyAvailable;
-
-    /** Expiration date of the items, or {@code null} if non-perishable. */
     public final LocalDate expiryDate;
-
-    /** Date and time when the box was received. */
     public final LocalDateTime receivedDate;
-
-    /** Aisle location in the warehouse. */
     private String aisle;
-
-    /** Bay location in the warehouse. */
     private String bay;
 
     /**
      * Creates a box with an expiration date represented as {@link LocalDate}.
-     *
-     * @param boxId        unique box identifier
-     * @param sku          SKU code stored in this box
-     * @param qtyAvailable available quantity
-     * @param expiryDate   expiration date (may be {@code null})
-     * @param receivedDate date and time when the box was received
-     * @param aisle        aisle where the box is located
-     * @param bay          bay where the box is located
      */
     public Box(String boxId, String sku, int qtyAvailable,
                LocalDate expiryDate, LocalDateTime receivedDate,
@@ -60,14 +43,6 @@ public class Box implements Comparable<Box> {
 
     /**
      * Creates a box with an expiration date represented as {@link LocalDateTime}.
-     *
-     * @param boxId           unique box identifier
-     * @param sku             SKU code stored in this box
-     * @param qtyAvailable    available quantity
-     * @param expiryDateTime  expiration date and time (may be {@code null})
-     * @param receivedDate    date and time when the box was received
-     * @param aisle           aisle where the box is located
-     * @param bay             bay where the box is located
      */
     public Box(String boxId, String sku, int qtyAvailable,
                LocalDateTime expiryDateTime, LocalDateTime receivedDate,
@@ -77,51 +52,20 @@ public class Box implements Comparable<Box> {
                 receivedDate, aisle, bay);
     }
 
-    public String getBoxId() {
-        return boxId;
-    }
-
-    public String getSku() {
-        return sku;
-    }
-
-    public int getQtyAvailable() {
-        return qtyAvailable;
-    }
-
-    public String getAisle() {
-        return aisle;
-    }
-
-
-    public String getBay() {
-        return bay;
-    }
-
-    public LocalDate getExpiryDate() {
-        return expiryDate;
-    }
-
-    public LocalDateTime getReceivedDate() {
-        return receivedDate;
-    }
-
-    /** Sets the aisle location. */
-    public void setAisle(String aisle) {
-        this.aisle = aisle;
-    }
-
-    /** Sets the bay location. */
-    public void setBay(String bay) {
-        this.bay = bay;
-    }
+    // --- Getters (Mantidos) ---
+    public String getBoxId() { return boxId; }
+    public String getSku() { return sku; }
+    public int getQtyAvailable() { return qtyAvailable; }
+    public String getAisle() { return aisle; }
+    public String getBay() { return bay; }
+    public LocalDate getExpiryDate() { return expiryDate; }
+    public LocalDateTime getReceivedDate() { return receivedDate; }
+    public void setAisle(String aisle) { this.aisle = aisle; }
+    public void setBay(String bay) { this.bay = bay; }
 
     /**
-     * Compares boxes using FEFO for perishable items
-     * and FIFO for non-perishable items.
-     * Boxes with earlier expiration or reception dates are considered smaller.
-     * @param other another box to compare
-     * @return a negative value, zero, or a positive value depending on order
+     * Compares boxes using FEFO/FIFO logic.
+     * (Lógica mantida)
      */
     @Override
     public int compareTo(Box other) {
@@ -151,18 +95,48 @@ public class Box implements Comparable<Box> {
         return this.boxId.compareTo(other.boxId);
     }
 
+    // -----------------------------------------------------------------
+    // --- ALTERAÇÃO (Output "Bonito") ---
+    // -----------------------------------------------------------------
     /**
-     * Returns a readable string with box information.
+     * Returns a "pretty" string with box information, formatted for tables.
      *
      * @return formatted string containing box details
      */
     @Override
     public String toString() {
-        return String.format("Box{id=%s, sku=%s, qty=%d, expiry=%s, received=%s, aisle=%s, bay=%s}",
-                boxId, sku, qtyAvailable,
-                expiryDate != null ? expiryDate.toString() : "N/A",
-                receivedDate != null ? receivedDate.toString() : "N/A",
-                aisle != null ? aisle : "N/A",
-                bay != null ? bay : "N/A");
+        // Formatter para datas
+        DateTimeFormatter expiryFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+        DateTimeFormatter receivedFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+        // --- Cor de Alerta para Validade ---
+        String expiryStr;
+        String expiryColor = "";
+        if (expiryDate == null) {
+            expiryStr = "N/A";
+        } else {
+            if (expiryDate.isBefore(LocalDate.now())) {
+                expiryColor = ANSI_RED + ANSI_BOLD; // EXPIRADO
+            } else if (expiryDate.isBefore(LocalDate.now().plusDays(30))) {
+                expiryColor = ANSI_YELLOW; // EXPIRA EM BREVE
+            }
+            expiryStr = expiryDate.format(expiryFmt);
+        }
+
+        String receivedStr = (receivedDate != null) ? receivedDate.format(receivedFmt) : "N/A";
+        String location = String.format("A%s-B%s", (aisle != null ? aisle : "?"), (bay != null ? bay : "?"));
+
+        // Formata a string com alinhamento
+        // %-10s -> Alinha à esquerda, 10 caracteres
+        // %4d   -> Alinha à direita, 4 caracteres
+        return String.format(
+                "  %-10s | %-12s | %s%4d%s | %s%-12s%s | %-18s | %s%-10s%s",
+                boxId,
+                sku,
+                ANSI_BOLD, qtyAvailable, ANSI_RESET, // Quantidade a bold
+                expiryColor, expiryStr, ANSI_RESET,   // Validade com cor
+                receivedStr,
+                ANSI_CYAN, location, ANSI_RESET     // Localização a ciano
+        );
     }
 }

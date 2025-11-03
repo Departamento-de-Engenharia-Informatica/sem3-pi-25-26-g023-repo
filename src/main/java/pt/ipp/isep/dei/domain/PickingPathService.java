@@ -6,95 +6,78 @@ import java.util.stream.Collectors;
 /**
  * Service responsible for computing optimal or heuristic picking paths
  * for warehouse operations based on a given {@link PickingPlan}.
- * <p>
- * Two strategies are currently implemented:
- * <ul>
- *     <li><b>Strategy A (Deterministic Sweep)</b>: visits bays in sorted order by aisle and bay.</li>
- *     <li><b>Strategy B (Nearest Neighbour)</b>: applies a greedy heuristic by visiting the nearest valid bay at each step.</li>
- * </ul>
- * </p>
- * <p>
- * This class also defines an inner static class {@link PathResult} that encapsulates
- * both the computed path (list of {@link BayLocation}) and the total distance.
- * </p>
+ * (Versão 2.0 - "Bonito" toString e outputs de log)
  */
 public class PickingPathService {
+
+    // --- Códigos de Cores ANSI (Apenas os necessários) ---
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_RED = "\u001B[31m";
+    private static final String ANSI_YELLOW = "\u001B[33m";
+    private static final String ANSI_CYAN = "\u001B[36m";
+    private static final String ANSI_BOLD = "\u001B[1m";
+    private static final String ANSI_ITALIC = "\u001B[3m";
 
     /** Constant reference to the entrance location (0,0). */
     private static final BayLocation ENTRANCE = BayLocation.entrance();
 
     /**
      * Represents the result of a computed picking path.
-     * <p>
-     * Contains both the ordered list of {@link BayLocation}s (the path)
-     * and the total travel distance in arbitrary units.
-     * </p>
+     * (Versão 2.0 - "Bonito" toString)
      */
     public static class PathResult {
-        /** Ordered list of locations representing the path. */
-        public final List<BayLocation> path;
+        // --- Códigos de Cores (Privados para a classe interna) ---
+        private static final String C_RESET = "\u001B[0m";
+        private static final String C_CYAN = "\u001B[36m";
+        private static final String C_BOLD = "\u001B[1m";
+        private static final String C_ITALIC = "\u001B[3m";
+        private static final String C_YELLOW = "\u001B[33m";
 
-        /** Total computed distance for the path. */
+        public final List<BayLocation> path;
         public final double totalDistance;
 
-        /**
-         * Constructs a {@code PathResult} with a path and its total distance.
-         * <p>
-         * The provided path list is defensively copied to prevent external modification.
-         * </p>
-         *
-         * @param path           the ordered list of {@link BayLocation}s
-         * @param totalDistance  the total distance for the path
-         */
         public PathResult(List<BayLocation> path, double totalDistance) {
             this.path = (path != null) ? new ArrayList<>(path) : new ArrayList<>();
             this.totalDistance = totalDistance;
         }
 
-        /**
-         * Returns a formatted string representation of the path and its total distance.
-         * <ul>
-         *     <li>If the path is empty or null, a placeholder message is returned.</li>
-         *     <li>Distances are formatted with two decimal places, and NaN/Infinity are handled gracefully.</li>
-         * </ul>
-         *
-         * @return a human-readable string describing the path and distance
-         */
+        // -----------------------------------------------------------------
+        // --- ALTERAÇÃO (Output "Bonito") ---
+        // -----------------------------------------------------------------
         @Override
         public String toString() {
             String pathString;
-            if (path == null || path.isEmpty()) {
-                pathString = "Path is empty or null";
+            if (path == null || path.isEmpty() || (path.size() == 1 && path.get(0).equals(ENTRANCE))) {
+                pathString = C_ITALIC + "Path is empty or only contains entrance." + C_RESET;
             } else {
                 pathString = path.stream()
                         .filter(Objects::nonNull)
-                        .map(BayLocation::toString)
-                        .collect(Collectors.joining(" -> "));
+                        .map(loc -> {
+                            // Destaca a ENTRADA
+                            if (loc.equals(ENTRANCE)) {
+                                return C_BOLD + C_YELLOW + loc.toString() + C_RESET;
+                            }
+                            return loc.toString();
+                        })
+                        .collect(Collectors.joining(C_CYAN + " -> " + C_RESET));
             }
 
             String distString = Double.isNaN(totalDistance) ? "Not Calculated (NaN)" :
                     Double.isInfinite(totalDistance) ? "Infinite/Unreachable" :
                             String.format("%.2f", totalDistance);
 
-            return "Path: " + pathString +
-                    "\nTotal Distance: " + distString;
+            return String.format(
+                    "  %sPath:%s %s\n" +
+                            "  %sTotal Distance:%s %s%.2f units%s",
+                    C_BOLD, C_RESET, pathString,
+                    C_BOLD, C_RESET, C_BOLD + C_YELLOW, totalDistance, C_RESET
+            );
         }
-    }
+    } // --- Fim da classe PathResult ---
+
 
     /**
-     * Calculates the picking paths for a given {@link PickingPlan}, applying both
-     * deterministic and heuristic strategies.
-     * <p>
-     * Returns a map containing results for both strategies:
-     * <ul>
-     *     <li>"Strategy A (Deterministic Sweep)"</li>
-     *     <li>"Strategy B (Nearest Neighbour)"</li>
-     * </ul>
-     * If the plan or its data is invalid, placeholder results are returned.
-     * </p>
-     *
-     * @param plan the picking plan containing trolleys and their assignments
-     * @return a map associating strategy names with their corresponding {@link PathResult}
+     * Calculates the picking paths, now with "bonito" logging.
      */
     public Map<String, PathResult> calculatePickingPaths(PickingPlan plan) {
         Map<String, PathResult> results = new HashMap<>();
@@ -102,7 +85,8 @@ public class PickingPathService {
         results.put("Strategy B (Nearest Neighbour)", new PathResult(List.of(ENTRANCE), 0.0));
 
         if (plan == null || plan.getTrolleys() == null || plan.getTrolleys().isEmpty()) {
-            System.out.println("⚠️ Picking plan is empty or null.");
+            // --- ALTERAÇÃO (Output "Bonito") ---
+            System.out.println(ANSI_YELLOW + "⚠️ Picking plan is empty or null. No paths to calculate." + ANSI_RESET);
             return results;
         }
 
@@ -127,25 +111,30 @@ public class PickingPathService {
                 .collect(Collectors.toList());
 
         if (sortedUniqueValidBays.isEmpty()) {
-            System.out.println("ℹ️ No valid bays found in this picking plan.");
+            // --- ALTERAÇÃO (Output "Bonito") ---
+            System.out.println(ANSI_YELLOW + "ℹ️ No valid bays found in this picking plan. Nothing to route." + ANSI_RESET);
             return results;
         }
 
-        System.out.printf("  ➡️  Calculating routes for %d unique valid locations.%n", sortedUniqueValidBays.size());
+        // --- ALTERAÇÃO (Output "Bonito") ---
+        System.out.printf("  %s➡️  Calculating routes for %d unique valid locations...%s%n",
+                ANSI_ITALIC, sortedUniqueValidBays.size(), ANSI_RESET);
 
         // 2. Compute both strategies with error handling
         try {
             results.put("Strategy A (Deterministic Sweep)", calculateStrategyA(new ArrayList<>(sortedUniqueValidBays)));
         } catch (Exception e) {
-            System.err.println("❌ Error calculating Strategy A: " + e.getMessage());
-            e.printStackTrace();
+            // --- ALTERAÇÃO (Output "Bonito") ---
+            System.err.println(ANSI_RED + ANSI_BOLD + "❌ Error calculating Strategy A: " + ANSI_RESET + ANSI_RED + e.getMessage() + ANSI_RESET);
+            e.printStackTrace(System.err);
             results.put("Strategy A (Deterministic Sweep)", new PathResult(List.of(ENTRANCE), Double.NaN));
         }
         try {
             results.put("Strategy B (Nearest Neighbour)", calculateStrategyB(new ArrayList<>(sortedUniqueValidBays)));
         } catch (Exception e) {
-            System.err.println("❌ Error calculating Strategy B: " + e.getMessage());
-            e.printStackTrace();
+            // --- ALTERAÇÃO (Output "Bonito") ---
+            System.err.println(ANSI_RED + ANSI_BOLD + "❌ Error calculating Strategy B: " + ANSI_RESET + ANSI_RED + e.getMessage() + ANSI_RESET);
+            e.printStackTrace(System.err);
             results.put("Strategy B (Nearest Neighbour)", new PathResult(List.of(ENTRANCE), Double.NaN));
         }
 
@@ -154,13 +143,6 @@ public class PickingPathService {
 
     /**
      * Strategy A – Deterministic Sweep.
-     * <p>
-     * Visits all valid bays in ascending order by aisle, then bay.
-     * The route always starts at the warehouse entrance (0,0).
-     * </p>
-     *
-     * @param sortedBays the list of sorted bay locations
-     * @return a {@link PathResult} containing the computed path and distance
      */
     private PathResult calculateStrategyA(List<BayLocation> sortedBays) {
         List<BayLocation> path = new ArrayList<>();
@@ -173,13 +155,6 @@ public class PickingPathService {
 
     /**
      * Strategy B – Nearest Neighbour heuristic.
-     * <p>
-     * Iteratively visits the nearest remaining bay from the current location,
-     * starting from the warehouse entrance.
-     * </p>
-     *
-     * @param bays the list of bays to visit
-     * @return a {@link PathResult} with the computed path and total distance
      */
     private PathResult calculateStrategyB(List<BayLocation> bays) {
         List<BayLocation> path = new ArrayList<>();
@@ -214,7 +189,8 @@ public class PickingPathService {
                 remainingBays.remove(nearest);
             } else {
                 if (!remainingBays.isEmpty()) {
-                    System.err.printf("❌ Error B: No reachable neighbour found at iteration %d from %s among %d remaining: %s%n",
+                    // --- ALTERAÇÃO (Output "Bonito") ---
+                    System.err.printf(ANSI_RED + "❌ Error B: No reachable neighbour found at iteration %d from %s among %d remaining: %s%n" + ANSI_RESET,
                             iteration, currentLocation, remainingBays.size(), remainingBays);
                     return new PathResult(path, Double.POSITIVE_INFINITY);
                 }
@@ -223,7 +199,8 @@ public class PickingPathService {
         }
 
         if (iteration >= MAX_ITERATIONS) {
-            System.err.println("❌ Error B: Maximum iterations reached.");
+            // --- ALTERAÇÃO (Output "Bonito") ---
+            System.err.println(ANSI_RED + "❌ Error B: Maximum iterations reached. Aborting." + ANSI_RESET);
             return new PathResult(path, Double.POSITIVE_INFINITY);
         }
 
@@ -232,17 +209,8 @@ public class PickingPathService {
     }
 
     /**
-     * Computes the distance between two bay locations based on warehouse layout logic.
-     * <ul>
-     *     <li>Distances along the same aisle are computed as the absolute bay difference.</li>
-     *     <li>Moving between aisles adds a fixed cost (×3 per aisle difference).</li>
-     *     <li>The entrance (0,0) is handled as a special case.</li>
-     * </ul>
-     * Invalid locations (negative values) result in {@code Double.POSITIVE_INFINITY}.
-     *
-     * @param c1 the first location
-     * @param c2 the second location
-     * @return the computed distance between {@code c1} and {@code c2}
+     * Computes the distance between two bay locations.
+     * (Lógica mantida)
      */
     private double calculateDistance(BayLocation c1, BayLocation c2) {
         if (c1 == null || c2 == null) return Double.POSITIVE_INFINITY;
@@ -274,13 +242,8 @@ public class PickingPathService {
     }
 
     /**
-     * Computes the total distance for a given path, summing all segment distances.
-     * <p>
-     * If any segment is invalid or infinite, the result will be {@code Double.POSITIVE_INFINITY}.
-     * </p>
-     *
-     * @param path the ordered list of bay locations representing the path
-     * @return the total computed distance, or infinity if invalid
+     * Computes the total distance for a given path.
+     * (Lógica mantida, outputs de erro melhorados)
      */
     private double calculateTotalDistance(List<BayLocation> path) {
         double totalDistance = 0;
@@ -291,14 +254,16 @@ public class PickingPathService {
             BayLocation next = path.get(i + 1);
 
             if (current == null || next == null) {
-                System.err.printf("❌ Error TotalDistance: Null point in path [%d or %d]%n", i, i + 1);
+                // --- ALTERAÇÃO (Output "Bonito") ---
+                System.err.printf(ANSI_RED + "❌ Error TotalDistance: Null point in path [%d or %d]%n" + ANSI_RESET, i, i + 1);
                 return Double.POSITIVE_INFINITY;
             }
 
             double segmentDistance = calculateDistance(current, next);
 
             if (Double.isInfinite(segmentDistance) || Double.isNaN(segmentDistance)) {
-                System.err.printf("❌ Error TotalDistance: Invalid segment (%s -> %s)%n", current, next);
+                // --- ALTERAÇÃO (Output "Bonito") ---
+                System.err.printf(ANSI_RED + "❌ Error TotalDistance: Invalid segment (%s -> %s)%n" + ANSI_RESET, current, next);
                 return Double.POSITIVE_INFINITY;
             }
             totalDistance += segmentDistance;
