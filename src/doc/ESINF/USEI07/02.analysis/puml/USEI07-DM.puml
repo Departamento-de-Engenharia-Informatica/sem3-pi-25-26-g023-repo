@@ -1,0 +1,48 @@
+@startuml DomainModel
+
+title USEI07 - 2D-Tree Construction (DM)
+
+hide circle
+hide methods
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+' This class holds all indexes
+class StationIndexManager {
+}
+
+' The existing data structure from USEI06
+class BST {
+  ' (Binary Search Tree for 1D)
+}
+
+' The NEW data structure for USEI07
+class KDTree {
+  ' (2D-Tree for spatial indexing)
+}
+
+' The core Domain Entity
+class EuropeanStation {
+  stationName
+  latitude
+  longitude
+  country
+  timeZoneGroup
+}
+
+' Relationships
+' The manager holds all the index structures
+StationIndexManager "1" *-- "1..*" BST : (holds 1D indexes)
+StationIndexManager "1" *-- "1" KDTree : (holds 2D index)
+
+' The manager USES the sorted lists from the BSTs
+' to build the KDTree
+StationIndexManager ..> BST : (builds from)
+
+' The trees store the station data
+BST o-- "1..*" EuropeanStation : indexes
+KDTree o-- "1..*" EuropeanStation : indexes
+
+@enduml

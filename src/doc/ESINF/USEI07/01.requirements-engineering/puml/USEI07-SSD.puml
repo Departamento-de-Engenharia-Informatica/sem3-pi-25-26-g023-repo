@@ -1,0 +1,19 @@
+@startuml
+
+title USEI07 - Build & Analyze 2D-Tree (SSD)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor Planner
+participant System
+
+Planner -> System: requestBuildAndAnalyze2DTree()
+activate System
+    System --> Planner: displayTreeAnalysisReport(stats, complexity)
+deactivate System
+
+@enduml

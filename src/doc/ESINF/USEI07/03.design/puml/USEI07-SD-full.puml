@@ -1,0 +1,56 @@
+@startuml
+
+title USEI07 - Build & Analyze 2D-Tree (SD)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor Planner
+participant ":CargoHandlingUI" as UI
+participant ":StationIndexManager" as Manager
+participant "tree:KDTree" as KDTree
+participant "latBST:BST" as BST_Lat
+participant "lonBST:BST" as BST_Lon
+
+Planner -> UI: requestBuildAndAnalyze2DTree()
+activate UI
+    UI -> Manager: get2DTreeStats()
+    activate Manager
+
+        ' First time running: build2DTree() is called
+        opt "tree == null"
+            Manager -> Manager: build2DTree()
+            activate Manager
+                ' These lists were already populated by buildIndexes()
+                Manager -> BST_Lat: (gets orderedByLat list)
+                Manager -> BST_Lon: (gets orderedByLon list)
+
+                Manager -> KDTree**: create()
+                Manager -> KDTree: buildBalanced(stationsByLat, stationsByLon)
+                activate KDTree
+                deactivate KDTree
+            deactivate Manager
+        end
+
+        ' Get stats
+        Manager -> KDTree: size()
+        activate KDTree
+        return treeSize
+
+        Manager -> KDTree: height()
+        activate KDTree
+        return treeHeight
+
+        Manager -> KDTree: getBucketSizes()
+        activate KDTree
+        return bucketMap
+
+    return stats (size, height, buckets)
+
+    UI --> Planner: displayTreeAnalysisReport(stats, complexity)
+deactivate UI
+
+@enduml

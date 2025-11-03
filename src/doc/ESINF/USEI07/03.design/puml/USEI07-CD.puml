@@ -1,0 +1,59 @@
+@startuml
+
+title USEI07 - Class Diagram
+
+hide circle
+hide empty members
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class CargoHandlingUI {
+  + handleBuild2DTree()
+}
+
+class StationIndexManager {
+  - station2DTree : KDTree
+  - orderedByLat : List<EuropeanStation>
+  - orderedByLon : List<EuropeanStation>
+  + get2DTreeStats() : Map<String, Object>
+  + build2DTree()
+  + getStation2DTree() : KDTree
+}
+
+' Data structures
+class BST<K, V> {
+  - root : Node
+  + inOrderTraversal() : List<V>
+}
+
+class KDTree {
+  - root : Node
+  + buildBalanced(List, List)
+  + size() : int
+  + height() : int
+  + getBucketSizes() : Map<Integer, Integer>
+}
+
+' Domain Entity
+class EuropeanStation {
+  - latitude : double
+  - longitude : double
+  - station : String
+}
+
+' Relationships
+CargoHandlingUI ..> StationIndexManager : (uses)
+
+StationIndexManager "1" *-- "1" KDTree : (holds 2D index)
+StationIndexManager "1" *-- "1..*" BST : (holds 1D indexes)
+
+' The Manager uses the sorted lists (which came from the BSTs) to build the KDTree
+StationIndexManager ..> BST : (uses lists from)
+
+' The data structures hold the domain objects
+BST o.. "1..*" EuropeanStation : (indexes)
+KDTree o.. "1..*" EuropeanStation : (indexes)
+
+@enduml
