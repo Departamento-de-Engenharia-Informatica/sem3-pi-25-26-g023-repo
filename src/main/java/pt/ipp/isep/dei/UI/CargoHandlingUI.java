@@ -8,14 +8,16 @@ import pt.ipp.isep.dei.repository.LocomotiveRepository;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator; // Import needed
+import java.util.HashMap; // <-- ADDED IMPORT
 import java.util.InputMismatchException;
 import java.util.List;
-import java.util.Map;
+import java.util.Map; // <-- ADDED IMPORT
 import java.util.Scanner;
+
 
 /**
  * Main User Interface for the Cargo Handling Terminal.
- * (Version 2.1 - "Pretty" Info Handlers)
+ * (Version 2.2 - Advanced USEI06 Query UI)
  */
 public class CargoHandlingUI implements Runnable {
 
@@ -71,7 +73,8 @@ public class CargoHandlingUI implements Runnable {
             showMenu();
             try {
                 // Read option
-                option = readInt(0, 9, ANSI_BOLD + "Option: " + ANSI_RESET);
+                // *** CORRECTION: Changed from 9 to 10 to allow all options ***
+                option = readInt(0, 10, ANSI_BOLD + "Option: " + ANSI_RESET);
 
                 // --- Robustness: Catches errors from handlers ---
                 try {
@@ -128,11 +131,12 @@ public class CargoHandlingUI implements Runnable {
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- Railway & Station Ops (S1 & S2) ---" + ANSI_RESET);
         System.out.println(ANSI_GREEN + " 6. " + ANSI_RESET + "[USLP03] Calculate Train Travel Time (S1)");
         System.out.println(ANSI_GREEN + " 7. " + ANSI_RESET + "[USEI06] Query European Station Index (S2)");
+        System.out.println(ANSI_GREEN + " 8. " + ANSI_RESET + "[USEI07] Build & Analyze 2D-Tree (S2)");
 
         // --- Info ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
-        System.out.println(ANSI_GREEN + " 8. " + ANSI_RESET + "View Current Inventory");
-        System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "View Warehouse Info");
+        System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "View Current Inventory");
+        System.out.println(ANSI_GREEN + " 10. " + ANSI_RESET + "View Warehouse Info");
 
         // --- Exit ---
         System.out.println("\n" + ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
@@ -175,9 +179,12 @@ public class CargoHandlingUI implements Runnable {
                 handleQueryStationIndex(); // USEI06
                 break;
             case 8:
-                handleViewInventory(); // <-- UPGRADED
+                handleBuild2DTree(); // USEI07
                 break;
             case 9:
+                handleViewInventory(); // <-- UPGRADED
+                break;
+            case 10:
                 handleViewWarehouseInfo(); // <-- UPGRADED
                 break;
             case 0:
@@ -407,72 +414,168 @@ public class CargoHandlingUI implements Runnable {
         showSuccess("Module [USLP03] complete.");
     }
 
-    // --- [USEI06] Handler (Unchanged, uses your methods) ---
+    // --- [USEI06] *** REPLACED WITH NEW ADVANCED UI *** ---
     private void handleQueryStationIndex() {
-        showInfo("--- [USEI06] Query European Station Index ---");
-        System.out.println("The 64k station index is loaded.");
-        System.out.println("What type of query would you like to perform?");
-        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "By Time Zone Group");
-        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "By Time Zone Window (Range)");
+        showInfo("--- [USEI06] Advanced European Station Query ---");
+
+        // --- Step 1: Get Base Query (Time Zone) ---
+        System.out.println(ANSI_BOLD + "1. Select Base Search (Time Zone):" + ANSI_RESET);
+        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "By single Time Zone Group (e.g., CET)");
+        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "By Time Zone Window (e.g., CET to EET)");
         System.out.println(ANSI_YELLOW + " 0. " + ANSI_RESET + "Cancel");
 
         int choice = readInt(0, 2, "Option: ");
+        List<EuropeanStation> baseResults;
 
         switch (choice) {
             case 1:
-                String tzg = readString(ANSI_BOLD + "➡️  Enter Time Zone Group (e.g., CET, WET/GMT) [c=Cancel]: " + ANSI_RESET);
+                String tzg = readString(ANSI_BOLD + "➡️  Enter Time Zone Group (e.g., CET) [c=Cancel]: " + ANSI_RESET);
                 if (isCancel(tzg)) {
-                    showInfo("Query cancelled.");
-                    break;
+                    showInfo("Query cancelled."); return;
                 }
-
-                List<EuropeanStation> stations = stationIndexManager.getStationsByTimeZoneGroup(tzg.toUpperCase());
-
-                if (stations.isEmpty()) {
-                    showInfo(String.format("No stations found for group '%s'.", tzg));
-                } else {
-                    showSuccess(String.format("Found %d stations for group '%s' (sorted by country and name):", stations.size(), tzg.toUpperCase()));
-                    for (EuropeanStation s : stations) {
-                        System.out.printf("  -> %s [%s]\n", s.getStation(), s.getCountry());
-                    }
-                }
+                baseResults = stationIndexManager.getStationsByTimeZoneGroup(tzg.toUpperCase());
                 break;
-
             case 2:
-                String tzgMin = readString(ANSI_BOLD + "➡️  Enter minimum TZG (e.g., CET) [c=Cancel]: " + ANSI_RESET);
+                String tzgMin = readString(ANSI_BOLD + "➡️  Enter MINIMUM Time Zone Group [c=Cancel]: " + ANSI_RESET);
                 if (isCancel(tzgMin)) {
-                    showInfo("Query cancelled.");
-                    break;
+                    showInfo("Query cancelled."); return;
                 }
-                String tzgMax = readString(ANSI_BOLD + "➡️  Enter maximum TZG (e.g., WET/GMT) [c=Cancel]: " + ANSI_RESET);
+                String tzgMax = readString(ANSI_BOLD + "➡️  Enter MAXIMUM Time Zone Group [c=Cancel]: " + ANSI_RESET);
                 if (isCancel(tzgMax)) {
-                    showInfo("Query cancelled.");
-                    break;
+                    showInfo("Query cancelled."); return;
                 }
-
-                List<EuropeanStation> stationsWindow = stationIndexManager.getStationsInTimeZoneWindow(tzgMin.toUpperCase(), tzgMax.toUpperCase());
-
-                if (stationsWindow.isEmpty()) {
-                    showInfo(String.format("No stations found in range ['%s', '%s'].", tzgMin.toUpperCase(), tzgMax.toUpperCase()));
-                } else {
-                    showSuccess(String.format("Found %d stations in range ['%s', '%s']:", stationsWindow.size(), tzgMin.toUpperCase(), tzgMax.toUpperCase()));
-                    for (EuropeanStation s : stationsWindow) {
-                        System.out.printf("  -> [%s] %s (%s)\n", s.getTimeZoneGroup(), s.getStation(), s.getCountry());
-                    }
-                }
+                baseResults = stationIndexManager.getStationsInTimeZoneWindow(tzgMin.toUpperCase(), tzgMax.toUpperCase());
                 break;
-
-            case 0:
+            default:
                 showInfo("Query cancelled.");
-                break;
+                return;
+        }
+
+        if (baseResults.isEmpty()) {
+            showInfo("No stations found for this time zone query. Returning to menu.");
+            return;
+        }
+
+        // --- Step 2: Advanced Filters ---
+        Map<String, String> filters = new HashMap<>();
+        String filterChoice;
+        do {
+            System.out.println(ANSI_BOLD + "\n2. Apply Advanced Filters (Optional):" + ANSI_RESET);
+            System.out.printf("   %sBase results: %d stations%s%n", ANSI_CYAN, baseResults.size(), ANSI_RESET);
+            System.out.println(ANSI_ITALIC + "   Current Filters:");
+            System.out.println(ANSI_ITALIC + "   - Country: " + filters.getOrDefault("country", "Any"));
+            System.out.println(ANSI_ITALIC + "   - Is City: " + filters.getOrDefault("isCity", "Any"));
+            System.out.println(ANSI_ITALIC + "   - Is Main: " + filters.getOrDefault("isMain", "Any"));
+            System.out.println(ANSI_ITALIC + "   - Is Airport: " + filters.getOrDefault("isAirport", "Any") + ANSI_RESET);
+
+            System.out.println("\n(1) Set Country Code (e.g., PT, ES, DE)");
+            System.out.println("(2) Filter by 'isCity' (True/False)");
+            System.out.println("(3) Filter by 'isMainStation' (True/False)");
+            System.out.println("(4) Filter by 'isAirport' (True/False)");
+            System.out.println(ANSI_YELLOW + "(R) Reset all filters" + ANSI_RESET);
+            System.out.println(ANSI_GREEN + "\n(S) Search & View Results" + ANSI_RESET);
+            System.out.println(ANSI_YELLOW + "(C) Cancel" + ANSI_RESET);
+
+            filterChoice = readString(ANSI_BOLD + "Choose an option [1-4, R, S, C]: " + ANSI_RESET).toUpperCase();
+
+            switch (filterChoice) {
+                case "1":
+                    String country = readString("   Enter Country Code (or 'any' to clear): ");
+                    if (country.equalsIgnoreCase("any")) filters.remove("country");
+                    else filters.put("country", country.toUpperCase());
+                    break;
+                case "2":
+                    String isCity = readString("   Must be a City? (T/F, or 'any' to clear): ");
+                    if (isCity.equalsIgnoreCase("any")) filters.remove("isCity");
+                    else filters.put("isCity", isCity.toUpperCase().startsWith("T") ? "true" : "false");
+                    break;
+                case "3":
+                    String isMain = readString("   Must be a Main Station? (T/F, or 'any' to clear): ");
+                    if (isMain.equalsIgnoreCase("any")) filters.remove("isMain");
+                    else filters.put("isMain", isMain.toUpperCase().startsWith("T") ? "true" : "false");
+                    break;
+                case "4":
+                    String isAirport = readString("   Must be an Airport? (T/F, or 'any' to clear): ");
+                    if (isAirport.equalsIgnoreCase("any")) filters.remove("isAirport");
+                    else filters.put("isAirport", isAirport.toUpperCase().startsWith("T") ? "true" : "false");
+                    break;
+                case "R":
+                    filters.clear();
+                    System.out.println(ANSI_YELLOW + "   All filters cleared." + ANSI_RESET);
+                    break;
+                case "C":
+                    showInfo("Query cancelled.");
+                    return;
+                case "S":
+                    break; // Exit loop and proceed to search
+                default:
+                    showError("Invalid option.");
+            }
+        } while (!filterChoice.equals("S"));
+
+
+        // --- Step 3: Apply Filters ---
+        showInfo("Applying filters...");
+        List<EuropeanStation> filteredResults = applyAdvancedFilters(baseResults, filters);
+
+        // --- Step 4: Show Paginated Results ---
+        if (filteredResults.isEmpty()) {
+            showInfo("No results found after applying filters.");
+        } else {
+            showPaginatedResults(filteredResults);
         }
     }
 
 
     // -----------------------------------------------------------------
-    // --- REPLACED Info Handlers ---
+    // --- [USEI07] Handler (Unchanged) ---
     // -----------------------------------------------------------------
+    private void handleBuild2DTree() {
+        showInfo("--- [USEI07] Build & Analyze 2D-Tree ---");
 
+        try {
+            // Get stats (triggers build if not already built)
+            Map<String, Object> stats = stationIndexManager.get2DTreeStats();
+
+            // The manager prints the build time, so we just show the result.
+            showSuccess("2D-Tree analysis complete.");
+
+            // --- "Beautiful" stats output ---
+            System.out.println(ANSI_BOLD + "\n--- 2D-Tree Statistics ---" + ANSI_RESET);
+
+            System.out.printf(ANSI_BOLD + "  Size (Nodes): %s%-10d " + ANSI_RESET,
+                    ANSI_CYAN, stats.get("size"));
+            System.out.printf(ANSI_BOLD + "Height: %s%d%n" + ANSI_RESET,
+                    ANSI_CYAN, stats.get("height"));
+
+            System.out.println(ANSI_BOLD + "  Node Capacity (Stations per Node):" + ANSI_RESET);
+
+            @SuppressWarnings("unchecked")
+            Map<Integer, Integer> buckets = (Map<Integer, Integer>) stats.get("bucketSizes");
+
+            buckets.entrySet().stream()
+                    .sorted(Map.Entry.comparingByKey())
+                    .forEach(entry -> System.out.printf(
+                            // e.g., "  - 1 station/node : 61562 nodes"
+                            "    - %d station(s)/node : %s%d nodes%s%n",
+                            entry.getKey(),
+                            ANSI_CYAN, entry.getValue(), ANSI_RESET
+                    ));
+
+            // --- "Beautiful" complexity analysis ---
+            System.out.println(ANSI_BOLD + "\n--- Build Analysis ---" + ANSI_RESET);
+            System.out.println(ANSI_BOLD + "  Strategy:    " + ANSI_ITALIC + "Balanced build using pre-sorted lists (from USEI06)." + ANSI_RESET);
+            System.out.println(ANSI_BOLD + "  Complexity:  " + ANSI_CYAN + "O(N log N)" + ANSI_RESET);
+
+
+        } catch (Exception e) {
+            showError("Failed to build or analyze the 2D-Tree (USEI07): " + e.getMessage());
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // --- Info Handlers (Unchanged) ---
+    // -----------------------------------------------------------------
     private void handleViewInventory() {
         showInfo("--- Current Inventory Contents ---");
         List<Box> boxes = manager.getInventory().getBoxes();
@@ -533,7 +636,7 @@ public class CargoHandlingUI implements Runnable {
     }
 
     // -----------------------------------------------------------------
-    // --- NEW Helper Method (Add this to your class) ---
+    // --- Helper Method (Unchanged) ---
     // -----------------------------------------------------------------
 
     /**
@@ -577,7 +680,7 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_PURPLE + "   " + "-".repeat(60) + ANSI_RESET);
     }
 
-    // --- Robust Input Helpers (Unchanged, with colored errors) ---
+    // --- Robust Input Helpers (Unchanged) ---
     private String readString(String prompt) {
         System.out.print(prompt);
         return scanner.nextLine();
@@ -625,5 +728,110 @@ public class CargoHandlingUI implements Runnable {
 
     private boolean isCancel(String input) {
         return input.trim().equals("0") || input.trim().equalsIgnoreCase("c");
+    }
+
+
+    // --- *** ADD THESE 2 NEW HELPER METHODS FOR THE ADVANCED UI *** ---
+
+    /**
+     * Helper method to filter a list of stations based on the advanced filters.
+     *
+     * @param stations The base list of stations.
+     * @param filters  A map of filters to apply.
+     * @return A new, filtered list.
+     */
+    private List<EuropeanStation> applyAdvancedFilters(List<EuropeanStation> stations, Map<String, String> filters) {
+        if (filters.isEmpty()) {
+            return stations;
+        }
+
+        return stations.stream()
+                .filter(s -> { // Filter by Country
+                    if (!filters.containsKey("country")) return true;
+                    return s.getCountry().equalsIgnoreCase(filters.get("country"));
+                })
+                .filter(s -> { // Filter by isCity
+                    if (!filters.containsKey("isCity")) return true;
+                    boolean mustBeCity = Boolean.parseBoolean(filters.get("isCity"));
+                    return s.isCity() == mustBeCity;
+                })
+                .filter(s -> { // Filter by isMainStation
+                    if (!filters.containsKey("isMain")) return true;
+                    boolean mustBeMain = Boolean.parseBoolean(filters.get("isMain"));
+                    return s.isMainStation() == mustBeMain;
+                })
+                .filter(s -> { // Filter by isAirport
+                    if (!filters.containsKey("isAirport")) return true;
+                    boolean mustBeAirport = Boolean.parseBoolean(filters.get("isAirport"));
+                    return s.isAirport() == mustBeAirport;
+                })
+                .sorted(Comparator.comparing(EuropeanStation::getCountry) // Re-sort the final list
+                        .thenComparing(EuropeanStation::getStation))
+                .toList();
+    }
+
+
+    /**
+     * Displays a list of stations in a user-friendly, paginated view.
+     *
+     * @param results The final, filtered list of stations to display.
+     */
+    private void showPaginatedResults(List<EuropeanStation> results) {
+        int pageSize = 10; // Items per page
+        int totalResults = results.size();
+        int totalPages = (int) Math.ceil((double) totalResults / pageSize);
+        int currentPage = 0;
+        String input;
+
+        do {
+            // "Clear" screen
+            System.out.print("\n\n\n\n\n\n\n\n\n\n\n\n");
+
+            // --- Header ---
+            System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+            System.out.printf(ANSI_BOLD + ANSI_BLUE + "         Station Query Results (Page %d of %d)        %n", currentPage + 1, totalPages);
+            System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+
+            int startIndex = currentPage * pageSize;
+            int endIndex = Math.min(startIndex + pageSize, totalResults);
+
+            System.out.printf(ANSI_BOLD + "Showing results %d-%d of %d%n\n" + ANSI_RESET, startIndex + 1, endIndex, totalResults);
+
+            // --- Table Header ---
+            System.out.printf(ANSI_BOLD + "  %-30s | %-7s | %-5s | %-5s | %-5s | %-15s %n",
+                    "STATION NAME", "COUNTRY", "CITY?", "MAIN?", "AIR?", "TIME ZONE");
+            System.out.println(ANSI_BOLD + ANSI_PURPLE + "-".repeat(82) + ANSI_RESET);
+
+            // --- Page Content ---
+            for (int i = startIndex; i < endIndex; i++) {
+                EuropeanStation s = results.get(i);
+                System.out.printf("  %-30s | %s%-7s%s | %-5s | %-5s | %-5s | %-15s %n",
+                        s.getStation().length() > 29 ? s.getStation().substring(0, 27) + "..." : s.getStation(), // Truncate long names
+                        ANSI_CYAN, s.getCountry(), ANSI_RESET,
+                        s.isCity() ? "Yes" : "No",
+                        s.isMainStation() ? "Yes" : "No",
+                        s.isAirport() ? "Yes" : "No",
+                        s.getTimeZoneGroup()
+                );
+            }
+            System.out.println(ANSI_BOLD + ANSI_PURPLE + "-".repeat(82) + ANSI_RESET);
+
+            // --- Controls ---
+            System.out.println("\n" + ANSI_BOLD + "Controls:" + ANSI_RESET);
+            String prev = (currentPage > 0) ? "[P]rev Page" : "           ";
+            String next = (currentPage < totalPages - 1) ? "[N]ext Page" : "           ";
+            System.out.printf("  %s   |   %s   |   [E]xit Query%n", prev, next);
+
+            input = readString(ANSI_BOLD + "➡️  Choose an option: " + ANSI_RESET).toUpperCase();
+
+            if (input.equals("N") && currentPage < totalPages - 1) {
+                currentPage++;
+            } else if (input.equals("P") && currentPage > 0) {
+                currentPage--;
+            }
+
+        } while (!input.equals("E"));
+
+        showInfo("Exited query view.");
     }
 }
