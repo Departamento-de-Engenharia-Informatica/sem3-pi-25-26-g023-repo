@@ -13,48 +13,60 @@ import java.util.Scanner;
 
 /**
  * Main User Interface for the Cargo Handling Terminal.
- * (Atualizada para Sprint 2)
+ * (Version 2.0 - "User-Friendly Console")
  */
 public class CargoHandlingUI implements Runnable {
 
-    // --- Componentes Sprint 1 (WMS) ---
+    // --- ANSI Color Codes for a "Pretty" UI ---
+    public static final String ANSI_RESET = "\u001B[0m";
+    public static final String ANSI_RED = "\u001B[31m";
+    public static final String ANSI_GREEN = "\u001B[32m";
+    public static final String ANSI_YELLOW = "\u001B[33m";
+    public static final String ANSI_BLUE = "\u001B[34m";
+    public static final String ANSI_PURPLE = "\u001B[35m";
+    public static final String ANSI_CYAN = "\u001B[36m";
+    public static final String ANSI_BOLD = "\u001B[1m";
+    public static final String ANSI_ITALIC = "\u001B[3m";
+
+    // --- Sprint 1 Components (WMS) ---
     private final WMS wms;
     private final InventoryManager manager;
     private final List<Wagon> wagons;
 
-    // --- Componentes Sprint 1 (LAPR3) ---
+    // --- Sprint 1 Components (LAPR3) ---
     private final TravelTimeController travelTimeController;
     private final StationRepository estacaoRepo;
     private final LocomotiveRepository locomotivaRepo;
 
-    // --- Componentes Sprint 2 (ESINF) ---
-    private final StationIndexManager stationIndexManager; // NOVO
+    // --- Sprint 2 Components (ESINF) ---
+    private final StationIndexManager stationIndexManager;
 
-    // --- Estado da UI ---
+    // --- UI State ---
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
     private final Scanner scanner;
 
     /**
-     * Construtor atualizado para o Sprint 2.
+     * Updated constructor for Sprint 2.
      */
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
                            TravelTimeController travelTimeController, StationRepository estacaoRepo,
                            LocomotiveRepository locomotivaRepo,
-                           StationIndexManager stationIndexManager /* NOVO */) {
+                           StationIndexManager stationIndexManager) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
         this.travelTimeController = travelTimeController;
         this.estacaoRepo = estacaoRepo;
         this.locomotivaRepo = locomotivaRepo;
-        this.stationIndexManager = stationIndexManager; // NOVO
+        this.stationIndexManager = stationIndexManager;
         this.scanner = new Scanner(System.in);
     }
 
 
     /**
-     * Runs the main menu loop for the Cargo Handling Terminal.
+     * Runs the main menu loop.
+     * Now with a try-catch block for robustness.
      */
     @Override
     public void run() {
@@ -63,58 +75,88 @@ public class CargoHandlingUI implements Runnable {
         do {
             showMenu();
             try {
-                option = readInt(0, 9, "> Please choose an option: "); // Range atualizado para 0-9
-                handleOption(option);
+                // Read option
+                option = readInt(0, 9, ANSI_BOLD + "Option: " + ANSI_RESET);
 
+                // --- Robustness: Catches errors from handlers ---
+                try {
+                    handleOption(option);
+                } catch (Exception e) {
+                    showError("An unexpected error occurred: " + e.getMessage());
+                    System.err.println(ANSI_ITALIC + "Stack trace (for debug):");
+                    e.printStackTrace(System.err);
+                    System.err.println(ANSI_RESET);
+                }
+                // --- End robustness block ---
+
+            } catch (InputMismatchException e) {
+                showError("Invalid input. Please enter a number.");
+                scanner.nextLine(); // Clear scanner buffer
             } catch (Exception e) {
-                System.out.println("\n❌ Unexpected error: " + e.getMessage());
+                showError("Fatal UI Error: " + e.getMessage());
+                option = 0; // Force exit
+            }
+
+            if (option != 0) {
+                promptEnterKey(); // Pause for user to read output
             }
 
         } while (option != 0);
 
-        System.out.println("Closing scanner. Goodbye!");
+        System.out.println(ANSI_CYAN + "\nClosing scanner. Goodbye! 👋" + ANSI_RESET);
         scanner.close();
     }
 
     /**
-     * Displays the main menu options to the console.
+     * Displays the "pretty" main menu.
      */
     private void showMenu() {
-        System.out.println("\n=========================================");
-        System.out.println("   🚂 Cargo Handling Terminal Menu   ");
-        System.out.println("=========================================");
-        System.out.println("--- Warehouse Setup (Sprint 1) ---");
-        System.out.println(" 1. [USEI01] Unload Wagons");
-        System.out.println(" 2. [USEI05] Process Quarantine Returns");
+        // "Clear" the screen
+        System.out.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
-        System.out.println("\n--- Picking Workflow (Sprint 1) ---");
-        System.out.println(" 3. [USEI02] Allocate Orders");
-        System.out.println(" 4. [USEI03] Pack Trolleys (Run US02 first)");
-        System.out.println(" 5. [USEI04] Calculate Pick Path (Run US03 first)");
+        System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_BLUE + "      🚆 LOGISTICS ON RAILS - G023 MAIN MENU 🚆      " + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
 
-        System.out.println("\n--- Railway & Station Ops (S1 & S2) ---");
-        System.out.println(" 6. [USLP03] Calculate Train Travel Time (S1)");
-        System.out.println(" 7. [USEI06] Query European Station Index (S2)"); // NOVO
+        // --- ESINF Sprint 1 ---
+        System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- Warehouse Setup (Sprint 1) ---" + ANSI_RESET);
+        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "[USEI01] Unload Wagons (Status: " + ANSI_ITALIC + "Loaded on startup" + ANSI_RESET + ")");
+        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "[USEI05] Process Quarantine Returns");
 
-        System.out.println("\n--- (Warehouse Info) ---");
-        System.out.println(" 8. View Current Inventory");
-        System.out.println(" 9. View Warehouse Info");
+        // --- Picking Workflow ---
+        System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- Picking Workflow (Sprint 1) ---" + ANSI_RESET);
+        System.out.println(ANSI_GREEN + " 3. " + ANSI_RESET + "[USEI02] Allocate Orders");
+        System.out.println(ANSI_GREEN + " 4. " + ANSI_RESET + "[USEI03] Pack Trolleys " + ANSI_ITALIC + "(Run US02 first)" + ANSI_RESET);
+        System.out.println(ANSI_GREEN + " 5. " + ANSI_RESET + "[USEI04] Calculate Pick Path " + ANSI_ITALIC + "(Run US03 first)" + ANSI_RESET);
 
-        System.out.println("-----------------------------------------");
-        System.out.println(" 0. Exit");
-        System.out.println("=========================================");
+        // --- Railway & Station Ops ---
+        System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- Railway & Station Ops (S1 & S2) ---" + ANSI_RESET);
+        System.out.println(ANSI_GREEN + " 6. " + ANSI_RESET + "[USLP03] Calculate Train Travel Time (S1)");
+        System.out.println(ANSI_GREEN + " 7. " + ANSI_RESET + "[USEI06] Query European Station Index (S2)");
+        // Add more S2 options (22-27) here as needed
 
-        // Show status of dependencies
+        // --- Info ---
+        System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
+        System.out.println(ANSI_GREEN + " 8. " + ANSI_RESET + "View Current Inventory");
+        System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "View Warehouse Info");
+
+        // --- Exit ---
+        System.out.println("\n" + ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
+
+        // Dynamic status
         String allocStatus = (lastAllocationResult != null && !lastAllocationResult.allocations.isEmpty()) ?
-                String.format("GENERATED (%d allocations)", lastAllocationResult.allocations.size()) : "NOT-RUN";
+                ANSI_GREEN + String.format("GENERATED (%d allocs)", lastAllocationResult.allocations.size()) : ANSI_YELLOW + "NOT-RUN";
         String planStatus = (lastPickingPlan != null) ?
-                String.format("GENERATED (%d trolleys)", lastPickingPlan.getTotalTrolleys()) : "NOT-RUN";
+                ANSI_GREEN + String.format("GENERATED (%d trolleys)", lastPickingPlan.getTotalTrolleys()) : ANSI_YELLOW + "NOT-RUN";
+        System.out.println(ANSI_BOLD + "   Status: [Allocations: " + allocStatus + ANSI_BOLD + "] [Picking Plan: " + planStatus + ANSI_BOLD + "]" + ANSI_RESET);
 
-        System.out.printf("   Status: [Allocations: %s] [Picking Plan: %s]%n", allocStatus, planStatus);
+        System.out.println(ANSI_YELLOW + "  0. " + ANSI_RESET + "Exit System");
+        System.out.println(ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
     }
 
     /**
      * Handles the menu option selected by the user.
+     * (Kept your original logic)
      *
      * @param option The integer option selected by the user.
      */
@@ -139,7 +181,7 @@ public class CargoHandlingUI implements Runnable {
                 handleCalculateTravelTime(); // USLP03
                 break;
             case 7:
-                handleQueryStationIndex(); // NOVO (USEI06)
+                handleQueryStationIndex(); // USEI06
                 break;
             case 8:
                 handleViewInventory();
@@ -148,34 +190,54 @@ public class CargoHandlingUI implements Runnable {
                 handleViewWarehouseInfo();
                 break;
             case 0:
-                System.out.println("\nExiting Cargo Handling Menu... 👋");
+                System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET);
                 break;
             default:
-                // This case should not be reachable due to readInt() validation
-                System.out.println("\n❌ Invalid option. Please select a valid number from the menu.\n");
+                showError("Invalid option. Please select a valid number from the menu.");
                 break;
         }
     }
 
+    // --- Visual Feedback Helpers ---
+
+    private void showSuccess(String message) {
+        System.out.println(ANSI_GREEN + ANSI_BOLD + "\n✅ SUCCESS: " + ANSI_RESET + ANSI_GREEN + message + ANSI_RESET);
+    }
+
+    private void showError(String message) {
+        System.out.println(ANSI_RED + ANSI_BOLD + "\n❌ ERROR: " + ANSI_RESET + ANSI_RED + message + ANSI_RESET);
+    }
+
+    private void showInfo(String message) {
+        System.out.println(ANSI_CYAN + "\nℹ️  " + message + ANSI_RESET);
+    }
+
+    private void promptEnterKey() {
+        System.out.print(ANSI_ITALIC + "\n(Press ENTER to return to the menu...)" + ANSI_RESET);
+        scanner.nextLine();
+    }
+
+
     // --- [USEI01] Handler ---
     private void handleUnloadWagons() {
-        System.out.println("\n--- [USEI01] Unload Wagons ---");
-        System.out.println("1. Unload ALL wagons");
-        System.out.println("2. Select wagons manually");
-        System.out.println("0. Cancel");
+        showInfo("--- [USEI01] Unload Wagons ---");
+        System.out.println(" 1. Unload ALL wagons");
+        System.out.println(" 2. Select wagons manually");
+        System.out.println(ANSI_YELLOW + " 0. Cancel" + ANSI_RESET);
 
-        int sub = readInt(0, 2, "> Option: ");
+        int sub = readInt(0, 2, "Option: ");
 
         if (sub == 1) {
             wms.unloadWagons(wagons);
+            showSuccess("All wagons have been processed.");
         } else if (sub == 2) {
             for (int i = 0; i < wagons.size(); i++) {
-                System.out.printf("%d. Wagon %s (%d boxes)%n",
+                System.out.printf(" %d. Wagon %s (%d boxes)%n",
                         i + 1, wagons.get(i).getWagonId(), wagons.get(i).getBoxes().size());
             }
-            String choicesStr = readString("> Enter wagon numbers (comma-separated) [c=Cancel]: ");
+            String choicesStr = readString("➡️  Enter wagon numbers (comma-separated) [c=Cancel]: ");
             if (isCancel(choicesStr)) {
-                System.out.println("Unloading cancelled.");
+                showInfo("Unloading cancelled.");
                 return;
             }
 
@@ -190,21 +252,23 @@ public class CargoHandlingUI implements Runnable {
                 } catch (NumberFormatException ignored) {}
             }
             wms.unloadWagons(selected);
+            showSuccess("Selected wagons have been processed.");
         } else {
-            System.out.println("Unloading cancelled.");
+            showInfo("Unloading cancelled.");
         }
     }
 
     // --- [USEI05] Handler ---
     private void handleProcessReturns() {
-        System.out.println("\n--- [USEI05] Process Quarantine Returns (LIFO) ---");
+        showInfo("--- [USEI05] Process Quarantine Returns (LIFO) ---");
         wms.processReturns();
-        System.out.println("✅ Return processing complete.");
+        showSuccess("Return processing complete.");
+        showInfo("Check 'audit.log' for details.");
     }
 
     // --- [USEI02] Handler ---
     private void handleAllocateOrders() {
-        System.out.println("\n--- [USEI02] Allocate Open Orders ---");
+        showInfo("--- [USEI02] Allocate Open Orders ---");
 
         List<Order> orders;
         try {
@@ -213,18 +277,18 @@ public class CargoHandlingUI implements Runnable {
                     "src/main/java/pt/ipp/isep/dei/FicheirosCSV/order_lines.csv"
             );
         } catch (Exception e) {
-            System.out.println("❌ ERROR: Failed to load orders: " + e.getMessage());
+            showError("Failed to load orders: " + e.getMessage());
             return;
         }
 
         List<Box> currentInventoryState = new ArrayList<>(manager.getInventory().getBoxes());
 
         if (orders.isEmpty()) {
-            System.out.println("❌ ERROR: No valid orders found to process.");
+            showError("No valid orders found to process.");
             return;
         }
         if (currentInventoryState.isEmpty()) {
-            System.out.println("❌ ERROR: Inventory is empty. Cannot allocate orders.");
+            showError("Inventory is empty. Cannot allocate orders.");
             return;
         }
 
@@ -233,13 +297,13 @@ public class CargoHandlingUI implements Runnable {
 
         // Get Mode from user
         System.out.println("\nSelect Allocation Mode:");
-        System.out.println(" 1. STRICT (All or nothing per line)");
-        System.out.println(" 2. PARTIAL (Allocate available stock)");
-        System.out.println(" 0. Cancel");
-        int modeChoice = readInt(0, 2, "> Option: ");
+        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "STRICT (All or nothing per line)");
+        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "PARTIAL (Allocate available stock)");
+        System.out.println(ANSI_YELLOW + " 0. " + ANSI_RESET + "Cancel");
+        int modeChoice = readInt(0, 2, "Option: ");
 
         if (modeChoice == 0) {
-            System.out.println("Allocation cancelled.");
+            showInfo("Allocation cancelled.");
             return;
         }
         OrderAllocator.Mode mode = (modeChoice == 1) ? OrderAllocator.Mode.STRICT : OrderAllocator.Mode.PARTIAL;
@@ -252,36 +316,35 @@ public class CargoHandlingUI implements Runnable {
         // Invalidate the next step's plan
         this.lastPickingPlan = null;
 
-        System.out.println("\n✅ USEI02 executed successfully!");
+        showSuccess("USEI02 executed successfully!");
         System.out.printf("📊 Results: %d allocations generated, %d lines processed%n",
                 lastAllocationResult.allocations.size(), lastAllocationResult.eligibilityList.size());
     }
 
     // --- [USEI03] Handler ---
     private void handlePackTrolleys() {
-        System.out.println("\n--- [USEI03] Pack Allocations into Trolleys ---");
+        showInfo("--- [USEI03] Pack Allocations into Trolleys ---");
 
         // DEPENDENCY CHECK
         if (this.lastAllocationResult == null || this.lastAllocationResult.allocations.isEmpty()) {
-            System.out.println("❌ ERROR: You must run [3. USEI02] Allocate Open Orders first.");
-            System.out.println("   No valid allocations are available to be packed.");
+            showError("You must run [3. USEI02] Allocate Open Orders first.\n   No valid allocations are available to be packed.");
             return;
         }
 
         System.out.printf("ℹ️  Ready to pack %d allocations.%n", this.lastAllocationResult.allocations.size());
 
-        double capacity = readDouble(0.1, Double.MAX_VALUE, "➡️  Trolley capacity (kg) [0=Cancel]: ");
+        double capacity = readDouble(0.1, Double.MAX_VALUE, ANSI_BOLD + "➡️  Trolley capacity (kg) [0=Cancel]: " + ANSI_RESET);
         if (capacity == 0) {
-            System.out.println("Packing cancelled.");
+            showInfo("Packing cancelled.");
             return;
         }
 
         System.out.println("\n🧠 Available Heuristics:");
-        System.out.println(" 1. FIRST_FIT - First one that fits (fastest)");
-        System.out.println(" 2. FIRST_FIT_DECREASING - Largest first (more efficient)");
-        System.out.println(" 3. BEST_FIT_DECREASING - Best fit (optimizes space)");
-        System.out.println(" 0. Cancel");
-        int heuristicChoice = readInt(0, 3, "➡️  Choose heuristic (0-3): ");
+        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "FIRST_FIT - First one that fits (fastest)");
+        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "FIRST_FIT_DECREASING - Largest first (more efficient)");
+        System.out.println(ANSI_GREEN + " 3. " + ANSI_RESET + "BEST_FIT_DECREASING - Best fit (optimizes space)");
+        System.out.println(ANSI_YELLOW + " 0. " + ANSI_RESET + "Cancel");
+        int heuristicChoice = readInt(0, 3, ANSI_BOLD + "➡️  Choose heuristic (0-3): " + ANSI_RESET);
 
         HeuristicType heuristic;
         switch(heuristicChoice) {
@@ -289,14 +352,14 @@ public class CargoHandlingUI implements Runnable {
             case 2: heuristic = HeuristicType.FIRST_FIT_DECREASING; break;
             case 3: heuristic = HeuristicType.BEST_FIT_DECREASING; break;
             case 0:
-                System.out.println("Packing cancelled."); return;
+                showInfo("Packing cancelled."); return;
             default:
-                System.out.println("⚠️  Invalid choice. Using FIRST_FIT.");
+                showError("Invalid choice. Using FIRST_FIT by default.");
                 heuristic = HeuristicType.FIRST_FIT;
                 break;
         }
 
-        System.out.println("\n⚙️  Executing USEI03...");
+        showInfo("\n⚙️  Executing USEI03...");
         PickingService service = new PickingService();
         service.setItemsMap(manager.getItemsMap());
 
@@ -307,24 +370,23 @@ public class CargoHandlingUI implements Runnable {
                 heuristic
         );
 
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println("           📊 RESULTS USEI03 - Picking Plan");
-        System.out.println("=".repeat(60));
-        System.out.println(lastPickingPlan.getSummary());
+        System.out.println("\n" + ANSI_BOLD + "=".repeat(60) + ANSI_RESET);
+        System.out.println(ANSI_BOLD + "           📊 RESULTS USEI03 - Picking Plan" + ANSI_RESET);
+        System.out.println(ANSI_BOLD + "=".repeat(60) + ANSI_RESET);
+        System.out.println(lastPickingPlan.getSummary()); // Make sure .getSummary() is formatted nicely
     }
 
     // --- [USEI04] Handler ---
     private void handleCalculatePickingPath() {
-        System.out.println("\n--- [USEI04] Calculate Picking Path ---");
+        showInfo("--- [USEI04] Calculate Picking Path ---");
 
         // DEPENDENCY CHECK
         if (this.lastPickingPlan == null) {
-            System.out.println("❌ ERROR: You must run [4. USEI03] Pack Allocations into Trolleys first.");
-            System.out.println("   No picking plan is available to calculate a path.");
+            showError("You must run [4. USEI03] Pack Allocations into Trolleys first.\n   No picking plan is available to calculate a path.");
             return;
         }
         if (this.lastPickingPlan.getTotalTrolleys() == 0) {
-            System.out.println("ℹ️  The current picking plan has 0 trolleys. Nothing to calculate.");
+            showInfo("The current picking plan has 0 trolleys. Nothing to calculate.");
             return;
         }
 
@@ -336,67 +398,92 @@ public class CargoHandlingUI implements Runnable {
             Map<String, PickingPathService.PathResult> pathResults = pathService.calculatePickingPaths(this.lastPickingPlan);
 
             if (pathResults.isEmpty()) {
-                System.out.println("Could not calculate paths (check if picking plan has valid locations).");
+                showError("Could not calculate paths (check if picking plan has valid locations).");
             } else {
-                System.out.println("\n--- Sequencing Results (USEI04) ---");
+                System.out.println("\n" + ANSI_BOLD + "--- Sequencing Results (USEI04) ---" + ANSI_RESET);
                 pathResults.forEach((strategyName, result) -> {
-                    System.out.println("\n" + strategyName + ":");
-                    System.out.println(result);
+                    System.out.println("\n" + ANSI_BOLD + ANSI_CYAN + strategyName + ":" + ANSI_RESET);
+                    System.out.println(result); // Make sure PathResult.toString() is formatted nicely
                     System.out.println("-".repeat(40));
                 });
-                System.out.println("\n✅ USEI04 completed successfully!");
+                showSuccess("USEI04 completed successfully!");
             }
 
         } catch (Exception e) {
-            System.out.println("❌ Error calculating picking paths (USEI04): " + e.getMessage());
+            showError("Error calculating picking paths (USEI04): " + e.getMessage());
         }
     }
 
     // --- [USLP03] Handler ---
     private void handleCalculateTravelTime() {
-        System.out.println("\n--- [USLP03] Calculate Travel Time ---");
+        showInfo("--- [USLP03] Calculate Travel Time ---");
+        // This is a sub-UI, so we call its .run() method
+        // You can apply the same "pretty" upgrade to TravelTimeUI.java
         TravelTimeUI travelTimeUI = new TravelTimeUI(travelTimeController, estacaoRepo, locomotivaRepo);
         travelTimeUI.run();
+        showSuccess("Module [USLP03] complete.");
     }
 
-    // --- [USEI06] Handler (NOVO) ---
+    // --- [USEI06] Handler (CORRECTED) ---
+    // This now calls the methods from *your* repository's StationIndexManager
     private void handleQueryStationIndex() {
-        System.out.println("\n--- [USEI06] Query European Station Index ---");
-        System.out.println("O índice de 64k estações está carregado.");
-        System.out.println("Que tipo de query pretende fazer?");
-        System.out.println(" 1. Por Fuso Horário (Time Zone Group)");
-        System.out.println(" 2. Por Intervalo (Window) de Fusos Horários");
-        System.out.println(" 0. Cancelar");
+        showInfo("--- [USEI06] Query European Station Index ---");
+        System.out.println("The 64k station index is loaded.");
+        System.out.println("What type of query would you like to perform?");
+        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "By Time Zone Group");
+        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "By Time Zone Window (Range)");
+        System.out.println(ANSI_YELLOW + " 0. " + ANSI_RESET + "Cancel");
 
-        int choice = readInt(0, 2, "> Opção: ");
+        int choice = readInt(0, 2, "Option: ");
 
         switch (choice) {
             case 1:
-                String tzg = readString("  Insira o Time Zone Group (ex: CET, WET/GMT): ");
-                if (isCancel(tzg)) break;
+                String tzg = readString(ANSI_BOLD + "➡️  Enter Time Zone Group (e.g., CET, WET/GMT) [c=Cancel]: " + ANSI_RESET);
+                if (isCancel(tzg)) {
+                    showInfo("Query cancelled.");
+                    break;
+                }
 
+                // --- CORRECTED METHOD CALL ---
                 List<EuropeanStation> stations = stationIndexManager.getStationsByTimeZoneGroup(tzg.toUpperCase());
-                System.out.printf("✅ Encontradas %d estações para o grupo '%s' (ordenadas por país e nome):%n", stations.size(), tzg);
-                for (EuropeanStation s : stations) {
-                    System.out.printf("  - %s (%s)%n", s.getStation(), s.getCountry());
+
+                if (stations.isEmpty()) {
+                    showInfo(String.format("No stations found for group '%s'.", tzg));
+                } else {
+                    showSuccess(String.format("Found %d stations for group '%s' (sorted by country and name):", stations.size(), tzg.toUpperCase()));
+                    for (EuropeanStation s : stations) {
+                        System.out.printf("  -> %s [%s]\n", s.getStation(), s.getCountry());
+                    }
                 }
                 break;
 
             case 2:
-                String tzgMin = readString("  Insira o TZG mínimo (ex: CET): ");
-                if (isCancel(tzgMin)) break;
-                String tzgMax = readString("  Insira o TZG máximo (ex: WET/GMT): ");
-                if (isCancel(tzgMax)) break;
+                String tzgMin = readString(ANSI_BOLD + "➡️  Enter minimum TZG (e.g., CET) [c=Cancel]: " + ANSI_RESET);
+                if (isCancel(tzgMin)) {
+                    showInfo("Query cancelled.");
+                    break;
+                }
+                String tzgMax = readString(ANSI_BOLD + "➡️  Enter maximum TZG (e.g., WET/GMT) [c=Cancel]: " + ANSI_RESET);
+                if (isCancel(tzgMax)) {
+                    showInfo("Query cancelled.");
+                    break;
+                }
 
+                // --- CORRECTED METHOD CALL ---
                 List<EuropeanStation> stationsWindow = stationIndexManager.getStationsInTimeZoneWindow(tzgMin.toUpperCase(), tzgMax.toUpperCase());
-                System.out.printf("✅ Encontradas %d estações no intervalo ['%s', '%s']:%n", stationsWindow.size(), tzgMin, tzgMax);
-                for (EuropeanStation s : stationsWindow) {
-                    System.out.printf("  - %s (%s, %s)%n", s.getStation(), s.getCountry(), s.getTimeZoneGroup());
+
+                if (stationsWindow.isEmpty()) {
+                    showInfo(String.format("No stations found in range ['%s', '%s'].", tzgMin.toUpperCase(), tzgMax.toUpperCase()));
+                } else {
+                    showSuccess(String.format("Found %d stations in range ['%s', '%s']:", stationsWindow.size(), tzgMin.toUpperCase(), tzgMax.toUpperCase()));
+                    for (EuropeanStation s : stationsWindow) {
+                        System.out.printf("  -> [%s] %s (%s)\n", s.getTimeZoneGroup(), s.getStation(), s.getCountry());
+                    }
                 }
                 break;
 
             case 0:
-                System.out.println("Query cancelada.");
+                showInfo("Query cancelled.");
                 break;
         }
     }
@@ -404,33 +491,28 @@ public class CargoHandlingUI implements Runnable {
 
     // --- Info Handlers ---
     private void handleViewInventory() {
-        System.out.println("\n--- Current Inventory Contents ---");
+        showInfo("--- Current Inventory Contents ---");
         List<Box> boxes = manager.getInventory().getBoxes();
         if (boxes.isEmpty()) {
-            System.out.println("Inventory is empty.");
+            showInfo("Inventory is empty.");
         } else {
-            System.out.printf("Displaying %d boxes (Sorted by FEFO/FIFO):%n", boxes.size());
+            System.out.printf(ANSI_BOLD + "Displaying %d boxes (Sorted by FEFO/FIFO):%n" + ANSI_RESET, boxes.size());
             for (Box b : boxes) {
-                System.out.println("  " + b);
+                System.out.println("  " + b); // Relies on Box.toString()
             }
         }
-        System.out.println();
     }
 
     private void handleViewWarehouseInfo() {
-        showWarehouseInfo(); // Re-use existing private method
-    }
-
-    private void showWarehouseInfo() {
-        System.out.println("\n--- Warehouse Information ---");
+        showInfo("--- Warehouse Information ---");
         List<Warehouse> warehouses = manager.getWarehouses();
         if (warehouses.isEmpty()) {
-            System.out.println("No warehouses loaded.");
+            showInfo("No warehouses loaded.");
             return;
         }
 
         for (Warehouse wh : warehouses) {
-            System.out.printf("\n🏭 Warehouse: %s%n", wh.getWarehouseId());
+            System.out.printf(ANSI_BOLD + "\n🏭 Warehouse: %s%n" + ANSI_RESET, wh.getWarehouseId());
             System.out.printf("   📦 Bays: %d%n", wh.getBays().size());
 
             int totalCapacity = 0;
@@ -441,26 +523,23 @@ public class CargoHandlingUI implements Runnable {
                 usedCapacity += bay.getBoxes().size();
             }
 
-            System.out.printf("   📊 Physical Capacity: %d/%d boxes (%.1f%% full)%n",
-                    usedCapacity, totalCapacity,
-                    (totalCapacity > 0 ? (usedCapacity * 100.0 / totalCapacity) : 0));
+            double percentage = (totalCapacity > 0 ? (usedCapacity * 100.0 / totalCapacity) : 0);
+            String color = percentage > 85 ? ANSI_RED : (percentage > 60 ? ANSI_YELLOW : ANSI_GREEN);
+
+
+            System.out.printf("   📊 Physical Capacity: " + color + "%d/%d boxes (%.1f%% full)" + ANSI_RESET + "%n",
+                    usedCapacity, totalCapacity, percentage);
             System.out.printf("   ℹ️  Logical Inventory Size (Total): %d boxes%n", manager.getInventory().getBoxes().size());
         }
-        System.out.println();
     }
 
-    // --- Robust Input Helpers ---
+    // --- Robust Input Helpers (from your file, with colored errors) ---
     private String readString(String prompt) {
         System.out.print(prompt);
-        String line = scanner.nextLine();
-        if (isCancel(line)) {
-            return "0"; // Universal cancel signal
-        }
-        return line;
+        return scanner.nextLine();
     }
 
     private int readInt(int min, int max, String prompt) {
-        int option = -1;
         System.out.print(prompt);
         while (true) {
             try {
@@ -468,20 +547,19 @@ public class CargoHandlingUI implements Runnable {
                 if (isCancel(line)) {
                     return 0; // Universal cancel
                 }
-                option = Integer.parseInt(line);
+                int option = Integer.parseInt(line);
                 if (option >= min && option <= max) {
                     return option;
                 } else {
-                    System.out.printf("❌ Invalid input. Please enter a number between %d and %d.%n> ", min, max);
+                    System.out.print(ANSI_RED + String.format("❌ Invalid input. Please enter a number between %d and %d.%n" + ANSI_RESET + prompt, min, max));
                 }
             } catch (NumberFormatException e) {
-                System.out.printf("❌ Invalid input. Please enter a number.%n> ");
+                System.out.print(ANSI_RED + "❌ Invalid input. Please enter a number." + ANSI_RESET + "\n" + prompt);
             }
         }
     }
 
     private double readDouble(double min, double max, String prompt) {
-        double value = -1;
         System.out.print(prompt);
         while (true) {
             try {
@@ -489,14 +567,14 @@ public class CargoHandlingUI implements Runnable {
                 if (isCancel(line)) {
                     return 0.0; // Universal cancel
                 }
-                value = Double.parseDouble(line.replace(',', '.'));
+                double value = Double.parseDouble(line.replace(',', '.'));
                 if (value >= min && value <= max) {
                     return value;
                 } else {
-                    System.out.printf("❌ Invalid input. Please enter a value between %.2f and %.2f.%n> ", min, max);
+                    System.out.print(ANSI_RED + String.format("❌ Invalid input. Please enter a value between %.2f and %.2f.%n" + ANSI_RESET + prompt, min, max));
                 }
             } catch (NumberFormatException e) {
-                System.out.printf("❌ Invalid input. Please enter a valid number.%n> ");
+                System.out.print(ANSI_RED + "❌ Invalid input. Please enter a valid number." + ANSI_RESET + "\n" + prompt);
             }
         }
     }
