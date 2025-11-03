@@ -1,0 +1,76 @@
+@startuml USEI10_SequenceDiagram
+
+title USEI10 - Radius Search & Summary (SD)
+
+actor "OperationsPlanner" as P
+participant "StationSpatialQueryUI" as UI
+participant "StationSpatialQueryController" as CTRL
+participant "StationIndexManager" as IDX_MAN
+participant "TwoDTree" as SPATIAL_IDX
+participant "HaversineCalculator" as CALC
+participant "AVLTree" as RESULT_TREE
+participant "DensitySummary" as SUMMARY
+
+' --- User Query Flow ---
+' Assumes 2D-Tree is already built (USEI07) and held by IDX_MAN
+
+activate P
+P -> UI: 1. requestRadiusSearchModule()
+activate UI
+UI --> P: Shows radius search prompt
+deactivate UI
+
+P -> UI: 2. submitRadiusQuery(40.7, -74.0, 50.0)
+activate UI
+UI -> CTRL: 3. findStationsByRadius(40.7, -74.0, 50.0)
+activate CTRL
+
+CTRL -> IDX_MAN: 4. findStationsByRadius(40.7, -74.0, 50.0)
+activate IDX_MAN
+
+' The manager first queries the 2D-Tree
+IDX_MAN -> SPATIAL_IDX: 5. findNearby(centerLat, centerLon, radius)
+activate SPATIAL_IDX
+
+' This is a recursive loop, simplified
+loop for each potential node/station
+    ' The 2D-Tree uses the calculator for pruning (AC1)
+    SPATIAL_IDX -> CALC: 6. distance(lat1, lon1, lat2, lon2)
+    ' ... pruning and checking ...
+end
+
+' The 2D-Tree search returns all stations within the radius
+SPATIAL_IDX --> IDX_MAN: List<EuropeanStation> rawResults
+deactivate SPATIAL_IDX
+
+' The manager now processes the raw results
+IDX_MAN -> RESULT_TREE: 7. new()
+activate RESULT_TREE
+deactivate RESULT_TREE
+
+loop for each station in rawResults
+    ' Calculates exact distance for sorting
+    IDX_MAN -> CALC: 8. distance(center, station)
+    ' Inserts DTO into AVLTree, which sorts (AC4)
+    IDX_MAN -> RESULT_TREE: 9. insert(new StationDistanceResult(station, dist))
+end
+
+' The manager creates the summary (AC5)
+IDX_MAN -> SUMMARY: 10. new(rawResults)
+activate SUMMARY
+deactivate SUMMARY
+
+' The manager returns the two required objects (AC3, AC5)
+IDX_MAN --> CTRL: (RESULT_TREE, SUMMARY)
+deactivate IDX_MAN
+
+CTRL --> UI: (RESULT_TREE, SUMMARY)
+deactivate CTRL
+
+UI -> UI: 11. displayResults(tree, summary)
+activate UI
+UI --> P: Shows sorted station list and density summary
+deactivate UI
+deactivate P
+
+@enduml

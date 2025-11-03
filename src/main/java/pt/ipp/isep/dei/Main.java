@@ -10,105 +10,138 @@ import pt.ipp.isep.dei.repository.SegmentLineRepository;
 import java.util.List;
 
 /**
- * Main entry point for the Railway Cargo Handling Terminal System application.
- * This class initializes all necessary components, loads data from CSV files,
- * sets up repositories and controllers for both ESINF (Warehouse Management)
- * and LAPR3 (Railway Network) domains, and launches the main
- * command-line user interface ({@link CargoHandlingUI}).
+ * Ponto de entrada principal (Main) - Versão 2.2 "Concisa"
+ * * Log de arranque limpo, 100% controlado pela Main.
  */
 public class Main {
 
+    // --- Códigos de Cores ANSI ---
+    private static final String ANSI_RESET = "\u001B[0m";
+    private static final String ANSI_RED = "\u001B[31m";
+    private static final String ANSI_GREEN = "\u001B[32m";
+    private static final String ANSI_YELLOW = "\u001B[33m";
+    private static final String ANSI_BLUE = "\u001B[34m";
+    private static final String ANSI_CYAN = "\u001B[36m";
+    private static final String ANSI_BOLD = "\u001B[1m";
+
     /**
-     * The main method that starts the application.
+     * O método main que arranca a aplicação.
      */
     public static void main(String[] args) {
-        System.out.println("=========================================");
-        System.out.println("🚆 Railway Cargo Handling Terminal System");
-        System.out.println("=========================================");
+
 
         try {
-            // 1️⃣ ESINF (Sprint 1) Components
+            // 1️⃣ Inicializar Componentes (Silencioso)
             InventoryManager manager = new InventoryManager();
             Inventory inventory = manager.getInventory();
             Quarantine quarantine = new Quarantine();
             AuditLog auditLog = new AuditLog("audit.log");
 
-            // 2️⃣ Load ESINF (Sprint 1) CSVs
-            System.out.println("Loading product items (Sprint 1)...");
-            manager.loadItems("src/main/java/pt/ipp/isep/dei/FicheirosCSV/items.csv");
-            System.out.println("Loading warehouse bays (Sprint 1)...");
-            var bays = manager.loadBays("src/main/java/pt/ipp/isep/dei/FicheirosCSV/bays.csv");
-            System.out.printf("Loaded %d bays across %d warehouses.%n", bays.size(), manager.getWarehouses().size());
-            System.out.println("Loading wagons and boxes (Sprint 1)...");
-            var wagons = manager.loadWagons("src/main/java/pt/ipp/isep/dei/FicheirosCSV/wagons.csv");
-            System.out.printf("Loaded %d wagons.%n", wagons.size());
+            // --- Bloco de Carregamento de Dados (Controlado) ---
+            System.out.println(ANSI_BOLD + "Loading system data... Please wait." + ANSI_RESET);
 
-            // 3️⃣ Create WMS (Warehouse Management System)
+            // 2️⃣ Carregar ESINF (Sprint 1)
+            printLoadStep("Loading ESINF (Sprint 1) data...");
+            manager.loadItems("src/main/java/pt/ipp/isep/dei/FicheirosCSV/items.csv");
+            printLoadStep(String.format("  > Loaded %d items", manager.getItemsCount()), true);
+
+            manager.loadBays("src/main/java/pt/ipp/isep/dei/FicheirosCSV/bays.csv");
+            printLoadStep(String.format("  > Loaded %d bays across %d warehouses", manager.getBaysCount(), manager.getWarehouseCount()), true);
+
+            List<Wagon> wagons = manager.loadWagons("src/main/java/pt/ipp/isep/dei/FicheirosCSV/wagons.csv");
+            printLoadStep(String.format("  > Loaded %d wagons", manager.getWagonsCount()), true);
+
+            // 3️⃣ Criar WMS e Carregar Vagões
             WMS wms = new WMS(quarantine, inventory, auditLog, manager.getWarehouses());
 
-            // 4️⃣ USEI01 - Unload Wagons (Sprint 1)
-            System.out.println("Unloading wagons into warehouses and inventory...");
-            wms.unloadWagons(wagons);
+            printLoadStep("Unloading wagons into inventory...");
+            // --- ALTERAÇÃO: Captura o resultado silencioso ---
+            WMS.UnloadResult unloadResult = wms.unloadWagons(wagons);
+            // Imprime o sumário conciso
+            printLoadStep(String.format("  > Unloaded %d wagons (%d boxes). (Full: %d, Partial: %d, Failed: %d)",
+                    unloadResult.totalProcessed, unloadResult.totalBoxes,
+                    unloadResult.fullyUnloaded, unloadResult.partiallyUnloaded, unloadResult.notUnloaded), true);
 
-            // 5️⃣ USEI05 - Load Returns (Sprint 1)
-            System.out.println("Loading returns into quarantine...");
+            // 4️⃣ Carregar Devoluções (Returns)
             List<Return> returns = manager.loadReturns("src/main/java/pt/ipp/isep/dei/FicheirosCSV/returns.csv");
             for (Return r : returns) {
                 quarantine.addReturn(r);
             }
-            System.out.printf("%d returns loaded into quarantine.%n", quarantine.size());
+            printLoadStep(String.format("  > Loaded %d returns into quarantine", manager.getReturnsCount()), true);
 
-
-            // 6️⃣ Load ESINF Orders (Sprint 1)
-            System.out.println("Loading orders...");
-            // (Não é preciso guardar, a UI carrega-os quando precisa)
-            manager.loadOrders(
+            // 5️⃣ Carregar Pedidos (Orders)
+            List<Order> orders = manager.loadOrders(
                     "src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv",
                     "src/main/java/pt/ipp/isep/dei/FicheirosCSV/order_lines.csv"
             );
+            printLoadStep(String.format("  > Loaded %d orders with lines", manager.getOrdersCount()), true);
 
-
-            // 7️⃣ *** LAPR3 (Sprint 1) COMPONENTS ***
-            System.out.println("Initializing LAPR3/BDDAD Mock Repositories...");
+            // 6️⃣ Carregar LAPR3 (Sprint 1)
+            printLoadStep("Loading LAPR3 (Sprint 1) components...");
             StationRepository estacaoRepo = new StationRepository();
             LocomotiveRepository locomotivaRepo = new LocomotiveRepository();
             SegmentLineRepository segmentoRepo = new SegmentLineRepository();
-
             RailwayNetworkService networkService = new RailwayNetworkService(estacaoRepo, segmentoRepo);
-
             TravelTimeController travelTimeController = new TravelTimeController(
-                    estacaoRepo,
-                    locomotivaRepo,
-                    networkService,
-                    segmentoRepo
+                    estacaoRepo, locomotivaRepo, networkService, segmentoRepo
             );
-            System.out.println("LAPR3 components initialized.");
+            printLoadStep("  > LAPR3 components initialized.", true);
 
-
-            // 8️⃣ *** ESINF (SPRINT 2) COMPONENTS ***
-            System.out.println("\nInitializing ESINF (Sprint 2) Components...");
+            // 7️⃣ Carregar ESINF (Sprint 2)
+            printLoadStep("Loading ESINF (Sprint 2) components...");
             StationIndexManager stationIndexManager = new StationIndexManager();
 
-            // Carrega o novo CSV de estações europeias
-            // *** LINHA CORRIGIDA ***
+            // Chama o método silencioso
             List<EuropeanStation> europeanStations = manager.loadEuropeanStations("src/main/java/pt/ipp/isep/dei/FicheirosCSV/train_stations_europe.csv");
 
-            // Constrói os índices da USEI06 no arranque
-            stationIndexManager.buildIndexes(europeanStations);
+            // Imprime o sumário "bonito" usando os getters
+            String summary = String.format("  > Loaded %d valid stations", manager.getValidStationCount());
+            if (manager.getInvalidStationCount() > 0) {
+                // Mostra o sumário de erros, mas não os erros em si
+                summary += ANSI_YELLOW + String.format(" (%d invalid rows rejected)", manager.getInvalidStationCount()) + ANSI_GREEN;
+            }
+            printLoadStep(summary, true);
+
+            printLoadStep("Building station indexes (USEI06)...");
+            stationIndexManager.buildIndexes(europeanStations); // Chama o método silencioso
+            printLoadStep("  > All station indexes built.", true); // A Main reporta o sucesso
 
 
-            // 9️⃣ Launch Textual Interface
+            // 9️⃣ Lançar a UI
+            System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);
+            Thread.sleep(1000); // Pausa dramática
+
             CargoHandlingUI cargoMenu = new CargoHandlingUI(
                     wms, manager, wagons,
                     travelTimeController, estacaoRepo, locomotivaRepo,
-                    stationIndexManager // Passa o novo manager para a UI
+                    stationIndexManager
             );
             cargoMenu.run();
 
             System.out.println("\nSystem terminated normally.");
+
         } catch (Exception e) {
-            System.err.println("❌ Fatal error during startup: " + e.getMessage());
+            // Erro fatal de arranque
+            System.out.println(ANSI_RED + ANSI_BOLD + "❌ FATAL ERROR DURING STARTUP" + ANSI_RESET);
+            System.out.println(ANSI_RED + e.getMessage() + ANSI_RESET);
             e.printStackTrace();
         }
+    }
+
+
+    /**
+     * Helper "bonito" para imprimir o estado do carregamento.
+     */
+    private static void printLoadStep(String message, boolean success) {
+        String color = success ? ANSI_GREEN : ANSI_RED;
+        String symbol = success ? "✅" : "❌";
+        System.out.println(color + " " + symbol + " " + message + ANSI_RESET);
+    }
+
+    /**
+     * Sobrecarga para mensagens de "a carregar..." (sem sucesso/falha)
+     */
+    private static void printLoadStep(String message) {
+        System.out.println(ANSI_CYAN + " ⚙️  " + message + ANSI_RESET);
     }
 }

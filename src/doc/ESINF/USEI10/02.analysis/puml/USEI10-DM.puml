@@ -1,0 +1,68 @@
+@startuml DomainModel
+
+title USEI10 - Radius Search & Summary
+
+hide circle
+hide methods
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class StationSpatialQueryService {
+  ' Orchestrates spatial (radius) queries
+}
+
+' This class holds the spatial index
+class StationIndexManager {
+}
+
+' The specified spatial index (from USEI07)
+class TwoDTree {
+  ' (2D (k=2) Tree)
+}
+
+' The core Domain Entity
+class EuropeanStation {
+  stationName
+  latitude
+  longitude
+  country
+  isCity
+}
+
+' Wrapper for results to allow sorting by distance (AC4)
+class StationDistanceResult {
+    distance (km)
+    stationName (for tie-break)
+}
+
+' The specified output data structure (AC3)
+class AVLTree {
+  ' (Sorted result tree)
+}
+
+' A class for the summary (AC5)
+class DensitySummary {
+    countsByCountry
+    countsByIsCity
+}
+
+' Relationships
+StationSpatialQueryService --> StationIndexManager : uses
+StationIndexManager "1" *-- "1" TwoDTree : holds index
+
+TwoDTree o-- "1..*" EuropeanStation : indexes
+
+' The service returns a sorted tree and a summary
+StationSpatialQueryService ..> AVLTree : returns
+StationSpatialQueryService ..> DensitySummary : returns
+
+' The service creates result objects during the query
+StationSpatialQueryService ..> StationDistanceResult : creates
+StationDistanceResult "1" -- "1" EuropeanStation : refers to
+
+' The result tree is composed of the result objects
+AVLTree o-- "0..*" StationDistanceResult : contains
+
+@enduml

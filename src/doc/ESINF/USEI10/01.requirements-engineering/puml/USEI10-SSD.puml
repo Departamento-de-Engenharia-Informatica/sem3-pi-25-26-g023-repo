@@ -1,0 +1,29 @@
+@startuml
+
+title USEI10 - Radius Search & Density Summary
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor OperationsPlanner
+participant System
+
+OperationsPlanner -> System: requestRadiusSearchModule()
+activate System
+    System --> OperationsPlanner: displayRadiusSearchUI()
+deactivate System
+
+OperationsPlanner -> System: findStationsByRadius(lat, lon, radius)
+activate System
+    System --> OperationsPlanner: displayRadiusSearchResults(stationResultsTree, densitySummary)
+deactivate System
+
+OperationsPlanner -> System: requestAnalysisReport()
+activate System
+    System --> OperationsPlanner: displayAnalysisReport(report)
+deactivate System
+
+@enduml

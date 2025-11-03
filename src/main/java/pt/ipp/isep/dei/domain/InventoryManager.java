@@ -9,7 +9,9 @@ import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 /**
- * Principal Manager
+ * Principal Manager - Versão 2.1 ("Modo Silencioso")
+ * Esta versão foi modificada para NÃO imprimir nada na consola.
+ * Apenas carrega os dados e guarda os contadores para a Main.java usar.
  */
 public class InventoryManager {
 
@@ -17,8 +19,19 @@ public class InventoryManager {
     private final Map<String, Item> items = new HashMap<>();
     private final List<Warehouse> warehouses = new ArrayList<>();
 
+    // --- Contadores para o Sumário da Main ---
+    private int itemsCount = 0;
+    private int baysCount = 0;
+    private int warehouseCount = 0;
+    private int wagonsCount = 0;
+    private int returnsCount = 0;
+    private int ordersCount = 0;
+    private int validStationCount = 0;
+    private int invalidStationCount = 0;
+
     /**
      * Load items from the file
+     * (Modo Silencioso)
      */
     public void loadItems(String filePath) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
@@ -27,7 +40,6 @@ public class InventoryManager {
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 5) {
-                    System.err.println("Invalid item record: " + line);
                     continue;
                 }
                 try {
@@ -38,15 +50,16 @@ public class InventoryManager {
                     double weight = Double.parseDouble(p[4].trim());
                     items.put(sku, new Item(sku, name, category, unit, weight));
                 } catch (Exception e) {
-                    System.err.println("Error parsing item: " + line + " - " + e.getMessage());
+                    // Ignora silenciosamente
                 }
             }
         }
-        System.out.printf("✅ Loaded %d items%n", items.size());
+        this.itemsCount = items.size();
     }
 
     /**
      * Load bays from warehouses
+     * (Modo Silencioso)
      */
     public List<Bay> loadBays(String filePath) throws IOException {
         List<Bay> allBays = new ArrayList<>();
@@ -56,7 +69,6 @@ public class InventoryManager {
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 4) {
-                    System.err.println("Invalid bay record: " + line);
                     continue;
                 }
                 try {
@@ -78,12 +90,13 @@ public class InventoryManager {
                             });
                     wh.addBay(newBay);
                 } catch (Exception e) {
-                    System.err.println("Error parsing bay: " + line + " - " + e.getMessage());
+                    // Ignora silenciosamente
                 }
             }
         }
         warehouses.sort(Comparator.comparing(Warehouse::getWarehouseId));
-        System.out.printf("✅ Loaded %d bays across %d warehouses%n", allBays.size(), warehouses.size());
+        this.baysCount = allBays.size();
+        this.warehouseCount = warehouses.size();
         return allBays;
     }
 
@@ -93,6 +106,7 @@ public class InventoryManager {
 
     /**
      * Load Wagons with boxes
+     * (Modo Silencioso)
      */
     public List<Wagon> loadWagons(String filePath) throws IOException {
         Map<String, Wagon> wagons = new LinkedHashMap<>();
@@ -104,7 +118,6 @@ public class InventoryManager {
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 6) {
-                    System.err.println("Invalid wagon record: " + line);
                     continue;
                 }
                 try {
@@ -116,7 +129,6 @@ public class InventoryManager {
                     String recvRaw = p[5].trim();
 
                     if (!items.containsKey(sku)) {
-                        System.err.printf("❌ ERRO: SKU desconhecido '%s' no wagon %s%n", sku, wagonId);
                         continue;
                     }
 
@@ -124,9 +136,7 @@ public class InventoryManager {
                     if (!expRaw.isEmpty() && !expRaw.equals("null")) {
                         try {
                             expiry = LocalDate.parse(expRaw);
-                        } catch (Exception e) {
-                            System.err.println("Invalid expiry date format: " + expRaw);
-                        }
+                        } catch (Exception e) { /* ignora */ }
                     }
 
                     LocalDateTime receivedAt = LocalDateTime.parse(recvRaw, fmt);
@@ -134,16 +144,17 @@ public class InventoryManager {
                     Box box = new Box(boxId, sku, qty, expiry, receivedAt, null, null);
                     wagons.computeIfAbsent(wagonId, Wagon::new).addBox(box);
                 } catch (Exception e) {
-                    System.err.println("Error parsing wagon: " + line + " - " + e.getMessage());
+                    // Ignora silenciosamente
                 }
             }
         }
-        System.out.printf("✅ Loaded %d wagons%n", wagons.size());
+        this.wagonsCount = wagons.size();
         return new ArrayList<>(wagons.values());
     }
 
     /**
      * Load returns from clients
+     * (Modo Silencioso)
      */
     public List<Return> loadReturns(String filePath) throws IOException {
         List<Return> list = new ArrayList<>();
@@ -155,7 +166,6 @@ public class InventoryManager {
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 5) {
-                    System.err.println("Invalid return record: " + line);
                     continue;
                 }
                 try {
@@ -172,7 +182,6 @@ public class InventoryManager {
                     try {
                         ts = LocalDateTime.parse(p[4].trim(), fmt);
                     } catch (Exception e) {
-                        System.err.println("Invalid timestamp format in return: " + line);
                         continue;
                     }
 
@@ -184,15 +193,9 @@ public class InventoryManager {
                                 if (expRaw.contains("T")) {
                                     exp = LocalDateTime.parse(expRaw, fmt);
                                 } else {
-                                    try {
-                                        exp = LocalDate.parse(expRaw).atStartOfDay();
-                                    } catch (Exception e) {
-                                        System.err.println("Invalid expiry date format in return: " + expRaw + " - " + line);
-                                    }
+                                    exp = LocalDate.parse(expRaw).atStartOfDay();
                                 }
-                            } catch (Exception e) {
-                                System.err.println("Error parsing expiry date in return: " + expRaw + " - " + line);
-                            }
+                            } catch (Exception e) { /* ignora */ }
                         }
                     }
 
@@ -200,16 +203,17 @@ public class InventoryManager {
                     list.add(returnItem);
 
                 } catch (Exception e) {
-                    System.err.println("Error parsing return: " + line + " - " + e.getMessage());
+                    // Ignora silenciosamente
                 }
             }
         }
-        System.out.printf("✅ Loaded %d returns%n", list.size());
+        this.returnsCount = list.size();
         return list;
     }
 
     /**
      * Load Orders and their respective lines
+     * (Modo Silencioso)
      */
     public List<Order> loadOrders(String ordersPath, String linesPath) throws IOException {
         Map<String, Order> orders = new LinkedHashMap<>();
@@ -221,7 +225,6 @@ public class InventoryManager {
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 3) {
-                    System.err.println("Invalid order record: " + line);
                     continue;
                 }
                 try {
@@ -229,9 +232,7 @@ public class InventoryManager {
                     LocalDate due = LocalDateTime.parse(p[1].trim(), fmt).toLocalDate();
                     int priority = Integer.parseInt(p[2].trim());
                     orders.put(id, new Order(id, priority, due));
-                } catch (Exception e) {
-                    System.err.println("Error parsing order: " + line + " - " + e.getMessage());
-                }
+                } catch (Exception e) { /* ignora */ }
             }
         }
 
@@ -241,7 +242,6 @@ public class InventoryManager {
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 4) {
-                    System.err.println("Invalid order line record: " + line);
                     continue;
                 }
                 try {
@@ -252,85 +252,70 @@ public class InventoryManager {
 
                     if (orders.containsKey(orderId)) {
                         orders.get(orderId).lines.add(new OrderLine(lineNo, sku, qty));
-                    } else {
-                        System.err.println("Order not found for line: " + orderId);
                     }
-                } catch (Exception e) {
-                    System.err.println("Error parsing order line: " + line + " - " + e.getMessage());
-                }
+                } catch (Exception e) { /* ignora */ }
             }
         }
 
         List<Order> result = new ArrayList<>();
         for (Order order : orders.values()) {
             if (order.lines.isEmpty()) {
-                System.err.println("Order has no lines: " + order.orderId);
+                // ignora
             } else {
                 result.add(order);
             }
         }
-
-        System.out.printf("✅ Loaded %d orders with lines%n", result.size());
+        this.ordersCount = result.size();
         return result;
     }
 
     public Inventory getInventory() {
-
         return inventory;
     }
 
     public Map<String, Item> getItemsMap() {
-
         return Collections.unmodifiableMap(items);
     }
 
     public List<Item> getItems() {
-
         return new ArrayList<>(items.values());
     }
 
-    // --- INÍCIO DO CÓDIGO ATUALIZADO (USEI06 - Sprint 2) ---
+    // --- Getters para o Sumário (NOVOS) ---
+    public int getItemsCount() { return itemsCount; }
+    public int getBaysCount() { return baysCount; }
+    public int getWarehouseCount() { return warehouseCount; }
+    public int getWagonsCount() { return wagonsCount; }
+    public int getReturnsCount() { return returnsCount; }
+    public int getOrdersCount() { return ordersCount; }
+    public int getValidStationCount() { return validStationCount; }
+    public int getInvalidStationCount() { return invalidStationCount; }
+
+
+    // --- CÓDIGO ATUALIZADO (USEI06 - Sprint 2) ---
 
     /**
-     * Carrega as estações europeias do ficheiro CSV (USEI06).
-     * @param filePath Caminho para train_stations_europe.csv
-     * @return Lista de EuropeanStation
-     * @throws IOException Se o ficheiro não for encontrado
+     * Carrega as estações europeias (USEI06).
+     * (Modo Silencioso: sem os 1895 erros)
      */
     public List<EuropeanStation> loadEuropeanStations(String filePath) throws IOException {
         List<EuropeanStation> stations = new ArrayList<>();
         String line;
-        int validCount = 0;
-        int invalidCount = 0;
+        this.validStationCount = 0;
+        this.invalidStationCount = 0;
 
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            // Ler cabeçalho
             String header = br.readLine();
-
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) {
                     continue;
                 }
-
-                // *** CORREÇÃO: Usar o parser robusto em vez de line.split(",") ***
-                String[] p = parseCSVLine(line);
+                String[] p = parseCSVLine(line); // Usa o teu parser robusto
 
                 try {
-                    // Mapeamento das colunas (baseado no header)
-                    // p[0] = country
-                    // p[1] = time_zone (ex: "('Europe/Paris',)") - ignorado
-                    // p[2] = time_zone_group
-                    // p[3] = station
-                    // p[4] = latitude
-                    // p[5] = longitude
-                    // p[6] = is_city
-                    // p[7] = is_main_station
-                    // p[8] = is_airport
-
                     if (p.length < 9) {
                         throw new IllegalArgumentException("Linha com colunas insuficientes.");
                     }
-
                     String country = p[0].trim();
                     String timeZoneGroup = p[2].trim();
                     String stationName = p[3].trim();
@@ -340,7 +325,6 @@ public class InventoryManager {
                     boolean isMainStation = parseBoolean(p[7].trim());
                     boolean isAirport = parseBoolean(p[8].trim());
 
-                    // Critérios de Aceitação (USEI06): Validação
                     if (stationName.isEmpty() || country.isEmpty() || timeZoneGroup.isEmpty()) {
                         throw new IllegalArgumentException("Station, Country, or TZG is empty.");
                     }
@@ -351,19 +335,16 @@ public class InventoryManager {
                         throw new IllegalArgumentException("Longitude " + longitude + " out of range [-180, 180].");
                     }
 
-                    // Se for válido, cria e adiciona o objeto
                     EuropeanStation station = new EuropeanStation(stationName, country, timeZoneGroup, latitude, longitude, isCity, isMainStation, isAirport);
                     stations.add(station);
-                    validCount++;
+                    this.validStationCount++;
 
                 } catch (Exception e) {
-                    // Rejeita a linha inválida e reporta o problema
-                    System.err.println("⚠️ [USEI06] Invalid station record rejected: " + line + " | Error: " + e.getMessage());
-                    invalidCount++;
+                    // SILENCIADO: System.err.println("⚠️ [USEI06] Invalid station record rejected: ... ");
+                    this.invalidStationCount++;
                 }
             }
         }
-        System.out.printf("✅ [USEI06] Loaded %d valid stations. (%d invalid rows rejected).%n", validCount, invalidCount);
         return stations;
     }
 
@@ -375,9 +356,7 @@ public class InventoryManager {
     }
 
     /**
-     * NOVO MÉTODO: Parser de CSV robusto que lida com aspas.
-     * Este método divide uma linha de CSV, respeitando aspas (").
-     * Uma vírgula dentro de aspas não divide o campo.
+     * Parser de CSV robusto (Mantido do teu ficheiro).
      */
     private String[] parseCSVLine(String line) {
         List<String> fields = new ArrayList<>();
@@ -389,32 +368,27 @@ public class InventoryManager {
 
             if (inQuotes) {
                 if (c == '"') {
-                    // Verifica se é uma aspa dupla de escape ("")
                     if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
                         currentField.append('"');
-                        i++; // Pula a próxima aspa
+                        i++;
                     } else {
-                        inQuotes = false; // Fim do campo com aspas
+                        inQuotes = false;
                     }
                 } else {
-                    currentField.append(c); // Carácter normal dentro das aspas
+                    currentField.append(c);
                 }
             } else {
                 if (c == '"') {
-                    inQuotes = true; // Início de um campo com aspas
+                    inQuotes = true;
                 } else if (c == ',') {
-                    fields.add(currentField.toString()); // Fim do campo
-                    currentField.setLength(0); // Limpa para o próximo campo
+                    fields.add(currentField.toString());
+                    currentField.setLength(0);
                 } else {
-                    currentField.append(c); // Carácter normal
+                    currentField.append(c);
                 }
             }
         }
-        // Adiciona o último campo
         fields.add(currentField.toString());
-
         return fields.toArray(new String[0]);
     }
-
-    // --- FIM DO CÓDIGO ATUALIZADO (USEI06 - Sprint 2) ---
 }
