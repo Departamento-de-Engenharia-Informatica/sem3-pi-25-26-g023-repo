@@ -1,0 +1,74 @@
+@startuml USEI06_SequenceDiagram
+
+title USEI06 - Query by Time-Zone Group (SD)
+
+actor "Planner" as P
+participant "StationQueryUI" as UI
+participant "StationQueryController" as CTRL
+participant "StationRepository" as REPO
+participant "StationIndexManager" as IDX_MAN
+participant "AVLTree" as AVLTREE
+
+' System Startup / Data Loading (Simplified)
+' This happens once when the module is initialized
+
+activate CTRL
+CTRL -> REPO: loadStations(filename)
+activate REPO
+REPO --> CTRL: List<EuropeanStation>
+deactivate REPO
+
+CTRL -> IDX_MAN: buildIndexes(stations)
+activate IDX_MAN
+
+loop for each station
+    IDX_MAN -> AVLTREE: insert(station)
+    ' (Also inserts into other trees, omitted for brevity)
+end
+
+IDX_MAN --> CTRL: Indexes built
+deactivate IDX_MAN
+deactivate CTRL
+
+' --- User Query Flow ---
+
+activate P
+P -> UI: 1. requestStationQueryModule()
+activate UI
+UI --> P: Shows main query menu
+deactivate UI
+
+P -> UI: 2. selectQueryByTimezoneGroup()
+activate UI
+UI --> P: Shows prompt for group name
+deactivate UI
+
+P -> UI: 3. submitTimezoneGroup("CET")
+activate UI
+UI -> CTRL: 4. queryByTimezoneGroup("CET")
+activate CTRL
+
+CTRL -> IDX_MAN: 5. searchByTimezoneGroup("CET")
+activate IDX_MAN
+
+' Assumes the manager knows to use the AVL tree (sorted by TZ/Country)
+IDX_MAN -> AVLTREE: 6. findRange("CET_AAA", "CET_ZZZ")
+activate AVLTREE
+
+' The tree returns the matching station objects
+AVLTREE --> IDX_MAN: List<EuropeanStation>
+deactivate AVLTREE
+
+IDX_MAN --> CTRL: List<EuropeanStation>
+deactivate IDX_MAN
+
+CTRL --> UI: List<EuropeanStation>
+deactivate CTRL
+
+UI -> UI: 7. displayResults(stations)
+activate UI
+UI --> P: Shows list of matching stations
+deactivate UI
+deactivate P
+
+@enduml

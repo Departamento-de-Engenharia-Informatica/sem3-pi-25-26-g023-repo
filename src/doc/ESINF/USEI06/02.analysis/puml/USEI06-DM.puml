@@ -1,0 +1,53 @@
+@startuml DomainModel
+
+title USEI06 - Station Index & Query (DM)
+
+hide circle
+hide methods
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class StationQueryService {
+  ' Loads data and orchestrates queries
+}
+
+' This class holds the different indexes
+class StationIndexManager {
+}
+
+' The specified data structures
+class BST {
+  ' (Binary Search Tree)
+}
+class AVLTree {
+  ' (Self-Balancing BST)
+}
+
+' The core Domain Entity
+class EuropeanStation {
+  stationName
+  latitude
+  longitude
+  country
+  timeZoneGroup
+}
+
+' Relationships
+' Planner (Actor) uses the service
+' Planner --> StationQueryService : uses
+
+StationQueryService --> StationIndexManager : uses
+StationQueryService --> EuropeanStation : loads >
+
+' The manager holds multiple tree instances for different keys
+' (e.g., one for latitude, one for longitude, one for tz/country)
+StationIndexManager "1" *-- "1..*" BST : uses index
+StationIndexManager "1" *-- "1..*" AVLTree : uses index
+
+' The trees store the station data
+BST o-- "1..*" EuropeanStation : indexes
+AVLTree o-- "1..*" EuropeanStation : indexes
+
+@enduml

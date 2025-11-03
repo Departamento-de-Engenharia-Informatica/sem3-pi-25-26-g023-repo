@@ -1,0 +1,34 @@
+@startuml
+
+title USEI06 - Station Index & Query (SSD)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor Planner
+participant System
+
+Planner -> System: requestStationQueryModule()
+activate System
+    System --> Planner: displayQueryUI(loadStatus, indexedCount)
+deactivate System
+
+Planner -> System: queryByTimezoneGroup(group)
+activate System
+    System --> Planner: displaySearchResults(stationList)
+deactivate System
+
+Planner -> System: queryByTimezoneWindow(groupList)
+activate System
+    System --> Planner: displaySearchResults(stationList)
+deactivate System
+
+Planner -> System: requestAnalysisReport()
+activate System
+    System --> Planner: displayAnalysisAndSamples(report)
+deactivate System
+
+@enduml
