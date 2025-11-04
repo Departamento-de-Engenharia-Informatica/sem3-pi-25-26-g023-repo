@@ -9,7 +9,6 @@ import java.util.List;
  */
 public class WMS {
 
-    // --- NOVA CLASSE INTERNA ---
     /**
      * Um objeto simples para guardar o resultado do unload
      * e passá-lo para a Main.java.
@@ -19,7 +18,7 @@ public class WMS {
         public final int fullyUnloaded;
         public final int partiallyUnloaded;
         public final int notUnloaded;
-        public int totalBoxes; // Adicionado para um sumário mais completo
+        public int totalBoxes;
 
         public UnloadResult(int totalProcessed, int fully, int partially, int not, int totalBoxes) {
             this.totalProcessed = totalProcessed;
@@ -29,7 +28,6 @@ public class WMS {
             this.totalBoxes = totalBoxes;
         }
     }
-    // --- FIM DA NOVA CLASSE ---
 
     private final Quarantine quarantine;
     private final Inventory inventory;
@@ -51,11 +49,9 @@ public class WMS {
      */
     public UnloadResult unloadWagons(List<Wagon> wagons) {
         if (wagons == null || wagons.isEmpty()) {
-            // SILENCIADO: System.out.println("No wagons to unload.");
             return new UnloadResult(0, 0, 0, 0, 0);
         }
         if (warehouses.isEmpty()) {
-            // SILENCIADO: System.err.println("❌ FATAL ERROR: No warehouses defined...");
             wagons.forEach(w -> auditLog.writeLine(String.format("Wagon %s | action=NotUnloaded | reason=NoWarehousesAvailable%n", w.getWagonId())));
             return new UnloadResult(wagons.size(), 0, 0, wagons.size(), 0);
         }
@@ -87,25 +83,18 @@ public class WMS {
                 }
             }
 
-            // Atualiza contadores
             if (boxesStoredCount == w.getBoxes().size()) {
-                // SILENCIADO: System.out.printf("✅ Wagon %s successfully unloaded...%n", ...);
                 wagonsSuccessfullyUnloaded++;
             } else if (anyBoxStored) {
-                // SILENCIADO: System.out.printf("⚠️ Wagon %s partially unloaded...%n", ...);
                 wagonsPartiallyUnloaded++;
                 auditLog.writeLine(String.format("Wagon %s | action=PartiallyUnloaded | reason=WarehousesFull%n", w.getWagonId()));
             } else {
-                // SILENCIADO: System.out.printf("❌ Wagon %s not unloaded...%n", ...);
                 wagonsNotUnloaded++;
                 auditLog.writeLine(String.format("Wagon %s | action=NotUnloaded | reason=AllWarehousesFull%n", w.getWagonId()));
             }
             totalBoxesStored += boxesStoredCount;
         }
 
-        // SILENCIADO: O sumário foi removido daqui.
-
-        // RETORNA os dados para a Main
         return new UnloadResult(wagons.size(), wagonsSuccessfullyUnloaded, wagonsPartiallyUnloaded, wagonsNotUnloaded, totalBoxesStored);
     }
 
@@ -151,6 +140,5 @@ public class WMS {
             }
         }
 
-        // SILENCIADO: O sumário foi removido daqui.
     }
 }

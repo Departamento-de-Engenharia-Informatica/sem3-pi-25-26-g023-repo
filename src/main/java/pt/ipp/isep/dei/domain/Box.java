@@ -7,11 +7,9 @@ import java.util.Objects;
 
 /**
  * Represents a physical box in inventory.
- * (Versão 2.0 - "Bonito" toString)
  */
 public class Box implements Comparable<Box> {
 
-    // --- Códigos de Cores ANSI ---
     private static final String ANSI_RESET = "\u001B[0m";
     private static final String ANSI_YELLOW = "\u001B[33m";
     private static final String ANSI_CYAN = "\u001B[36m";
@@ -52,7 +50,6 @@ public class Box implements Comparable<Box> {
                 receivedDate, aisle, bay);
     }
 
-    // --- Getters (Mantidos) ---
     public String getBoxId() { return boxId; }
     public String getSku() { return sku; }
     public int getQtyAvailable() { return qtyAvailable; }
@@ -65,7 +62,6 @@ public class Box implements Comparable<Box> {
 
     /**
      * Compares boxes using FEFO/FIFO logic.
-     * (Lógica mantida)
      */
     @Override
     public int compareTo(Box other) {
@@ -95,9 +91,6 @@ public class Box implements Comparable<Box> {
         return this.boxId.compareTo(other.boxId);
     }
 
-    // -----------------------------------------------------------------
-    // --- ALTERAÇÃO (Output "Bonito") ---
-    // -----------------------------------------------------------------
     /**
      * Returns a "pretty" string with box information, formatted for tables.
      *
@@ -105,11 +98,10 @@ public class Box implements Comparable<Box> {
      */
     @Override
     public String toString() {
-        // Formatter para datas
+
         DateTimeFormatter expiryFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd");
         DateTimeFormatter receivedFmt = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
-        // --- Cor de Alerta para Validade ---
         String expiryStr;
         String expiryColor = "";
         if (expiryDate == null) {
@@ -126,17 +118,16 @@ public class Box implements Comparable<Box> {
         String receivedStr = (receivedDate != null) ? receivedDate.format(receivedFmt) : "N/A";
         String location = String.format("A%s-B%s", (aisle != null ? aisle : "?"), (bay != null ? bay : "?"));
 
-        // Formata a string com alinhamento
         // %-10s -> Alinha à esquerda, 10 caracteres
         // %4d   -> Alinha à direita, 4 caracteres
         return String.format(
                 "  %-10s | %-12s | %s%4d%s | %s%-12s%s | %-18s | %s%-10s%s",
                 boxId,
                 sku,
-                ANSI_BOLD, qtyAvailable, ANSI_RESET, // Quantidade a bold
-                expiryColor, expiryStr, ANSI_RESET,   // Validade com cor
+                ANSI_BOLD, qtyAvailable, ANSI_RESET,
+                expiryColor, expiryStr, ANSI_RESET,
                 receivedStr,
-                ANSI_CYAN, location, ANSI_RESET     // Localização a ciano
+                ANSI_CYAN, location, ANSI_RESET
         );
     }
 }
