@@ -6,18 +6,16 @@ import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
 
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Comparator; // Import needed
-import java.util.HashMap; // <-- ADDED IMPORT
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.List;
-import java.util.Map; // <-- ADDED IMPORT
+import java.util.Map;
 import java.util.Scanner;
-
 
 /**
  * Main User Interface for the Cargo Handling Terminal.
- * (Version 2.2 - Advanced USEI06 Query UI)
+ * Version 2.3 - Added USEI08 Spatial Queries with KD-Tree support
  */
 public class CargoHandlingUI implements Runnable {
 
@@ -32,7 +30,7 @@ public class CargoHandlingUI implements Runnable {
     public static final String ANSI_BOLD = "\u001B[1m";
     public static final String ANSI_ITALIC = "\u001B[3m";
 
-    // (Class fields remain the same)
+    // --- Class fields ---
     private final WMS wms;
     private final InventoryManager manager;
     private final List<Wagon> wagons;
@@ -40,17 +38,29 @@ public class CargoHandlingUI implements Runnable {
     private final StationRepository estacaoRepo;
     private final LocomotiveRepository locomotivaRepo;
     private final StationIndexManager stationIndexManager;
+    private final KDTree spatialKDTree; // ✅ ADDED FOR USEI08
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
     private final Scanner scanner;
 
     /**
-     * Updated constructor for Sprint 2.
+     * Constructs a new CargoHandlingUI with all required dependencies.
+     * Updated for Sprint 2 with KD-Tree support for spatial queries.
+     *
+     * @param wms the warehouse management system
+     * @param manager the inventory manager
+     * @param wagons list of wagons to manage
+     * @param travelTimeController travel time calculation controller
+     * @param estacaoRepo station repository
+     * @param locomotivaRepo locomotive repository
+     * @param stationIndexManager station index manager for USEI06
+     * @param spatialKDTree KD-Tree for spatial queries (USEI08)
      */
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
                            TravelTimeController travelTimeController, StationRepository estacaoRepo,
                            LocomotiveRepository locomotivaRepo,
-                           StationIndexManager stationIndexManager) {
+                           StationIndexManager stationIndexManager,
+                           KDTree spatialKDTree) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
@@ -58,12 +68,13 @@ public class CargoHandlingUI implements Runnable {
         this.estacaoRepo = estacaoRepo;
         this.locomotivaRepo = locomotivaRepo;
         this.stationIndexManager = stationIndexManager;
+        this.spatialKDTree = spatialKDTree; // ✅ INITIALIZE KD-TREE
         this.scanner = new Scanner(System.in);
     }
 
-
     /**
      * Runs the main menu loop.
+     * Handles user input and delegates to appropriate handlers.
      */
     @Override
     public void run() {
@@ -72,9 +83,8 @@ public class CargoHandlingUI implements Runnable {
         do {
             showMenu();
             try {
-                // Read option
-                // *** CORRECTION: Changed from 9 to 10 to allow all options ***
-                option = readInt(0, 10, ANSI_BOLD + "Option: " + ANSI_RESET);
+                // Read option - updated range for new menu items
+                option = readInt(0, 11, ANSI_BOLD + "Option: " + ANSI_RESET);
 
                 // --- Robustness: Catches errors from handlers ---
                 try {
@@ -106,7 +116,8 @@ public class CargoHandlingUI implements Runnable {
     }
 
     /**
-     * Displays the "pretty" main menu.
+     * Displays the main menu with all available options.
+     * Includes USEI08 Spatial Queries as option 9.
      */
     private void showMenu() {
         // "Clear" the screen
@@ -132,11 +143,12 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + " 6. " + ANSI_RESET + "[USLP03] Calculate Train Travel Time (S1)");
         System.out.println(ANSI_GREEN + " 7. " + ANSI_RESET + "[USEI06] Query European Station Index (S2)");
         System.out.println(ANSI_GREEN + " 8. " + ANSI_RESET + "[USEI07] Build & Analyze 2D-Tree (S2)");
+        System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)"); // ✅ NEW OPTION
 
         // --- Info ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
-        System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "View Current Inventory");
-        System.out.println(ANSI_GREEN + " 10. " + ANSI_RESET + "View Warehouse Info");
+        System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "View Current Inventory");
+        System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "View Warehouse Info");
 
         // --- Exit ---
         System.out.println("\n" + ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
@@ -154,6 +166,9 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Handles the menu option selected by the user.
+     * Routes to appropriate functionality based on user choice.
+     *
+     * @param option the selected menu option (0-11)
      */
     private void handleOption(int option) {
         switch (option) {
@@ -182,10 +197,13 @@ public class CargoHandlingUI implements Runnable {
                 handleBuild2DTree(); // USEI07
                 break;
             case 9:
-                handleViewInventory(); // <-- UPGRADED
+                handleSpatialQueries(); // ✅ USEI08 - NEW
                 break;
             case 10:
-                handleViewWarehouseInfo(); // <-- UPGRADED
+                handleViewInventory();
+                break;
+            case 11:
+                handleViewWarehouseInfo();
                 break;
             case 0:
                 System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET);
@@ -196,27 +214,240 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    // --- Visual Feedback Helpers ---
+    // ============================================================
+    // === USEI08 SPATIAL QUERIES HANDLERS ===
+    // ============================================================
 
-    private void showSuccess(String message) {
-        System.out.println(ANSI_GREEN + ANSI_BOLD + "\n✅ SUCCESS: " + ANSI_RESET + ANSI_GREEN + message + ANSI_RESET);
+    /**
+     * Handles spatial queries using KD-Tree (USEI08).
+     * Provides search by geographical area with filters.
+     */
+    private void handleSpatialQueries() {
+        showInfo("--- [USEI08] Spatial Queries - Search by Geographical Area ---");
+
+        boolean back = false;
+        while (!back) {
+            System.out.println("\n" + ANSI_BOLD + "Spatial Queries Menu:" + ANSI_RESET);
+            System.out.println(ANSI_GREEN + "1. " + ANSI_RESET + "Search stations in geographical area");
+            System.out.println(ANSI_GREEN + "2. " + ANSI_RESET + "Execute demo queries");
+            System.out.println(ANSI_GREEN + "3. " + ANSI_RESET + "Show KD-Tree statistics");
+            System.out.println(ANSI_YELLOW + "0. " + ANSI_RESET + "Back to main menu");
+
+            int choice = readInt(0, 3, ANSI_BOLD + "Choose option: " + ANSI_RESET);
+
+            switch (choice) {
+                case 1:
+                    executeSpatialSearch();
+                    break;
+                case 2:
+                    executeDemoQueries();
+                    break;
+                case 3:
+                    showKDTreeStats();
+                    break;
+                case 0:
+                    back = true;
+                    break;
+                default:
+                    showError("Invalid option!");
+            }
+        }
     }
 
-    private void showError(String message) {
-        System.out.println(ANSI_RED + ANSI_BOLD + "\n❌ ERROR: " + ANSI_RESET + ANSI_RED + message + ANSI_RESET);
+    /**
+     * Reads a double input from the user within a specified range.
+     *
+     * @param prompt the prompt to display
+     * @param min the minimum allowed value
+     * @param max the maximum allowed value
+     * @return the validated double input
+     */
+    private double readDouble(String prompt, double min, double max) {
+        System.out.print(prompt);
+        while (true) {
+            try {
+                String line = scanner.nextLine();
+                if (isCancel(line)) {
+                    return 0.0;
+                }
+                double value = Double.parseDouble(line.replace(',', '.'));
+                if (value >= min && value <= max) {
+                    return value;
+                } else {
+                    System.out.print(ANSI_RED + String.format("❌ Invalid input. Please enter a value between %.2f and %.2f.%n" + ANSI_RESET + prompt, min, max));
+                }
+            } catch (NumberFormatException e) {
+                System.out.print(ANSI_RED + "❌ Invalid input. Please enter a valid number." + ANSI_RESET + "\n" + prompt);
+            }
+        }
     }
 
-    private void showInfo(String message) {
-        System.out.println(ANSI_CYAN + "\nℹ️  " + message + ANSI_RESET);
+    /**
+     * Executes a spatial search with user-defined parameters.
+     * Allows users to specify geographical boundaries and filters.
+     */
+    private void executeSpatialSearch() {
+        try {
+            System.out.println("\n" + ANSI_BOLD + "--- Search Stations in Geographical Area ---" + ANSI_RESET);
+
+            // Get geographical boundaries
+            System.out.println(ANSI_ITALIC + "Enter geographical boundaries:" + ANSI_RESET);
+            double latMin = readDouble("Minimum latitude [-90 to 90]: ", -90.0, 90.0);
+            double latMax = readDouble("Maximum latitude [-90 to 90]: ", -90.0, 90.0);
+            double lonMin = readDouble("Minimum longitude [-180 to 180]: ", -180.0, 180.0);
+            double lonMax = readDouble("Maximum longitude [-180 to 180]: ", -180.0, 180.0);
+
+            // Validate boundaries
+            if (latMin > latMax || lonMin > lonMax) {
+                showError("Invalid boundaries: min cannot be greater than max.");
+                return;
+            }
+
+            System.out.println("\n" + ANSI_ITALIC + "Filters (press Enter to skip):" + ANSI_RESET);
+            String country = readString("Country code (e.g., PT, ES, FR): ");
+            String cityFilter = readString("City stations only? (true/false/any): ");
+            String mainFilter = readString("Main stations only? (true/false/any): ");
+
+            // Parse filters (null means no filter)
+            Boolean isCity = parseOptionalBoolean(cityFilter);
+            Boolean isMain = parseOptionalBoolean(mainFilter);
+
+            // Execute search
+            showInfo("Executing spatial search...");
+            long startTime = System.nanoTime();
+            List<EuropeanStation> results = spatialKDTree.searchInRange(
+                    latMin, latMax, lonMin, lonMax,
+                    country.isEmpty() ? null : country.toUpperCase(),
+                    isCity, isMain
+            );
+            long endTime = System.nanoTime();
+
+            // Display results
+            System.out.printf("\n" + ANSI_BOLD + "✅ Found %d stations (%.2f ms)%n" + ANSI_RESET,
+                    results.size(), (endTime - startTime) / 1_000_000.0);
+
+            if (results.isEmpty()) {
+                showInfo("No stations found matching the criteria.");
+            } else {
+                // Show first 10 results
+                System.out.println("\n" + ANSI_BOLD + "First 10 results:" + ANSI_RESET);
+                results.stream().limit(10).forEach(station ->
+                        System.out.println("  • " + formatStationDisplay(station))
+                );
+
+                if (results.size() > 10) {
+                    System.out.println("  ... and " + (results.size() - 10) + " more");
+                }
+
+                // Option to see all results
+                String seeAll = readString("\nShow all results? (y/N): ");
+                if (seeAll.trim().equalsIgnoreCase("y")) {
+                    showPaginatedResults(results);
+                }
+            }
+
+        } catch (Exception e) {
+            showError("Error executing spatial search: " + e.getMessage());
+        }
     }
 
-    private void promptEnterKey() {
-        System.out.print(ANSI_ITALIC + "\n(Press ENTER to return to the menu...)" + ANSI_RESET);
-        scanner.nextLine();
+    /**
+     * Executes predefined demo queries for USEI08.
+     * Shows practical examples of spatial queries with performance metrics.
+     */
+    private void executeDemoQueries() {
+        System.out.println("\n" + ANSI_BOLD + "--- USEI08 Demo Queries ---" + ANSI_RESET);
+        System.out.println(ANSI_ITALIC + "Executing 5 predefined spatial queries..." + ANSI_RESET);
+
+        // Demo 1: All stations in Portugal
+        System.out.println("\n1. " + ANSI_BOLD + "All stations in Portugal:" + ANSI_RESET);
+        long startTime = System.nanoTime();
+        List<EuropeanStation> portugal = spatialKDTree.searchInRange(
+                -90, 90, -180, 180, "PT", null, null
+        );
+        long endTime = System.nanoTime();
+        System.out.printf("   Found: %d stations (%.2f ms)%n",
+                portugal.size(), (endTime - startTime) / 1_000_000.0);
+
+        // Demo 2: Main stations in Lisbon area
+        System.out.println("\n2. " + ANSI_BOLD + "Main stations in Lisbon area:" + ANSI_RESET);
+        startTime = System.nanoTime();
+        List<EuropeanStation> lisbon = spatialKDTree.searchInRange(
+                38.70, 38.75, -9.15, -9.10, "PT", true, true
+        );
+        endTime = System.nanoTime();
+        System.out.printf("   Found: %d stations (%.2f ms)%n",
+                lisbon.size(), (endTime - startTime) / 1_000_000.0);
+        if (!lisbon.isEmpty()) {
+            System.out.println(ANSI_ITALIC + "   Sample stations:" + ANSI_RESET);
+            lisbon.forEach(station ->
+                    System.out.println("     • " + station.getStation())
+            );
+        }
+
+        // Demo 3: City stations in France
+        System.out.println("\n3. " + ANSI_BOLD + "City stations in France:" + ANSI_RESET);
+        startTime = System.nanoTime();
+        List<EuropeanStation> france = spatialKDTree.searchInRange(
+                41.0, 51.0, -5.0, 10.0, "FR", true, null
+        );
+        endTime = System.nanoTime();
+        System.out.printf("   Found: %d stations (%.2f ms)%n",
+                france.size(), (endTime - startTime) / 1_000_000.0);
+
+        // Demo 4: Non-main stations in Italy
+        System.out.println("\n4. " + ANSI_BOLD + "Non-main stations in Italy:" + ANSI_RESET);
+        startTime = System.nanoTime();
+        List<EuropeanStation> italy = spatialKDTree.searchInRange(
+                35.0, 48.0, 6.0, 19.0, "IT", null, false
+        );
+        endTime = System.nanoTime();
+        System.out.printf("   Found: %d stations (%.2f ms)%n",
+                italy.size(), (endTime - startTime) / 1_000_000.0);
+
+        // Demo 5: All stations in Madrid area
+        System.out.println("\n5. " + ANSI_BOLD + "All stations in Madrid area:" + ANSI_RESET);
+        startTime = System.nanoTime();
+        List<EuropeanStation> madrid = spatialKDTree.searchInRange(
+                40.30, 40.50, -3.80, -3.60, "ES", null, null
+        );
+        endTime = System.nanoTime();
+        System.out.printf("   Found: %d stations (%.2f ms)%n",
+                madrid.size(), (endTime - startTime) / 1_000_000.0);
+
+        showSuccess("Demo queries completed successfully!");
+        System.out.println("\n" + ANSI_ITALIC + "Note: KD-Tree search complexity is O(√N + K)" + ANSI_RESET);
+        System.out.println(ANSI_ITALIC + "where N = total stations, K = results found" + ANSI_RESET);
     }
 
+    /**
+     * Displays KD-Tree statistics and performance information.
+     */
+    private void showKDTreeStats() {
+        System.out.println("\n" + ANSI_BOLD + "--- KD-Tree Statistics ---" + ANSI_RESET);
+        System.out.println("Size: " + ANSI_CYAN + spatialKDTree.size() + ANSI_RESET + " nodes");
+        System.out.println("Height: " + ANSI_CYAN + spatialKDTree.height() + ANSI_RESET);
+        System.out.println("Bucket distribution: " + ANSI_CYAN + spatialKDTree.getBucketSizes() + ANSI_RESET);
 
-    // --- [USEI01] Handler (Unchanged) ---
+        System.out.println("\n" + ANSI_BOLD + "Performance Analysis:" + ANSI_RESET);
+        System.out.println("Search complexity: " + ANSI_CYAN + "O(√N + K)" + ANSI_RESET + " where:");
+        System.out.println("  - N = total stations in KD-Tree");
+        System.out.println("  - K = number of results found");
+        System.out.println("This is significantly faster than linear scan " + ANSI_CYAN + "O(N)" + ANSI_RESET + " for large datasets.");
+
+        System.out.println("\n" + ANSI_BOLD + "Advantages:" + ANSI_RESET);
+        System.out.println("• Fast range queries for geographical areas");
+        System.out.println("• Efficient filtering by country and station type");
+        System.out.println("• Balanced tree structure ensures optimal performance");
+    }
+
+    // ============================================================
+    // === EXISTING HANDLERS (Maintained from original) ===
+    // ============================================================
+
+    /**
+     * Handles wagon unloading operations (USEI01).
+     */
     private void handleUnloadWagons() {
         showInfo("--- [USEI01] Unload Wagons ---");
         System.out.println(" 1. Unload ALL wagons");
@@ -240,7 +471,7 @@ public class CargoHandlingUI implements Runnable {
             }
 
             String[] choices = choicesStr.split(",");
-            List<Wagon> selected = new java.util.ArrayList<>();
+            List<Wagon> selected = new ArrayList<>();
             for (String c : choices) {
                 try {
                     int idx = Integer.parseInt(c.trim()) - 1;
@@ -256,7 +487,9 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    // --- [USEI05] Handler (Unchanged) ---
+    /**
+     * Handles quarantine returns processing (USEI05).
+     */
     private void handleProcessReturns() {
         showInfo("--- [USEI05] Process Quarantine Returns (LIFO) ---");
         wms.processReturns();
@@ -264,7 +497,9 @@ public class CargoHandlingUI implements Runnable {
         showInfo("Check 'audit.log' for details.");
     }
 
-    // --- [USEI02] Handler (Unchanged) ---
+    /**
+     * Handles order allocation (USEI02).
+     */
     private void handleAllocateOrders() {
         showInfo("--- [USEI02] Allocate Open Orders ---");
 
@@ -316,7 +551,9 @@ public class CargoHandlingUI implements Runnable {
                 lastAllocationResult.allocations.size(), lastAllocationResult.eligibilityList.size());
     }
 
-    // --- [USEI03] Handler (Unchanged) ---
+    /**
+     * Handles trolley packing operations (USEI03).
+     */
     private void handlePackTrolleys() {
         showInfo("--- [USEI03] Pack Allocations into Trolleys ---");
 
@@ -368,7 +605,9 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(lastPickingPlan.getSummary());
     }
 
-    // --- [USEI04] Handler (Unchanged) ---
+    /**
+     * Handles picking path calculation (USEI04).
+     */
     private void handleCalculatePickingPath() {
         showInfo("--- [USEI04] Calculate Picking Path ---");
 
@@ -405,7 +644,9 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    // --- [USLP03] Handler (Scanner fix) ---
+    /**
+     * Handles travel time calculation (USLP03).
+     */
     private void handleCalculateTravelTime() {
         showInfo("--- [USLP03] Calculate TravelTime ---");
         // Pass the main scanner to the sub-UI
@@ -414,7 +655,9 @@ public class CargoHandlingUI implements Runnable {
         showSuccess("Module [USLP03] complete.");
     }
 
-    // --- [USEI06] *** REPLACED WITH NEW ADVANCED UI *** ---
+    /**
+     * Handles European station index queries (USEI06).
+     */
     private void handleQueryStationIndex() {
         showInfo("--- [USEI06] Advanced European Station Query ---");
 
@@ -513,7 +756,6 @@ public class CargoHandlingUI implements Runnable {
             }
         } while (!filterChoice.equals("S"));
 
-
         // --- Step 3: Apply Filters ---
         showInfo("Applying filters...");
         List<EuropeanStation> filteredResults = applyAdvancedFilters(baseResults, filters);
@@ -526,10 +768,9 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-
-    // -----------------------------------------------------------------
-    // --- [USEI07] Handler (Unchanged) ---
-    // -----------------------------------------------------------------
+    /**
+     * Handles 2D-Tree building and analysis (USEI07).
+     */
     private void handleBuild2DTree() {
         showInfo("--- [USEI07] Build & Analyze 2D-Tree ---");
 
@@ -556,7 +797,6 @@ public class CargoHandlingUI implements Runnable {
             buckets.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
                     .forEach(entry -> System.out.printf(
-                            // e.g., "  - 1 station/node : 61562 nodes"
                             "    - %d station(s)/node : %s%d nodes%s%n",
                             entry.getKey(),
                             ANSI_CYAN, entry.getValue(), ANSI_RESET
@@ -567,15 +807,14 @@ public class CargoHandlingUI implements Runnable {
             System.out.println(ANSI_BOLD + "  Strategy:    " + ANSI_ITALIC + "Balanced build using pre-sorted lists (from USEI06)." + ANSI_RESET);
             System.out.println(ANSI_BOLD + "  Complexity:  " + ANSI_CYAN + "O(N log N)" + ANSI_RESET);
 
-
         } catch (Exception e) {
             showError("Failed to build or analyze the 2D-Tree (USEI07): " + e.getMessage());
         }
     }
 
-    // -----------------------------------------------------------------
-    // --- Info Handlers (Unchanged) ---
-    // -----------------------------------------------------------------
+    /**
+     * Handles inventory viewing.
+     */
     private void handleViewInventory() {
         showInfo("--- Current Inventory Contents ---");
         List<Box> boxes = manager.getInventory().getBoxes();
@@ -601,6 +840,9 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
+    /**
+     * Handles warehouse information display.
+     */
     private void handleViewWarehouseInfo() {
         showInfo("--- Warehouse Information ---");
         List<Warehouse> warehouses = manager.getWarehouses();
@@ -635,9 +877,72 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    // -----------------------------------------------------------------
-    // --- Helper Method (Unchanged) ---
-    // -----------------------------------------------------------------
+    // ============================================================
+    // === HELPER METHODS ===
+    // ============================================================
+
+    /**
+     * Displays a success message.
+     *
+     * @param message the success message to display
+     */
+    private void showSuccess(String message) {
+        System.out.println(ANSI_GREEN + ANSI_BOLD + "\n✅ SUCCESS: " + ANSI_RESET + ANSI_GREEN + message + ANSI_RESET);
+    }
+
+    /**
+     * Displays an error message.
+     *
+     * @param message the error message to display
+     */
+    private void showError(String message) {
+        System.out.println(ANSI_RED + ANSI_BOLD + "\n❌ ERROR: " + ANSI_RESET + ANSI_RED + message + ANSI_RESET);
+    }
+
+    /**
+     * Displays an informational message.
+     *
+     * @param message the info message to display
+     */
+    private void showInfo(String message) {
+        System.out.println(ANSI_CYAN + "\nℹ️  " + message + ANSI_RESET);
+    }
+
+    /**
+     * Prompts user to press ENTER to continue.
+     */
+    private void promptEnterKey() {
+        System.out.print(ANSI_ITALIC + "\n(Press ENTER to return to the menu...)" + ANSI_RESET);
+        scanner.nextLine();
+    }
+
+    /**
+     * Formats a station for display with icons and coordinates.
+     *
+     * @param station the station to format
+     * @return formatted station string
+     */
+    private String formatStationDisplay(EuropeanStation station) {
+        return station.getStation() +
+                " [" + station.getCountry() + "] " +
+                "(" + String.format("%.6f", station.getLatitude()) + ", " +
+                String.format("%.6f", station.getLongitude()) + ")" +
+                (station.isCity() ? " 🏙️" : "") +
+                (station.isMainStation() ? " ⭐" : "");
+    }
+
+    /**
+     * Parses optional boolean input from user.
+     *
+     * @param input the user input string
+     * @return Boolean object (true, false, or null for no filter)
+     */
+    private Boolean parseOptionalBoolean(String input) {
+        if (input == null || input.trim().isEmpty() || input.equalsIgnoreCase("any")) {
+            return null;
+        }
+        return input.trim().equalsIgnoreCase("true") || input.trim().equalsIgnoreCase("t");
+    }
 
     /**
      * NEW HELPER: Prints a "pretty" table of bay details for a warehouse.
@@ -680,59 +985,6 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_PURPLE + "   " + "-".repeat(60) + ANSI_RESET);
     }
 
-    // --- Robust Input Helpers (Unchanged) ---
-    private String readString(String prompt) {
-        System.out.print(prompt);
-        return scanner.nextLine();
-    }
-
-    private int readInt(int min, int max, String prompt) {
-        System.out.print(prompt);
-        while (true) {
-            try {
-                String line = scanner.nextLine();
-                if (isCancel(line)) {
-                    return 0; // Universal cancel
-                }
-                int option = Integer.parseInt(line);
-                if (option >= min && option <= max) {
-                    return option;
-                } else {
-                    System.out.print(ANSI_RED + String.format("❌ Invalid input. Please enter a number between %d and %d.%n" + ANSI_RESET + prompt, min, max));
-                }
-            } catch (NumberFormatException e) {
-                System.out.print(ANSI_RED + "❌ Invalid input. Please enter a number." + ANSI_RESET + "\n" + prompt);
-            }
-        }
-    }
-
-    private double readDouble(double min, double max, String prompt) {
-        System.out.print(prompt);
-        while (true) {
-            try {
-                String line = scanner.nextLine();
-                if (isCancel(line)) {
-                    return 0.0; // Universal cancel
-                }
-                double value = Double.parseDouble(line.replace(',', '.'));
-                if (value >= min && value <= max) {
-                    return value;
-                } else {
-                    System.out.print(ANSI_RED + String.format("❌ Invalid input. Please enter a value between %.2f and %.2f.%n" + ANSI_RESET + prompt, min, max));
-                }
-            } catch (NumberFormatException e) {
-                System.out.print(ANSI_RED + "❌ Invalid input. Please enter a valid number." + ANSI_RESET + "\n" + prompt);
-            }
-        }
-    }
-
-    private boolean isCancel(String input) {
-        return input.trim().equals("0") || input.trim().equalsIgnoreCase("c");
-    }
-
-
-    // --- *** ADD THESE 2 NEW HELPER METHODS FOR THE ADVANCED UI *** ---
-
     /**
      * Helper method to filter a list of stations based on the advanced filters.
      *
@@ -769,7 +1021,6 @@ public class CargoHandlingUI implements Runnable {
                         .thenComparing(EuropeanStation::getStation))
                 .toList();
     }
-
 
     /**
      * Displays a list of stations in a user-friendly, paginated view.
@@ -833,5 +1084,93 @@ public class CargoHandlingUI implements Runnable {
         } while (!input.equals("E"));
 
         showInfo("Exited query view.");
+    }
+
+    // ============================================================
+    // === INPUT VALIDATION METHODS ===
+    // ============================================================
+
+    /**
+     * Reads a string input from the user.
+     *
+     * @param prompt the prompt to display
+     * @return the user input string
+     */
+    private String readString(String prompt) {
+        System.out.print(prompt);
+        return scanner.nextLine();
+    }
+
+    /**
+     * Reads an integer input from the user within a specified range.
+     *
+     * @param min the minimum allowed value
+     * @param max the maximum allowed value
+     * @param prompt the prompt to display
+     * @return the validated integer input
+     */
+    private int readInt(int min, int max, String prompt) {
+        System.out.print(prompt);
+        while (true) {
+            try {
+                String line = scanner.nextLine();
+                if (isCancel(line)) {
+                    return 0;
+                }
+                int option = Integer.parseInt(line);
+                if (option >= min && option <= max) {
+                    return option;
+                } else {
+                    System.out.print(ANSI_RED + String.format("❌ Invalid input. Please enter a number between %d and %d.%n" + ANSI_RESET + prompt, min, max));
+                }
+            } catch (NumberFormatException e) {
+                System.out.print(ANSI_RED + "❌ Invalid input. Please enter a number." + ANSI_RESET + "\n" + prompt);
+            }
+        }
+    }
+
+    /**
+     * Reads a double input from the user within a specified range.
+     *
+     * @param min the minimum allowed value
+     * @param max the maximum allowed value
+     * @param prompt the prompt to display
+     * @return the validated double input
+     */
+    private double readDouble(double min, double max, String prompt) {
+        System.out.print(prompt);
+        while (true) {
+            try {
+                String line = scanner.nextLine();
+                if (isCancel(line)) {
+                    return 0.0;
+                }
+                double value = Double.parseDouble(line.replace(',', '.'));
+                if (value >= min && value <= max) {
+                    return value;
+                } else {
+                    System.out.print(ANSI_RED + String.format("❌ Invalid input. Please enter a value between %.2f and %.2f.%n" + ANSI_RESET + prompt, min, max));
+                }
+            } catch (NumberFormatException e) {
+                System.out.print(ANSI_RED + "❌ Invalid input. Please enter a valid number." + ANSI_RESET + "\n" + prompt);
+            }
+        }
+    }
+
+    /**
+     * Overloaded version of readDouble with default range for coordinates.
+     */
+    private double readDouble(String prompt) {
+        return readDouble(-Double.MAX_VALUE, Double.MAX_VALUE, prompt);
+    }
+
+    /**
+     * Checks if the input indicates cancellation.
+     *
+     * @param input the user input to check
+     * @return true if input indicates cancellation
+     */
+    private boolean isCancel(String input) {
+        return input.trim().equals("0") || input.trim().equalsIgnoreCase("c");
     }
 }
