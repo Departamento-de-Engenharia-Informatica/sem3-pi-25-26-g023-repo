@@ -280,4 +280,24 @@ public class TravelTimeController {
 
         return sb.toString();
     }
+    // --- GETTERS PARA A GUI ---
+    // (Adiciona estes métodos à tua classe TravelTimeController)
+
+    /**
+     * Permite à GUI aceder ao repositório de estações
+     * para popular as ComboBoxes.
+     * @return O repositório de estações.
+     */
+    public StationRepository getStationRepository() {
+        return this.estacaoRepo;
+    }
+
+    /**
+     * Permite à GUI aceder ao repositório de locomotivas
+     * para popular as ComboBoxes.
+     * @return O repositório de locomotivas.
+     */
+    public LocomotiveRepository getLocomotiveRepository() {
+        return this.locomotivaRepo;
+    }
 }

@@ -141,4 +141,24 @@ public class WMS {
         }
 
     }
+    // --- GETTERS PARA A GUI ---
+    // (Adiciona estes métodos à tua classe WMS)
+
+    /**
+     * Permite à GUI aceder ao inventário
+     * para mostrar estatísticas.
+     * @return O objeto Inventory.
+     */
+    public Inventory getInventory() {
+        return this.inventory;
+    }
+
+    /**
+     * Permite à GUI aceder à quarentena
+     * para mostrar estatísticas.
+     * @return O objeto Quarantine.
+     */
+    public Quarantine getQuarantine() {
+        return this.quarantine;
+    }
 }
