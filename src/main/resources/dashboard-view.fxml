@@ -1,15 +1,23 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
+<?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Text?>
 
-<!-- O controlador deste FXML -->
-<VBox styleClass="view-container" alignment="TOP_LEFT" spacing="10" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.DashboardController">
-    <children>
-        <Label styleClass="view-title" text="Bem-vindo ao Projeto Integrado G023" />
-        <Label styleClass="view-subtitle" text="Interface de Gestão de Armazém e Rede Ferroviária" />
+<ScrollPane fitToWidth="true" fitToHeight="true" styleClass="content-pane" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.DashboardController">
+    <content>
+        <VBox styleClass="dashboard-menu" spacing="20.0">
+            <padding>
+                <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+            </padding>
 
-        <Text fill="#BBBBBB" wrappingWidth="600.0" text="Este é o dashboard principal da aplicação. Utilize o menu lateral para navegar entre as diferentes funcionalidades do projeto, divididas pelos módulos LAPR3 (Rede Ferroviária) e ESINF (Gestão de Armazém).&#10;&#10;Esta interface gráfica substitui a aplicação de consola, utilizando a mesma lógica de negócio e controladores que já foram desenvolvidos." />
-    </children>
-</VBox>
+            <Label styleClass="dashboard-title" text="Welcome to the PI G023 Manager" />
+            <Label styleClass="view-subtitle" text="Select a feature from the side menu to begin." />
+
+            <Label styleClass="dashboard-section-title" text="--- Current System Stats ---" />
+            <Label fx:id="statsLabel" styleClass="dashboard-stats" text="Loading stats..." />
+
+        </VBox>
+    </content>
+</ScrollPane>

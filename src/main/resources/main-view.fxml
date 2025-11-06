@@ -3,49 +3,72 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.Button?>
 <?import javafx.scene.control.Label?>
-<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.Pane?>
 <?import javafx.scene.layout.VBox?>
-<?import javafx.scene.text.Font?>
 
-<!-- O fx:controller liga este FXML à sua classe MainController.java -->
-<BorderPane fx:id="mainPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1200.0" styleClass="root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.MainController">
+<BorderPane fx:id="mainPane" prefHeight="800.0" prefWidth="1200.0" styleClass="root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.MainController">
     <left>
-        <!-- Painel de Navegação Lateral (Sidebar) -->
-        <VBox styleClass="sidebar" prefWidth="220.0" BorderPane.alignment="CENTER">
+        <VBox styleClass="sidebar" prefWidth="230.0" BorderPane.alignment="CENTER">
             <children>
                 <Label styleClass="sidebar-title" text="PI G023">
-                    <font>
-                        <Font name="System Bold" size="24.0" />
-                    </font>
                     <VBox.margin>
                         <Insets bottom="20.0" />
                     </VBox.margin>
                 </Label>
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowDashboard" styleClass="sidebar-button" text="Dashboard" />
+                <Label styleClass="sidebar-section-title" text="Warehouse (S1)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI01" styleClass="sidebar-button" text="[USEI01] Unload Wagons" />
 
-                <!-- Apaguei os outros botões (ESINF, LAPR3) como você queria -->
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI02" styleClass="sidebar-button" text="[USEI02] Allocate Orders" />
 
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI03] Pack Trolleys" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI04] Calculate Pick Path" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI05] Process Quarantine" />
+                <Label styleClass="sidebar-section-title" text="Railway Ops (S1/S2)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowLAPR3" styleClass="sidebar-button" text="[USLP03] Travel Time (S1)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI06] Station Index (S2)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI08] Spatial Queries (S2)" />
+                <Label styleClass="sidebar-section-title" text="Database (S3)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowBDDAD" styleClass="sidebar-button" text="BDDAD Functions" />
             </children>
         </VBox>
     </left>
+
     <bottom>
-        <!-- Barra de Status Inferior -->
         <HBox styleClass="statusbar" prefHeight="40.0" BorderPane.alignment="CENTER">
             <children>
-                <Label fx:id="statusLabel" text="Status: Pronto" />
+                <Label fx:id="statusLabel" text="Status: Ready" />
             </children>
         </HBox>
     </bottom>
+
     <center>
-        <!--
-          ESTA É A PARTE CRÍTICA QUE NÃO PODE APAGAR.
-          O fx:id="centerContentPane" liga-se ao MainController.java
-          É aqui que os outros ecrãs (como o dashboard) são carregados.
-        -->
-        <AnchorPane fx:id="centerContentPane" styleClass="content-pane" BorderPane.alignment="CENTER" />
+        <VBox>
+            <children>
+                <HBox fx:id="globalStatusHeader" styleClass="global-status-header" alignment="CENTER_LEFT" spacing="15.0">
+                    <padding>
+                        <Insets bottom="10.0" left="25.0" right="25.0" top="10.0" />
+                    </padding>
+                    <children>
+                        <Label text="Status:" styleClass="status-header-title" />
+                        <HBox alignment="CENTER_LEFT" spacing="5.0">
+                            <children>
+                                <Label text="Allocations (USEI02):" />
+                                <Label fx:id="statusAllocations" text="NOT-RUN" styleClass="status-not-run" />
+                            </children>
+                        </HBox>
+                        <HBox alignment="CENTER_LEFT" spacing="5.0">
+                            <children>
+                                <Label text="Picking Plan (USEI04):" />
+                                <Label fx:id="statusPicking" text="NOT-RUN" styleClass="status-not-run" />
+                            </children>
+                        </HBox>
+                    </children>
+                </HBox>
+                <AnchorPane fx:id="centerContentPane" styleClass="content-pane" VBox.vgrow="ALWAYS" />
+            </children>
+        </VBox>
     </center>
 </BorderPane>

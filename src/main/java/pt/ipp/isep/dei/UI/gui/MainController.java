@@ -3,17 +3,13 @@ package pt.ipp.isep.dei.UI.gui;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
-import javafx.geometry.Insets;
 import javafx.scene.Parent;
-import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
-import javafx.scene.layout.VBox;
-import javafx.scene.text.Text;
-
-// Imports de todo o teu backend
+import pt.ipp.isep.dei.UI.gui.views.DashboardController;
 import pt.ipp.isep.dei.UI.gui.views.TravelTimeGUIController;
+import pt.ipp.isep.dei.UI.gui.views.Usei01Controller;
 import pt.ipp.isep.dei.controller.TravelTimeController;
 import pt.ipp.isep.dei.domain.InventoryManager;
 import pt.ipp.isep.dei.domain.KDTree;
@@ -32,16 +28,23 @@ public class MainController {
     @FXML
     private Label statusLabel;
 
-    // --- CAMPOS PARA GUARDAR OS SERVIÇOS DE BACKEND ---
+    @FXML
+    private Label statusAllocations;
+    @FXML
+    private Label statusPicking;
+
+    // --- Backend Services ---
     private WMS wms;
     private InventoryManager manager;
     private TravelTimeController travelTimeController;
     private StationIndexManager stationIndexManager;
     private KDTree spatialKDTree;
 
-    /**
-     * Este método é chamado pela MainApplication para "injetar" os serviços.
-     */
+    // --- Global Status Flags ---
+    private boolean isAllocationsRun = false;
+    private boolean isPickingRun = false;
+
+
     public void setBackendServices(WMS wms, InventoryManager manager,
                                    TravelTimeController ttc,
                                    StationIndexManager sim, KDTree kdt) {
@@ -51,48 +54,54 @@ public class MainController {
         this.stationIndexManager = sim;
         this.spatialKDTree = kdt;
 
-        // Atualiza o status com dados reais
-        statusLabel.setText(String.format("Bem-vindo! %d itens, %d caixas em inventário.",
+        statusLabel.setText(String.format("Welcome! %d items, %d boxes in inventory.",
                 manager.getItemsCount(), wms.getInventory().getBoxes().size()));
     }
 
     @FXML
     public void initialize() {
-        statusLabel.setText("A carregar serviços...");
-        // Em vez de carregar um FXML estático, chama o método que constrói o menu dinâmico
-        // NOTA: Tivemos de o fazer "à força" com 'Platform.runLater'
-        // para garantir que o 'centerContentPane' não é nulo.
+        statusLabel.setText("Loading services...");
+        updateStatusHeader();
+
         javafx.application.Platform.runLater(() -> {
-            handleShowDashboard(null); // O 'null' é porque não vem de um clique
+            handleShowDashboard(null);
         });
     }
 
     /**
      * Carrega uma nova vista FXML na área de conteúdo central.
-     * Este método é agora usado pelos *outros* botões (LAPR3, ESINF, etc.)
      */
     private void loadView(String fxmlFileName, Object backendService) {
         try {
-            // Usa o ClassLoader para encontrar o FXML na raiz de /resources
             URL fxmlUrl = getClass().getClassLoader().getResource(fxmlFileName);
             if (fxmlUrl == null) {
-                System.err.println("Erro Crítico: Não foi possível encontrar o FXML: " + fxmlFileName);
-                statusLabel.setText("Erro: Não foi possível encontrar a vista " + fxmlFileName);
+                System.err.println("Critical Error: Could not find FXML: " + fxmlFileName);
+                statusLabel.setText("Error: Could not find view " + fxmlFileName);
                 return;
             }
 
             FXMLLoader loader = new FXMLLoader(fxmlUrl);
             Parent view = loader.load();
+            Object controller = loader.getController();
 
-            // --- INJEÇÃO DE DEPENDÊNCIA (Para o sub-ecrã) ---
-            if (backendService != null) {
-                if (backendService instanceof TravelTimeController && loader.getController() instanceof TravelTimeGUIController) {
-                    TravelTimeGUIController controller = loader.getController();
-                    controller.setBackend((TravelTimeController) backendService);
-                }
-                // (Adicionar mais 'else if' para outros módulos)
+            // --- INJEÇÃO DE DEPENDÊNCIA (Atualizada) ---
+
+            if (backendService instanceof TravelTimeController && controller instanceof TravelTimeGUIController) {
+                ((TravelTimeGUIController) controller).setBackend((TravelTimeController) backendService);
             }
-            // --- FIM DA INJEÇÃO ---
+
+            else if (controller instanceof DashboardController) {
+                ((DashboardController) controller).setServices(this.wms, this.manager);
+            }
+
+            else if (controller instanceof Usei01Controller) {
+                ((Usei01Controller) controller).setServices(this, this.wms, this.manager);
+            }
+
+
+            // --- FIM DO NOVO BLOCO ---
+
+            // --- END OF INJECTION ---
 
             centerContentPane.getChildren().clear();
             centerContentPane.getChildren().add(view);
@@ -102,124 +111,96 @@ public class MainController {
             AnchorPane.setRightAnchor(view, 0.0);
 
         } catch (IOException e) {
-            System.err.println("Falha ao carregar a vista: " + fxmlFileName);
+            System.err.println("Failed to load view: " + fxmlFileName);
             e.printStackTrace();
-            statusLabel.setText("Erro ao carregar ecrã.");
+            statusLabel.setText("Error loading screen.");
         }
     }
 
-    // --- MÉTODOS LIGADOS AOS BOTÕES DO FXML ---
+    // --- MÉTODOS PÚBLICOS PARA ATUALIZAR O STATUS ---
+
+    public void updateStatusAllocations(boolean hasRun) {
+        this.isAllocationsRun = hasRun;
+        updateStatusHeader();
+    }
+
+    public void updateStatusPicking(boolean hasRun) {
+        this.isPickingRun = hasRun;
+        updateStatusHeader();
+    }
+
+
+    private void updateStatusHeader() {
+        if (statusAllocations == null || statusPicking == null) {
+            return;
+        }
+
+        updateLabelStyle(statusAllocations, isAllocationsRun);
+        updateLabelStyle(statusPicking, isPickingRun);
+    }
+
+
+    private void updateLabelStyle(Label label, boolean hasRun) {
+        if (hasRun) {
+            label.setText("RUN");
+            label.getStyleClass().remove("status-not-run");
+            label.getStyleClass().add("status-run");
+        } else {
+            label.setText("NOT-RUN");
+            label.getStyleClass().remove("status-run");
+            label.getStyleClass().add("status-not-run");
+        }
+    }
+
+    // --- HANDLERS DE NAVEGAÇÃO ---
 
     @FXML
-    void handleShowDashboard(ActionEvent event) {
-        statusLabel.setText("A mostrar o Dashboard");
-        centerContentPane.getChildren().clear();
-
-        // 1. Cria o VBox que vai conter o menu
-        VBox menuContainer = new VBox(10); // 10px de espaçamento
-        menuContainer.setPadding(new Insets(30));
-        menuContainer.getStyleClass().add("dashboard-menu"); // Para o CSS
-
-        // 2. Adiciona o Título
-        Label title = new Label("Dashboard & Ações Rápidas");
-        title.getStyleClass().add("dashboard-title");
-
-        // 3. Adiciona os Stats (usando o backend)
-        Label statsLabel = new Label(String.format("Inventário: %d caixas | Quarentena: %d devoluções | Estações: %d",
-                wms.getInventory().getBoxes().size(),
-                wms.getQuarantine().size(),
-                manager.getValidStationCount()));
-        statsLabel.getStyleClass().add("dashboard-stats");
-
-        menuContainer.getChildren().addAll(title, statsLabel);
-
-        // 4. Constrói as secções do menu (tal como na CargoHandlingUI)
-        //
-
-        // --- Secção LAPR3 ---
-        Label lapr3Title = new Label("--- Railway & Station Ops (S1 & S2) ---");
-        lapr3Title.getStyleClass().add("dashboard-section-title");
-
-        Button buttonUSLP03 = new Button("[USLP03] Calcular Tempo de Viagem (S1)");
-        buttonUSLP03.setMaxWidth(Double.MAX_VALUE);
-        // Ação: Chama o *outro* handler que já tínhamos!
-        buttonUSLP03.setOnAction(this::handleShowLAPR3);
-
-        Button buttonUSEI06 = new Button("[USEI06] Query European Station Index (S2)");
-        buttonUSEI06.setMaxWidth(Double.MAX_VALUE);
-        buttonUSEI06.setOnAction(this::handleShowESINF); // Reutiliza o ESINF por agora
-
-        Button buttonUSEI08 = new Button("[USEI08] Spatial Queries - Search by Area (S2)");
-        buttonUSEI08.setMaxWidth(Double.MAX_VALUE);
-        buttonUSEI08.setOnAction(this::handleShowESINF); // Reutiliza o ESINF por agora
-
-        menuContainer.getChildren().addAll(lapr3Title, buttonUSLP03, buttonUSEI06, buttonUSEI08);
-
-        // --- Secção ESINF ---
-        Label esinfTitle = new Label("--- Warehouse Setup & Picking (S1) ---");
-        esinfTitle.getStyleClass().add("dashboard-section-title");
-
-        Button buttonUSEI01 = new Button("[USEI01] Unload Wagons");
-        buttonUSEI01.setMaxWidth(Double.MAX_VALUE);
-        buttonUSEI01.setOnAction(this::handleShowESINF);
-
-        Button buttonUSEI02 = new Button("[USEI02] Allocate Orders");
-        buttonUSEI02.setMaxWidth(Double.MAX_VALUE);
-        buttonUSEI02.setOnAction(this::handleShowESINF);
-
-        Button buttonUSEI03 = new Button("[USEI03] Pack Trolleys");
-        buttonUSEI03.setMaxWidth(Double.MAX_VALUE);
-        buttonUSEI03.setOnAction(this::handleShowESINF);
-
-        Button buttonUSEI04 = new Button("[USEI04] Calculate Pick Path");
-        buttonUSEI04.setMaxWidth(Double.MAX_VALUE);
-        buttonUSEI04.setOnAction(this::handleShowESINF);
-
-        Button buttonUSEI05 = new Button("[USEI05] Process Quarantine Returns");
-        buttonUSEI05.setMaxWidth(Double.MAX_VALUE);
-        buttonUSEI05.setOnAction(this::handleShowESINF);
-
-        menuContainer.getChildren().addAll(esinfTitle, buttonUSEI01, buttonUSEI02, buttonUSEI03, buttonUSEI04, buttonUSEI05);
-
-        // 5. Adiciona o menu ao ecrã
-        centerContentPane.getChildren().add(menuContainer);
-        AnchorPane.setTopAnchor(menuContainer, 0.0);
-        AnchorPane.setBottomAnchor(menuContainer, 0.0);
-        AnchorPane.setLeftAnchor(menuContainer, 0.0);
-        AnchorPane.setRightAnchor(menuContainer, 0.0);
+    public void handleShowDashboard(ActionEvent event) {
+        statusLabel.setText("Showing Dashboard");
+        loadView("dashboard-view.fxml", null);
     }
 
     @FXML
-    void handleShowESINF(ActionEvent event) {
-        statusLabel.setText("Funcionalidades ESINF");
+    public void handleShowUSEI01(ActionEvent event) {
+        statusLabel.setText("Unload Wagons [USEI01]");
+        loadView("esinf-usei01-view.fxml", null);
+    }
+
+    // --- NOVO HANDLER ---
+    @FXML
+    public void handleShowUSEI02(ActionEvent event) {
+        statusLabel.setText("Allocate Orders [USEI02]");
+        loadView("esinf-usei02-view.fxml", null);
+    }
+    // --- FIM DO NOVO HANDLER ---
+
+    @FXML
+    public void handleShowESINF(ActionEvent event) {
+        statusLabel.setText("ESINF Feature (Under Construction)");
         centerContentPane.getChildren().clear();
 
-        // TODO: Criar um 'esinf-view.fxml' e o seu controlador
-        // loadView("esinf-view.fxml", wms); // Passa o WMS ou o Manager
-
-        Text t = new Text("Ecrã ESINF (Em Construção)");
-        t.setStyle("-fx-font-size: 24px; -fx-fill: -fx-text-base-color;");
+        Label t = new Label("ESINF Screen (Under Construction)");
+        t.getStyleClass().add("view-title");
         centerContentPane.getChildren().add(t);
-        AnchorPane.setTopAnchor(t, 50.0);
-        AnchorPane.setLeftAnchor(t, 50.0);
+        AnchorPane.setTopAnchor(t, 25.0);
+        AnchorPane.setLeftAnchor(t, 25.0);
     }
 
     @FXML
-    void handleShowLAPR3(ActionEvent event) {
-        statusLabel.setText("Funcionalidades LAPR3");
-        // Carrega o FXML de LAPR3 e passa-lhe o controlador de backend
+    public void handleShowLAPR3(ActionEvent event) {
+        statusLabel.setText("LAPR3 Features");
         loadView("lapr3-travel-time-view.fxml", this.travelTimeController);
     }
 
     @FXML
-    void handleShowBDDAD(ActionEvent event) {
-        statusLabel.setText("Funcionalidades BDDAD");
+    public void handleShowBDDAD(ActionEvent event) {
+        statusLabel.setText("BDDAD Features");
         centerContentPane.getChildren().clear();
 
-        Text t = new Text("Ecrã BDDAD (Em Construção)");
-        t.setStyle("-fx-font-size: 24px; -fx-fill: -fx-text-base-color;");
+        Label t = new Label("BDDAD Screen (Under Construction)");
+        t.getStyleClass().add("view-title");
         centerContentPane.getChildren().add(t);
-        AnchorPane.setTopAnchor(t, 50.0);
-        AnchorPane.setLeftAnchor(t, 50.0);
+        AnchorPane.setTopAnchor(t, 25.0);
+        AnchorPane.setLeftAnchor(t, 25.0);
     }
 }

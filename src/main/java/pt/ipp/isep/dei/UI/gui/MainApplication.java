@@ -21,7 +21,7 @@ import java.util.List;
 
 public class MainApplication extends Application {
 
-    // --- CAMPOS DO BACKEND (Trazidos de Main.java) ---
+    // --- BACKEND FIELDS (Brought from Main.java) ---
     private InventoryManager manager;
     private WMS wms;
     private StationIndexManager stationIndexManager;
@@ -29,23 +29,28 @@ public class MainApplication extends Application {
     private TravelTimeController travelTimeController;
 
     /**
-     * Carrega todo o backend (copiado de Main.java) ANTES da janela abrir.
+     * Loads all backend data (copied from Main.java) BEFORE the window opens.
      */
     @Override
     public void init() throws Exception {
         super.init();
         try {
-            System.out.println("A carregar dados do sistema para a GUI...");
-            // Lógica de Main.java
+            System.out.println("Loading system data for GUI...");
+            // Logic from Main.java
             manager = new InventoryManager();
             Inventory inventory = manager.getInventory();
             Quarantine quarantine = new Quarantine();
             AuditLog auditLog = new AuditLog("audit.log");
             manager.loadItems("src/main/java/pt/ipp/isep/dei/FicheirosCSV/items.csv");
             manager.loadBays("src/main/java/pt/ipp/isep/dei/FicheirosCSV/bays.csv");
-            List<Wagon> wagons = manager.loadWagons("src/main/java/pt/ipp/isep/dei/FicheirosCSV/wagons.csv");
+
+            // --- MODIFICATION ---
+            // We no longer load or unload wagons on startup.
+            // The USEI01 controller will handle this.
             wms = new WMS(quarantine, inventory, auditLog, manager.getWarehouses());
-            wms.unloadWagons(wagons);
+            // List<Wagon> wagons = manager.loadWagons("src/main/java/pt/ipp/isep/dei/FicheirosCSV/wagons.csv"); // <-- DISABLED
+            // wms.unloadWagons(wagons); // <-- DISABLED
+
             List<Return> returns = manager.loadReturns("src/main/java/pt/ipp/isep/dei/FicheirosCSV/returns.csv");
             for (Return r : returns) quarantine.addReturn(r);
             StationRepository estacaoRepo = new StationRepository();
@@ -57,9 +62,9 @@ public class MainApplication extends Application {
             List<EuropeanStation> europeanStations = manager.loadEuropeanStations("src/main/java/pt/ipp/isep/dei/FicheirosCSV/train_stations_europe.csv");
             stationIndexManager.buildIndexes(europeanStations);
             spatialKDTree = buildSpatialKDTree(europeanStations);
-            System.out.println("Dados carregados com sucesso.");
+            System.out.println("Data loaded successfully (wagons pending).");
         } catch (Exception e) {
-            System.err.println("❌ ERRO FATAL AO INICIAR A GUI: " + e.getMessage());
+            System.err.println("❌ FATAL ERROR INITIALIZING GUI: " + e.getMessage());
             e.printStackTrace();
             throw e;
         }
@@ -67,27 +72,26 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage primaryStage) throws IOException {
-        // Esta é a TUA lógica de carregamento (da raiz) - Está CORRETA
         String fxmlPath = "main-view.fxml";
         String cssPath = "style.css";
         ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
 
         URL fxmlUrl = classLoader.getResource(fxmlPath);
         if (fxmlUrl == null) {
-            System.err.println("ERRO CRÍTICO: Não foi possível encontrar: " + fxmlPath);
+            System.err.println("CRITICAL ERROR: Could not find: " + fxmlPath);
             throw new IOException("Location is not set: " + fxmlPath);
         }
 
         FXMLLoader loader = new FXMLLoader(fxmlUrl);
         Parent root = loader.load();
 
-        // --- INJEÇÃO DE DEPENDÊNCIA (A parte nova) ---
+        // --- DEPENDENCY INJECTION ---
         MainController mainController = loader.getController();
         if (mainController == null) {
-            throw new IOException("Erro fatal: fx:controller não encontrado. Verifica main-view.fxml.");
+            throw new IOException("Fatal error: fx:controller not found. Check main-view.fxml.");
         }
 
-        // Passa todos os serviços de backend para o controlador
+        // Pass all backend services to the controller
         mainController.setBackendServices(
                 wms,
                 manager,
@@ -95,16 +99,16 @@ public class MainApplication extends Application {
                 stationIndexManager,
                 spatialKDTree
         );
-        // --- FIM DA INJEÇÃO ---
+        // --- END OF INJECTION ---
 
         URL cssUrl = classLoader.getResource(cssPath);
         if (cssUrl != null) {
             root.getStylesheets().add(cssUrl.toExternalForm());
         } else {
-            System.err.println("AVISO: Ficheiro CSS 'style.css' não encontrado.");
+            System.err.println("WARNING: CSS file 'style.css' not found.");
         }
 
-        primaryStage.setTitle("Gestão Integrada (PI - G023)");
+        primaryStage.setTitle("Integrated Management (PI - G023)");
         primaryStage.setScene(new Scene(root, 1200, 800));
         primaryStage.setMinWidth(1000);
         primaryStage.setMinHeight(700);
@@ -112,7 +116,7 @@ public class MainApplication extends Application {
     }
 
     /**
-     * Helper copiado de Main.java para construir a KDTree.
+     * Helper copied from Main.java to build the KDTree.
      */
     private static KDTree buildSpatialKDTree(List<EuropeanStation> stations) {
         List<EuropeanStation> stationsByLat = new ArrayList<>(stations);

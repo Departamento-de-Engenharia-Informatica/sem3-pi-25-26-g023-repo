@@ -1,6 +1,7 @@
 package pt.ipp.isep.dei.UI.gui;
 
 import javafx.scene.control.Alert;
+import javafx.scene.control.DialogPane;
 import javafx.stage.Stage;
 
 /**
@@ -34,5 +35,49 @@ public class GuiUtils {
         }
 
         alert.showAndWait();
+    }
+    /**
+     * Shows a styled ERROR alert.
+     */
+    public static void showErrorAlert(String title, String header, String content) {
+        Alert alert = new Alert(Alert.AlertType.ERROR);
+        alert.setTitle(title);
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+
+        // Apply dark mode CSS to the dialog
+        styleDialog(alert);
+        alert.showAndWait();
+    }
+
+    /**
+     * Shows a styled INFORMATION alert.
+     */
+    public static void showInfoAlert(String title, String header, String content) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle(title);
+        alert.setHeaderText(header);
+        alert.setContentText(content);
+
+        // Apply dark mode CSS to the dialog
+        styleDialog(alert);
+        alert.showAndWait();
+    }
+
+    /**
+     * Applies the .dialog-pane styleclass from our style.css
+     * to any Alert pop-up.
+     */
+    private static void styleDialog(Alert alert) {
+        try {
+            DialogPane dialogPane = alert.getDialogPane();
+            dialogPane.getStylesheets().add(
+                    GuiUtils.class.getResource("/style.css").toExternalForm()
+            );
+            dialogPane.getStyleClass().add("dialog-pane");
+        } catch (Exception e) {
+            // If it fails, show the default alert style
+            System.err.println("Warning: Could not load 'style.css' for dialog.");
+        }
     }
 }
