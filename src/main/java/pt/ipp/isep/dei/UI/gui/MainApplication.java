@@ -13,25 +13,39 @@ public class MainApplication extends Application {
 
     @Override
     public void start(Stage primaryStage) throws IOException {
-        // Constrói o caminho para o FXML dentro do JAR (via resources)
 
-        // MUDANÇA AQUI: Remova o caminho absoluto.
-        // Isto procura "main-view.fxml" NA MESMA PASTA que MainApplication.class
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("main-view.fxml"));
+        // ====================================================================
+        // MUDANÇA: Agora procuramos os ficheiros na RAIZ da pasta resources
+        // ====================================================================
+
+        String fxmlPath = "main-view.fxml"; // Sem caminho, procura na raiz
+        String cssPath = "style.css";       // Sem caminho, procura na raiz
+
+        // Obter o ClassLoader
+        ClassLoader classLoader = Thread.currentThread().getContextClassLoader();
+
+        // Carregar o FXML
+        URL fxmlUrl = classLoader.getResource(fxmlPath);
+        if (fxmlUrl == null) {
+            System.err.println("ERRO CRÍTICO: Não foi possível encontrar o FXML em: " + fxmlPath);
+            System.err.println("Verifique se o ficheiro está em 'src/main/resources/main-view.fxml'");
+            throw new IOException("Location is not set: " + fxmlPath);
+        }
+
+        FXMLLoader loader = new FXMLLoader(fxmlUrl);
         Parent root = loader.load();
 
-        // Constrói o caminho para o CSS
-        // MUDANÇA AQUI: Remova o caminho absoluto.
-        URL cssUrl = getClass().getResource("style.css");
+        // Carregar o CSS
+        URL cssUrl = classLoader.getResource(cssPath);
         if (cssUrl != null) {
             root.getStylesheets().add(cssUrl.toExternalForm());
         } else {
-            System.err.println("Erro: Ficheiro CSS 'style.css' não encontrado.");
+            System.err.println("AVISO: Ficheiro CSS 'style.css' não encontrado em: " + cssPath);
         }
 
         primaryStage.setTitle("Gestão Integrada (PI - G023)");
-        primaryStage.setScene(new Scene(root, 1200, 800)); // Tamanho inicial da janela
-        primaryStage.setMinWidth(1000); // Tamanho mínimo
+        primaryStage.setScene(new Scene(root, 1200, 800));
+        primaryStage.setMinWidth(1000);
         primaryStage.setMinHeight(700);
         primaryStage.show();
     }

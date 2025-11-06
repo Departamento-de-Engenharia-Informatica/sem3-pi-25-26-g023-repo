@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox styleClass="view-container" spacing="20" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.PickingGuiController">
+    <children>
+        <!-- Título do Ecrã -->
+        <Label styleClass="view-title" text="Gerar Plano de Picking (ESINF)" />
+        <Label styleClass="view-subtitle" text="Gera um plano de picking para um conjunto de encomendas usando uma heurística." />
+
+        <!-- Grupo de Inputs -->
+        <VBox styleClass="input-group" spacing="15">
+            <VBox spacing="5">
+                <Label styleClass="input-label" text="Caminho do Ficheiro de Encomendas (.csv)" />
+                <TextField fx:id="filePathField" promptText="Ex: src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv" />
+            </VBox>
+            <VBox spacing="5">
+                <Label styleClass="input-label" text="Heurística de Picking" />
+                <ComboBox fx:id="heuristicBox" prefWidth="200.0" />
+            </VBox>
+        </VBox>
+
+        <!-- Botão de Ação -->
+        <Button onAction="#handleGeneratePlan" styleClass="action-button" text="Gerar Plano" />
+
+        <!-- Área de Resultados -->
+        <Label styleClass="input-label" text="Plano Gerado:" />
+        <TextArea fx:id="resultArea" styleClass="result-area" editable="false" prefHeight="400.0" />
+    </children>
+</VBox>

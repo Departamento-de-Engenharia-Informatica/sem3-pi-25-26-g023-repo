@@ -11,8 +11,10 @@
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
 
-<BorderPane fx:id="mainPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1200.0" styleClass="root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.ui.gui.MainController">
+<!-- O fx:controller liga este FXML à sua classe MainController.java -->
+<BorderPane fx:id="mainPane" maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="800.0" prefWidth="1200.0" styleClass="root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.MainController">
     <left>
+        <!-- Painel de Navegação Lateral (Sidebar) -->
         <VBox styleClass="sidebar" prefWidth="220.0" BorderPane.alignment="CENTER">
             <children>
                 <Label styleClass="sidebar-title" text="PI G023">
@@ -25,14 +27,13 @@
                 </Label>
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowDashboard" styleClass="sidebar-button" text="Dashboard" />
 
-                <Label styleClass="sidebar-section-title" text="MÓDULOS" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="ESINF (Armazém)" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowLAPR3" styleClass="sidebar-button" text="LAPR3 (Rede)" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowBDDAD" styleClass="sidebar-button" text="BDDAD (Dados)" />
+                <!-- Apaguei os outros botões (ESINF, LAPR3) como você queria -->
+
             </children>
         </VBox>
     </left>
     <bottom>
+        <!-- Barra de Status Inferior -->
         <HBox styleClass="statusbar" prefHeight="40.0" BorderPane.alignment="CENTER">
             <children>
                 <Label fx:id="statusLabel" text="Status: Pronto" />
@@ -40,10 +41,11 @@
         </HBox>
     </bottom>
     <center>
-        <ScrollPane fitToHeight="true" fitToWidth="true" styleClass="content-scrollpane" BorderPane.alignment="CENTER">
-            <content>
-                <Pane fx:id="centerContentPane" styleClass="content-pane" />
-            </content>
-        </ScrollPane>
+        <!--
+          ESTA É A PARTE CRÍTICA QUE NÃO PODE APAGAR.
+          O fx:id="centerContentPane" liga-se ao MainController.java
+          É aqui que os outros ecrãs (como o dashboard) são carregados.
+        -->
+        <AnchorPane fx:id="centerContentPane" styleClass="content-pane" BorderPane.alignment="CENTER" />
     </center>
 </BorderPane>

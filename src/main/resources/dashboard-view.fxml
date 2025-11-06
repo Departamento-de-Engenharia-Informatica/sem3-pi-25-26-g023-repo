@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+<!-- O controlador deste FXML -->
+<VBox styleClass="view-container" alignment="TOP_LEFT" spacing="10" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.DashboardController">
+    <children>
+        <Label styleClass="view-title" text="Bem-vindo ao Projeto Integrado G023" />
+        <Label styleClass="view-subtitle" text="Interface de Gestão de Armazém e Rede Ferroviária" />
+
+        <Text fill="#BBBBBB" wrappingWidth="600.0" text="Este é o dashboard principal da aplicação. Utilize o menu lateral para navegar entre as diferentes funcionalidades do projeto, divididas pelos módulos LAPR3 (Rede Ferroviária) e ESINF (Gestão de Armazém).&#10;&#10;Esta interface gráfica substitui a aplicação de consola, utilizando a mesma lógica de negócio e controladores que já foram desenvolvidos." />
+    </children>
+</VBox>
