@@ -1,17 +1,13 @@
 package pt.ipp.isep.dei.domain;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static pt.ipp.isep.dei.UI.CargoHandlingUI.*;
 
 /**
  * Gere os índices BST/AVL para as estações europeias (USEI06).
- *
+ * <p>
  * *** ATUALIZADO PARA INCLUIR CAMPOS E MÉTODOS DA USEI07 ***
  */
 public class StationIndexManager {
@@ -42,7 +38,7 @@ public class StationIndexManager {
     /**
      * Constrói todos os índices BST/AVL com base na lista de estações.
      * Este método implementa o requisito principal da USEI06.
-     *
+     * <p>
      * *** LÓGICA ATUALIZADA (v5) - CORREÇÃO DEFINITIVA ***
      */
     public void buildIndexes(List<EuropeanStation> stations) {
@@ -131,7 +127,7 @@ public class StationIndexManager {
     /**
      * Constrói a 2D-Tree balanceada (se ainda não tiver sido construída).
      * Usa as listas pré-ordenadas extraídas das BSTs da USEI06.
-     *
+     * <p>
      * (V2: Translated to English)
      */
     public void build2DTree() {

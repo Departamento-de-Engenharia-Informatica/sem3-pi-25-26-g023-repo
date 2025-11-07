@@ -24,7 +24,7 @@
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI02" styleClass="sidebar-button" text="[USEI02] Allocate Orders" />
 
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI03] Pack Trolleys" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI04] Calculate Pick Path" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI04" styleClass="sidebar-button" text="[USEI04] Calculate Pick Path" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowESINF" styleClass="sidebar-button" text="[USEI05] Process Quarantine" />
                 <Label styleClass="sidebar-section-title" text="Railway Ops (S1/S2)" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowLAPR3" styleClass="sidebar-button" text="[USLP03] Travel Time (S1)" />

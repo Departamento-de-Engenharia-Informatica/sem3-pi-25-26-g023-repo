@@ -18,6 +18,7 @@ import pt.ipp.isep.dei.domain.WMS;
 
 import java.io.IOException;
 import java.net.URL;
+import java.util.Objects;
 
 public class MainController {
 
@@ -172,6 +173,13 @@ public class MainController {
         statusLabel.setText("Allocate Orders [USEI02]");
         loadView("esinf-usei02-view.fxml", null);
     }
+
+    @FXML
+    public void handleShowUSEI04(ActionEvent event) {
+        statusLabel.setText("Pick Path Sequencing [USEI04]");
+        loadView("esinf-usei04-view.fxml", null);
+    }
+
     // --- FIM DO NOVO HANDLER ---
 
     @FXML

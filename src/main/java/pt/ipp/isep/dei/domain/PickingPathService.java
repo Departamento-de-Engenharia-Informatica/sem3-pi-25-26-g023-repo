@@ -10,7 +10,6 @@ import java.util.stream.Collectors;
  */
 public class PickingPathService {
 
-    // --- Códigos de Cores ANSI (Apenas os necessários) ---
     private static final String ANSI_RESET = "\u001B[0m";
     private static final String ANSI_RED = "\u001B[31m";
     private static final String ANSI_YELLOW = "\u001B[33m";
@@ -18,63 +17,10 @@ public class PickingPathService {
     private static final String ANSI_BOLD = "\u001B[1m";
     private static final String ANSI_ITALIC = "\u001B[3m";
 
-    /** Constant reference to the entrance location (0,0). */
-    private static final BayLocation ENTRANCE = BayLocation.entrance();
-
     /**
-     * Represents the result of a computed picking path.
-     * (Versão 2.0 - "Bonito" toString)
+     * Constant reference to the entrance location (0,0).
      */
-    public static class PathResult {
-        // --- Códigos de Cores (Privados para a classe interna) ---
-        private static final String C_RESET = "\u001B[0m";
-        private static final String C_CYAN = "\u001B[36m";
-        private static final String C_BOLD = "\u001B[1m";
-        private static final String C_ITALIC = "\u001B[3m";
-        private static final String C_YELLOW = "\u001B[33m";
-
-        public final List<BayLocation> path;
-        public final double totalDistance;
-
-        public PathResult(List<BayLocation> path, double totalDistance) {
-            this.path = (path != null) ? new ArrayList<>(path) : new ArrayList<>();
-            this.totalDistance = totalDistance;
-        }
-
-        // -----------------------------------------------------------------
-        // --- ALTERAÇÃO (Output "Bonito") ---
-        // -----------------------------------------------------------------
-        @Override
-        public String toString() {
-            String pathString;
-            if (path == null || path.isEmpty() || (path.size() == 1 && path.get(0).equals(ENTRANCE))) {
-                pathString = C_ITALIC + "Path is empty or only contains entrance." + C_RESET;
-            } else {
-                pathString = path.stream()
-                        .filter(Objects::nonNull)
-                        .map(loc -> {
-                            // Destaca a ENTRADA
-                            if (loc.equals(ENTRANCE)) {
-                                return C_BOLD + C_YELLOW + loc.toString() + C_RESET;
-                            }
-                            return loc.toString();
-                        })
-                        .collect(Collectors.joining(C_CYAN + " -> " + C_RESET));
-            }
-
-            String distString = Double.isNaN(totalDistance) ? "Not Calculated (NaN)" :
-                    Double.isInfinite(totalDistance) ? "Infinite/Unreachable" :
-                            String.format("%.2f", totalDistance);
-
-            return String.format(
-                    "  %sPath:%s %s\n" +
-                            "  %sTotal Distance:%s %s%.2f units%s",
-                    C_BOLD, C_RESET, pathString,
-                    C_BOLD, C_RESET, C_BOLD + C_YELLOW, totalDistance, C_RESET
-            );
-        }
-    } // --- Fim da classe PathResult ---
-
+    private static final BayLocation ENTRANCE = BayLocation.entrance();
 
     /**
      * Calculates the picking paths, now with "bonito" logging.
@@ -269,5 +215,59 @@ public class PickingPathService {
             totalDistance += segmentDistance;
         }
         return totalDistance;
+    }
+
+    /**
+     * Represents the result of a computed picking path.
+     * (Versão 2.0 - "Bonito" toString)
+     */
+    public static class PathResult {
+        // --- Códigos de Cores (Privados para a classe interna) ---
+        private static final String C_RESET = "\u001B[0m";
+        private static final String C_CYAN = "\u001B[36m";
+        private static final String C_BOLD = "\u001B[1m";
+        private static final String C_ITALIC = "\u001B[3m";
+        private static final String C_YELLOW = "\u001B[33m";
+
+        public final List<BayLocation> path;
+        public final double totalDistance;
+
+        public PathResult(List<BayLocation> path, double totalDistance) {
+            this.path = (path != null) ? new ArrayList<>(path) : new ArrayList<>();
+            this.totalDistance = totalDistance;
+        }
+
+        // -----------------------------------------------------------------
+        // --- ALTERAÇÃO (Output "Bonito") ---
+        // -----------------------------------------------------------------
+        @Override
+        public String toString() {
+            String pathString;
+            if (path == null || path.isEmpty() || (path.size() == 1 && path.get(0).equals(ENTRANCE))) {
+                pathString = C_ITALIC + "Path is empty or only contains entrance." + C_RESET;
+            } else {
+                pathString = path.stream()
+                        .filter(Objects::nonNull)
+                        .map(loc -> {
+                            // Destaca a ENTRADA
+                            if (loc.equals(ENTRANCE)) {
+                                return C_BOLD + C_YELLOW + loc + C_RESET;
+                            }
+                            return loc.toString();
+                        })
+                        .collect(Collectors.joining(C_CYAN + " -> " + C_RESET));
+            }
+
+            String distString = Double.isNaN(totalDistance) ? "Not Calculated (NaN)" :
+                    Double.isInfinite(totalDistance) ? "Infinite/Unreachable" :
+                            String.format("%.2f", totalDistance);
+
+            return String.format(
+                    "  %sPath:%s %s\n" +
+                            "  %sTotal Distance:%s %s%.2f units%s",
+                    C_BOLD, C_RESET, pathString,
+                    C_BOLD, C_RESET, C_BOLD + C_YELLOW, totalDistance, C_RESET
+            );
+        }
     }
 }
