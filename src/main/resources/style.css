@@ -77,14 +77,9 @@
 }
 
 
-/* --- NOVO: Global Status Header (CORRIGIDO) --- */
+/* --- Global Status Header (CORRIGIDO) --- */
 .global-status-header {
-    /* * A CORREÇÃO ESTÁ AQUI:
-     * Usar a cor de fundo do CONTEÚDO, não da sidebar.
-     */
     -fx-background-color: #2B2B2B;
-    /* * Usar apenas uma borda INFERIOR para separar do conteúdo.
-     */
     -fx-border-color: transparent transparent #454545 transparent;
     -fx-border-width: 1px;
     -fx-padding: 10px 25px; /* Alinhar com o padding do .view-container */
@@ -141,19 +136,13 @@
     -fx-padding-bottom: 20px;
 }
 
-.dashboard-section-title {
-    -fx-font-size: 13px;
-    -fx-font-weight: 600;
-    -fx-text-fill: #888888;
-    -fx-padding: 15px 0 5px 0;
-    -fx-text-transform: uppercase;
-    -fx-border-color: #454545 transparent transparent transparent;
-    -fx-border-width: 1px;
-}
+/* .dashboard-section-title { */
+/* Este .section-title será usado em vez do .dashboard-section-title */
+/* } */
 
 .view-container {
     -fx-background-color: #2B2B2B;
-    -fx-padding: 20px;
+    -fx-padding: 25px;
     -fx-spacing: 20px;
 }
 
@@ -255,4 +244,387 @@
 
 .dialog-pane .button:hover {
     -fx-background-color: #555555;
+}
+
+
+/* =================================================================== */
+/* --- ✅ NOVO BLOCO: ESTILOS EM FALTA (COM SCOPE CORRETO) --- */
+/* =================================================================== */
+
+/* Botões Standard e Primários DENTRO da área de conteúdo */
+.view-container .button {
+    -fx-background-color: #4B4B4B; /* Cinza médio */
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 8px 20px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+.view-container .button:hover {
+    -fx-background-color: #555555;
+}
+
+.view-container .button-primary {
+    -fx-background-color: #2E8B57; /* O seu verde do .action-button */
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-padding: 8px 20px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+.view-container .button-primary:hover {
+    -fx-background-color: #3AA969;
+}
+
+
+/* --- Labels Específicas --- */
+.view-container .error-label {
+    -fx-text-fill: #E57373; /* Vermelho suave */
+    -fx-font-weight: 500;
+}
+
+.view-container .status-label {
+    -fx-text-fill: #999999; /* Cinza claro */
+    -fx-font-size: 13px;
+}
+
+/* Labels para o GridPane (ex: "Country Code:") */
+.view-container .grid-pane .label {
+    -fx-text-fill: -fx-text-base-color;
+    -fx-font-weight: 500;
+    -fx-padding: 5px 0 0 0; /* Alinha com o centro do text-field */
+}
+
+
+/* --- RadioButton --- */
+.view-container .radio-button {
+    -fx-text-fill: -fx-text-base-color;
+    -fx-padding: 5px 0;
+}
+.view-container .radio-button .radio {
+    -fx-border-width: 2px;
+    -fx-border-color: #BBBBBB;
+    -fx-background-color: transparent;
+    -fx-border-radius: 100%;
+    -fx-padding: 4px;
+}
+.view-container .radio-button:selected .radio .dot {
+    -fx-background-color: #0D6EFD; /* Azul de destaque */
+    -fx-background-insets: 0;
+}
+.view-container .radio-button:hover .radio {
+    -fx-border-color: #FFFFFF;
+}
+.view-container .radio-button .text {
+    -fx-padding: 0 0 0 5px;
+}
+
+
+/* --- Separator --- */
+.view-container .separator .line {
+    -fx-border-color: #454545;
+    -fx-border-width: 1px 0 0 0;
+}
+
+/* .section-title (para os "Step 1", "Step 2"...) */
+.view-container .section-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #888888;
+    -fx-padding: 15px 0 5px 0;
+    -fx-text-transform: uppercase;
+    -fx-border-color: #454545 transparent transparent transparent;
+    -fx-border-width: 1px;
+}
+
+
+/* --- TableView --- */
+.view-container .table-view {
+    -fx-background-color: #3C3F41;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: #454545;
+    -fx-selection-bar: #0D6EFD;
+    -fx-selection-bar-text: #FFFFFF;
+}
+
+.view-container .table-view .column-header-background {
+    -fx-background-color: #3C3F41;
+    -fx-border-color: transparent transparent #454545 transparent;
+    -fx-border-width: 2px;
+    -fx-padding: 0;
+}
+.view-container .table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-padding: 10px 8px;
+}
+.view-container .table-view .column-header .label {
+    -fx-text-fill: #CCCCCC;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+    -fx-text-transform: uppercase;
+}
+
+.view-container .table-view .table-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #454545 transparent;
+    -fx-border-width: 1px;
+    -fx-padding: 10px 8px;
+    -fx-text-fill: -fx-text-base-color;
+}
+.view-container .table-view .table-row-cell:hover {
+    -fx-background-color: #4A4A4A;
+}
+.view-container .table-view .table-row-cell:empty {
+    -fx-background-color: #3C3F41;
+    -fx-border-width: 0;
+}
+.view-container .table-view .table-cell:empty {
+    -fx-border-width: 0;
+}
+
+/* ScrollBar (para a tabela) */
+.view-container .table-view .scroll-bar:vertical,
+.view-container .table-view .scroll-bar:horizontal {
+    -fx-background-color: #3C3F41;
+}
+.view-container .table-view .scroll-bar .thumb {
+    -fx-background-color: #555555;
+    -fx-background-radius: 4px;
+}
+.view-container .table-view .scroll-bar .track {
+    -fx-background-color: #3C3F41;
+}
+/* =================================================================== */
+/* --- ✅ BLOCO DE ESTILOS ATUALIZADO (COM SCOPE CORRETO) --- */
+/* =================================================================== */
+
+/* Botões Standard e Primários DENTRO da área de conteúdo */
+.view-container .button {
+    -fx-background-color: #4B4B4B; /* Cinza médio */
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 14px;
+    -fx-font-weight: 500;
+    -fx-padding: 8px 20px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+.view-container .button:hover {
+    -fx-background-color: #555555;
+}
+
+.view-container .button-primary {
+    -fx-background-color: #2E8B57; /* O seu verde do .action-button */
+    -fx-text-fill: #FFFFFF;
+    -fx-font-size: 14px;
+    -fx-font-weight: 600;
+    -fx-padding: 8px 20px;
+    -fx-background-radius: 8px;
+    -fx-cursor: hand;
+}
+.view-container .button-primary:hover {
+    -fx-background-color: #3AA969;
+}
+
+/* ✅ NOVO: Garante que os inputs de filtro obedecem ao prefWidth do FXML */
+.view-container .text-field,
+.view-container .combo-box {
+    -fx-background-color: #45494A;
+    -fx-text-fill: #E0E0E0;
+    -fx-font-size: 15px;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-pref-height: 40px;
+    /* max-width removido para permitir que o prefWidth do FXML funcione */
+}
+
+/* --- Labels Específicas --- */
+.view-container .error-label {
+    -fx-text-fill: #E57373; /* Vermelho suave */
+    -fx-font-weight: 500;
+}
+
+.view-container .status-label {
+    -fx-text-fill: #999999; /* Cinza claro */
+    -fx-font-size: 13px;
+}
+
+/* Labels para a nova barra de filtros */
+.filter-bar .label {
+    -fx-text-fill: -fx-text-base-color;
+    -fx-font-weight: 500;
+    -fx-padding: 0 0 5px 0; /* Espaço entre o label e o input */
+}
+
+
+/* --- RadioButton --- */
+.view-container .radio-button {
+    -fx-text-fill: -fx-text-base-color;
+    -fx-padding: 5px 0;
+}
+.view-container .radio-button .radio {
+    -fx-border-width: 2px;
+    -fx-border-color: #BBBBBB;
+    -fx-background-color: transparent;
+    -fx-border-radius: 100%;
+    -fx-padding: 4px;
+}
+.view-container .radio-button:selected .radio .dot {
+    -fx-background-color: #0D6EFD; /* Azul de destaque */
+    -fx-background-insets: 0;
+}
+.view-container .radio-button:hover .radio {
+    -fx-border-color: #FFFFFF;
+}
+.view-container .radio-button .text {
+    -fx-padding: 0 0 0 5px;
+}
+
+
+/* --- Separator --- */
+.view-container .separator .line {
+    -fx-border-color: #454545;
+    -fx-border-width: 1px 0 0 0;
+}
+
+/* .section-title (para os "Step 1", "Step 2"...) */
+.view-container .section-title {
+    -fx-font-size: 13px;
+    -fx-font-weight: 600;
+    -fx-text-fill: #888888;
+    -fx-padding: 15px 0 5px 0;
+    -fx-text-transform: uppercase;
+    -fx-border-color: #454545 transparent transparent transparent;
+    -fx-border-width: 1px;
+}
+
+
+/* --- TableView --- */
+.view-container .table-view {
+    -fx-background-color: #3C3F41;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: #454545;
+    -fx-selection-bar: #0D6EFD;
+    -fx-selection-bar-text: #FFFFFF;
+}
+
+.view-container .table-view .column-header-background {
+    -fx-background-color: #3C3F41;
+    -fx-border-color: transparent transparent #454545 transparent;
+    -fx-border-width: 2px;
+    -fx-padding: 0;
+}
+/* ✅ CORREÇÃO: Pinta o "retângulo branco" (canto superior direito) */
+.view-container .table-view .column-header-background .filler {
+    -fx-background-color: #3C3F41;
+}
+
+.view-container .table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-padding: 10px 8px;
+}
+.view-container .table-view .column-header .label {
+    -fx-text-fill: #CCCCCC;
+    -fx-font-weight: 600;
+    -fx-font-size: 13px;
+    -fx-text-transform: uppercase;
+}
+
+.view-container .table-view .table-cell {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent transparent #454545 transparent;
+    -fx-border-width: 1px;
+    -fx-padding: 10px 8px;
+    -fx-text-fill: -fx-text-base-color;
+}
+.view-container .table-view .table-row-cell:hover {
+    -fx-background-color: #4A4A4A;
+}
+.view-container .table-view .table-row-cell:empty {
+    -fx-background-color: #3C3F41;
+    -fx-border-width: 0;
+}
+.view-container .table-view .table-cell:empty {
+    -fx-border-width: 0;
+}
+
+/* ScrollBar (para a tabela) */
+.view-container .table-view .scroll-bar:vertical,
+.view-container .table-view .scroll-bar:horizontal {
+    -fx-background-color: #3C3F41;
+}
+.view-container .table-view .scroll-bar .thumb {
+    -fx-background-color: #555555;
+    -fx-background-radius: 4px;
+}
+.view-container .table-view .scroll-bar .track {
+    -fx-background-color: #3C3F41;
+}
+/* --- Notification Pop-up Styles --- */
+
+/* O container não deve bloquear cliques do rato quando está vazio */
+.notification-container {
+    -fx-pick-on-bounds: false;
+}
+
+/* Estilo base para todas as notificações */
+.notification-label {
+    -fx-padding: 12px 18px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-text-fill: white;
+    -fx-font-size: 14px;
+    -fx-font-weight: bold;
+    -fx-effect: dropshadow(gaussian, rgba(0,0,0,0.2), 10, 0.3, 0, 2);
+    -fx-max-width: 350px; /* Limita a largura */
+    -fx-wrap-text: true;  /* Permite quebra de linha */
+}
+
+/* Verde para sucesso */
+.notification-success {
+    -fx-background-color: #28a745; /* Um verde limpo */
+    -fx-border-color: #218838;
+    -fx-border-width: 1px;
+}
+
+/* Vermelho para erro */
+.notification-error {
+    -fx-background-color: #dc3545; /* Um vermelho limpo */
+    -fx-border-color: #c82333;
+    -fx-border-width: 1px;
+}
+
+/* Azul/Cinzento para informação (se precisares) */
+.notification-info {
+    -fx-background-color: #17a2b8;
+    -fx-border-color: #138496;
+    -fx-border-width: 1px;
+}
+/* --- Dashboard Simples (Correções) --- */
+
+/* --- Dashboard Simples (Correções) --- */
+
+/* Corrige o título que mal se vê */
+.dashboard-section-title {
+    -fx-font-size: 16px;
+    -fx-font-weight: bold;
+    /* ✅ MUDANÇA: Cor do texto para cinza claro (lê-se bem em fundos escuros) */
+    -fx-text-fill: #E0E0E0;
+    -fx-padding-bottom: 5px;
+}
+
+/* Estilo para o bloco de estatísticas (para ficar "limpo") */
+.dashboard-stats {
+    -fx-font-size: 14px;
+    /* ✅ MUDANÇA: Cor do texto para quase branco */
+    -fx-text-fill: #FAFAFA;
+    -fx-line-spacing: 8px; /* Dá espaço entre as linhas */
+
+    /* A LINHA MAIS IMPORTANTE para o alinhamento com \t */
+    -fx-font-family: "Monospaced";
+
+    /* Fundo e borda removidos, como pediste */
 }

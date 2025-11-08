@@ -8,7 +8,7 @@ import javafx.scene.control.ListView;
 import javafx.scene.control.SelectionMode;
 import javafx.scene.control.TextArea;
 import javafx.scene.layout.VBox;
-import pt.ipp.isep.dei.UI.gui.GuiUtils;
+// import pt.ipp.isep.dei.UI.gui.GuiUtils; // Já não é necessário
 import pt.ipp.isep.dei.UI.gui.MainController;
 import pt.ipp.isep.dei.domain.InventoryManager;
 import pt.ipp.isep.dei.domain.WMS;
@@ -30,7 +30,6 @@ public class Usei01Controller {
     @FXML
     private ListView<Wagon> wagonListView;
 
-    // We still accept the MainController, in case we add other statuses later
     private MainController mainController;
 
     // Backend services
@@ -86,8 +85,12 @@ public class Usei01Controller {
             printToConsole("Processing all wagons...");
             wms.unloadWagons(wagons);
 
-            printToConsole("\n✅ Operation Successful: All wagons have been processed.");
+            String successMsg = "Operation Successful: All wagons have been processed.";
+            printToConsole("\n✅ " + successMsg);
             printToConsole("The 'audit.log' file has been updated.");
+
+            // ✅ Notificação Pop-up
+            mainController.showNotification(successMsg, "success");
 
             setHasBeenRun(true);
 
@@ -139,8 +142,10 @@ public class Usei01Controller {
         List<Wagon> selectedWagons = new ArrayList<>(selectedItems);
 
         if (selectedWagons.isEmpty()) {
-            printToConsole("\n❌ ERROR: No wagons selected. Please select at least one wagon.");
-            GuiUtils.showErrorAlert("Selection Error", "No Wagons Selected", "You must select at least one wagon from the list to process.");
+            String errorMsg = "No wagons selected. Please select at least one wagon.";
+            printToConsole("\n❌ ERROR: " + errorMsg);
+            // ✅ Notificação Pop-up
+            mainController.showNotification(errorMsg, "error");
             return;
         }
 
@@ -150,8 +155,12 @@ public class Usei01Controller {
         try {
             wms.unloadWagons(selectedWagons);
 
-            printToConsole(String.format("\n✅ Operation Successful: %d selected wagon(s) have been processed.", selectedWagons.size()));
+            String successMsg = String.format("Operation Successful: %d selected wagon(s) have been processed.", selectedWagons.size());
+            printToConsole("\n✅ " + successMsg);
             printToConsole("The 'audit.log' file has been updated.");
+
+            // ✅ Notificação Pop-up
+            mainController.showNotification(successMsg, "success");
 
             setHasBeenRun(true);
 
@@ -179,9 +188,12 @@ public class Usei01Controller {
 
     private boolean checkIfAlreadyRun() {
         if (hasBeenRun) {
+            String errorMsg = "The [USEI01] Unload Wagons operation has already been run for this session.";
             clearConsole();
-            printToConsole("❌ ERROR: The [USEI01] Unload Wagons operation has already been run for this session.");
+            printToConsole("❌ ERROR: " + errorMsg);
             printToConsole("To run again, please restart the application.");
+            // ✅ Notificação Pop-up
+            mainController.showNotification(errorMsg, "error");
             return true;
         }
         return false;
@@ -193,8 +205,6 @@ public class Usei01Controller {
     private void setHasBeenRun(boolean status) {
         this.hasBeenRun = status;
 
-        // --- MODIFICATION: Removed the call to mainController.updateStatusUnload ---
-
         hidePanel(optionsContainer);
         hidePanel(selectionContainer);
         printToConsole("\nOperation complete.");
@@ -203,7 +213,8 @@ public class Usei01Controller {
 
     private void handleError(String message, Exception e) {
         printToConsole("\n" + message);
-        GuiUtils.showErrorAlert("Execution Error", message, e.getMessage());
+        // ✅ Notificação Pop-up
+        mainController.showNotification(message, "error");
         e.printStackTrace();
     }
 

@@ -7,18 +7,17 @@ import javafx.scene.Parent;
 import javafx.scene.control.Label;
 import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
-import pt.ipp.isep.dei.UI.gui.views.DashboardController;
-import pt.ipp.isep.dei.UI.gui.views.TravelTimeGUIController;
-import pt.ipp.isep.dei.UI.gui.views.Usei01Controller;
+import javafx.scene.layout.VBox;
+import pt.ipp.isep.dei.UI.gui.views.*;
 import pt.ipp.isep.dei.controller.TravelTimeController;
-import pt.ipp.isep.dei.domain.InventoryManager;
-import pt.ipp.isep.dei.domain.KDTree;
-import pt.ipp.isep.dei.domain.StationIndexManager;
-import pt.ipp.isep.dei.domain.WMS;
+import pt.ipp.isep.dei.domain.*;
+import javafx.animation.FadeTransition;
+import javafx.animation.PauseTransition;
+import javafx.scene.Node;
+import javafx.util.Duration;
 
 import java.io.IOException;
 import java.net.URL;
-import java.util.Objects;
 
 public class MainController {
 
@@ -44,6 +43,10 @@ public class MainController {
     // --- Global Status Flags ---
     private boolean isAllocationsRun = false;
     private boolean isPickingRun = false;
+
+    // --- ESTADO GLOBAL (como na CargoHandlingUI) ---
+    private AllocationResult lastAllocationResult = null;
+    private PickingPlan lastPickingPlan = null;
 
 
     public void setBackendServices(WMS wms, InventoryManager manager,
@@ -99,8 +102,64 @@ public class MainController {
                 ((Usei01Controller) controller).setServices(this, this.wms, this.manager);
             }
 
+            else if (controller instanceof Usei02Controller) {
+                if (backendService instanceof InventoryManager) {
+                    ((Usei02Controller) controller).setServices(this, (InventoryManager) backendService);
+                } else {
+                    System.err.println("Erro de injeção: Usei02Controller esperava um InventoryManager.");
+                }
+            }
 
+            // ✅ --- NOVO BLOCO PARA USEI03 ---
+            else if (controller instanceof Usei03Controller) {
+                if (backendService instanceof InventoryManager) {
+                    ((Usei03Controller) controller).setServices(this, (InventoryManager) backendService);
+                } else {
+                    System.err.println("Erro de injeção: Usei03Controller esperava um InventoryManager.");
+                }
+            }
+            // ✅ --- NOVO BLOCO PARA USEI04 ---
+            else if (controller instanceof Usei04Controller) {
+                // A USEI04 precisa do MainController para aceder ao getLastPickingPlan()
+                if (backendService instanceof MainController) {
+                    ((Usei04Controller) controller).setServices((MainController) backendService);
+                } else {
+                    System.err.println("Erro de injeção: Usei04Controller esperava um MainController.");
+                }
+            }
+
+            // ✅ --- NOVO BLOCO PARA USEI05 ---
+            else if (controller instanceof Usei05Controller) {
+                // O Usei05Controller precisa do MainController, WMS e Manager
+                ((Usei05Controller) controller).setServices(this, this.wms, this.manager);
+            }
             // --- FIM DO NOVO BLOCO ---
+
+            else if (controller instanceof Usei06Controller) {
+                if (backendService instanceof StationIndexManager) {
+                    ((Usei06Controller) controller).setServices(this, (StationIndexManager) backendService);
+                } else {
+                    System.err.println("Erro de injeção: Usei06Controller esperava um StationIndexManager.");
+                }
+            }
+            // ✅ --- NOVO BLOCO PARA USEI07 ---
+            else if (controller instanceof Usei07Controller) {
+                if (backendService instanceof StationIndexManager) {
+                    ((Usei07Controller) controller).setServices(this, (StationIndexManager) backendService);
+                } else {
+                    System.err.println("Erro de injeção: Usei07Controller esperava um StationIndexManager.");
+                }
+            }
+
+            // ✅ --- NOVO BLOCO PARA USEI08 ---
+            else if (controller instanceof Usei08Controller) {
+                // A USEI08 precisa da KDTree
+                if (backendService instanceof KDTree) {
+                    ((Usei08Controller) controller).setServices(this, (KDTree) backendService);
+                } else {
+                    System.err.println("Erro de injeção: Usei08Controller esperava a KDTree.");
+                }
+            }
 
             // --- END OF INJECTION ---
 
@@ -153,7 +212,31 @@ public class MainController {
         }
     }
 
+
+    // --- MÉTODOS PÚBLICOS PARA ESTADO GLOBAL ---
+    // (Necessários para USEI02 -> USEI03 -> USEI04)
+
+    public AllocationResult getLastAllocationResult() {
+        return lastAllocationResult;
+    }
+
+    public void setLastAllocationResult(AllocationResult lastAllocationResult) {
+        this.lastAllocationResult = lastAllocationResult;
+    }
+
+    public PickingPlan getLastPickingPlan() {
+        return lastPickingPlan;
+    }
+
+    public void setLastPickingPlan(PickingPlan lastPickingPlan) {
+        this.lastPickingPlan = lastPickingPlan;
+    }
+
+
     // --- HANDLERS DE NAVEGAÇÃO ---
+
+    @FXML
+    private VBox notificationPane;
 
     @FXML
     public void handleShowDashboard(ActionEvent event) {
@@ -167,20 +250,54 @@ public class MainController {
         loadView("esinf-usei01-view.fxml", null);
     }
 
-    // --- NOVO HANDLER ---
     @FXML
     public void handleShowUSEI02(ActionEvent event) {
         statusLabel.setText("Allocate Orders [USEI02]");
-        loadView("esinf-usei02-view.fxml", null);
+        loadView("esinf-usei02-view.fxml", this.manager);
     }
+
+    // ✅ --- NOVO HANDLER PARA USEI03 ---
+    @FXML
+    public void handleShowUSEI03(ActionEvent event) {
+        statusLabel.setText("Pack Trolleys [USEI03]");
+        // A USEI03 precisa do InventoryManager (para o itemsMap)
+        loadView("esinf-usei03-view.fxml", this.manager);
+    }
+    // --- FIM DO NOVO HANDLER ---
 
     @FXML
     public void handleShowUSEI04(ActionEvent event) {
         statusLabel.setText("Pick Path Sequencing [USEI04]");
-        loadView("esinf-usei04-view.fxml", null);
+
+        // A LINHA IMPORTANTE É ESTA:
+        // Tem de ser 'this', não pode ser 'null'.
+        loadView("esinf-usei04-view.fxml", this);
+    }
+    @FXML
+    public void handleShowUSEI05(ActionEvent event) {
+        statusLabel.setText("Process Returns [USEI05]");
+        loadView("esinf-usei05-view.fxml", null);
     }
 
-    // --- FIM DO NOVO HANDLER ---
+    @FXML
+    public void handleShowUSEI06(ActionEvent event) {
+        statusLabel.setText("European Station Index [USEI06]");
+        loadView("esinf-usei06-view.fxml", this.stationIndexManager);
+    }
+
+    @FXML
+    public void handleShowUSEI07(ActionEvent event) {
+        statusLabel.setText("Analyze 2D-Tree [USEI07]");
+        // A USEI07 precisa do StationIndexManager (para obter as stats da árvore)
+        loadView("esinf-usei07-view.fxml", this.stationIndexManager);
+    }
+
+    @FXML
+    public void handleShowUSEI08(ActionEvent event) {
+        statusLabel.setText("Spatial Queries [USEI08]");
+        // A USEI08 precisa da KDTree (para as pesquisas)
+        loadView("esinf-usei08-view.fxml", this.spatialKDTree);
+    }
 
     @FXML
     public void handleShowESINF(ActionEvent event) {
@@ -210,5 +327,58 @@ public class MainController {
         centerContentPane.getChildren().add(t);
         AnchorPane.setTopAnchor(t, 25.0);
         AnchorPane.setLeftAnchor(t, 25.0);
+    }
+
+    /**
+     * Mostra uma notificação pop-up no canto superior direito.
+     * Esta função pode ser chamada por qualquer controlador filho.
+     *
+     * @param message A mensagem a mostrar.
+     * @param type "success" (verde) ou "error" (vermelho).
+     */
+    public void showNotification(String message, String type) {
+        // 1. Criar o Label da notificação
+        Label notificationLabel = new Label(message);
+        notificationLabel.getStyleClass().add("notification-label");
+
+        // 2. Definir o estilo (success ou error)
+        if ("success".equals(type)) {
+            notificationLabel.getStyleClass().add("notification-success");
+        } else {
+            notificationLabel.getStyleClass().add("notification-error");
+        }
+
+        // 3. Adicionar animação de Fade-In (aparecer suavemente)
+        FadeTransition fadeIn = new FadeTransition(Duration.millis(300), notificationLabel);
+        fadeIn.setFromValue(0.0);
+        fadeIn.setToValue(1.0);
+
+        // 4. Criar a pausa (quanto tempo fica no ecrã)
+        // Podes mudar este valor (ex: Duration.seconds(3) para 3 segundos)
+        PauseTransition delay = new PauseTransition(Duration.seconds(4));
+
+        // 5. Criar animação de Fade-Out (desaparecer suavemente)
+        FadeTransition fadeOut = new FadeTransition(Duration.millis(500), notificationLabel);
+        fadeOut.setFromValue(1.0);
+        fadeOut.setToValue(0.0);
+
+        // 6. Definir o que acontece quando o fade-out termina
+        fadeOut.setOnFinished(e -> notificationPane.getChildren().remove(notificationLabel));
+
+        // 7. Ligar tudo:
+        // Quando o fade-in acabar...
+        fadeIn.setOnFinished(e -> {
+            // ...começa a contar o tempo de pausa.
+            delay.play();
+        });
+        // Quando a pausa acabar...
+        delay.setOnFinished(e -> {
+            // ...começa o fade-out.
+            fadeOut.play();
+        });
+
+        // 8. Adicionar o label ao ecrã e começar a animação
+        notificationPane.getChildren().add(notificationLabel);
+        fadeIn.play();
     }
 }

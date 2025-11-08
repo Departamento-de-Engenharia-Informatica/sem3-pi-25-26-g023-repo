@@ -1,97 +1,146 @@
 package pt.ipp.isep.dei.UI.gui.views;
 
+import javafx.application.Platform;
+import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
+import javafx.scene.control.Label;
 import javafx.scene.control.TextArea;
-import pt.ipp.isep.dei.domain.*; // Importa o teu pacote de domínio
-import pt.ipp.isep.dei.domain.PickingPathService.PathResult; // Importa a classe interna
+import pt.ipp.isep.dei.UI.gui.MainController;
+import pt.ipp.isep.dei.domain.PickingPathService;
+import pt.ipp.isep.dei.domain.PickingPlan;
 
+import java.io.IOException;
+import java.io.OutputStream;
 import java.util.Map;
 
-/**
- * Controlador JavaFX para a USEI04 - Pick Path Sequencing.
- */
 public class Usei04Controller {
 
     @FXML
-    private Button calculatePathButton;
-
+    private Button btnCalculate;
     @FXML
-    private TextArea strategyAResultArea;
-
+    private Label lblStatus;
     @FXML
-    private TextArea strategyBResultArea;
-
-    private PickingPathService pickingPathService;
-
-    /**
-     * Chamado automaticamente quando o FXML é carregado.
-     * Funciona como o construtor para o controller FXML.
-     */
+    private TextArea txtResultA;
     @FXML
-    public void initialize() {
-        // Instancia o serviço que contém a lógica de negócio
-        this.pickingPathService = new PickingPathService();
+    private TextArea txtResultB;
 
-        // Limpa as áreas de texto ao iniciar
-        strategyAResultArea.setText("Clique no botão para calcular a rota...");
-        strategyBResultArea.setText("Clique no botão para calcular a rota...");
+    private MainController mainController;
+
+    public void setServices(MainController mainController) {
+        this.mainController = mainController;
     }
 
-    /**
-     * Chamado quando o botão "calculatePathButton" é clicado.
-     * (definido no FXML: onAction="#handleCalculatePath")
-     */
     @FXML
-    private void handleCalculatePath() {
-        // Limpa resultados anteriores
-        strategyAResultArea.setText("A calcular...");
-        strategyBResultArea.setText("A calcular...");
+    void handleCalculatePaths(ActionEvent event) {
+        lblStatus.setText("");
+        lblStatus.getStyleClass().removeAll("status-label-success", "status-label-error", "status-label-info");
+        txtResultA.clear();
+        txtResultB.clear();
 
-        // --- DADOS MOCK (Simulados) ---
-        // Na vida real, este plano viria de outro local (ex: USEI03)
-        // Estamos a usar os dados do Cenário 07 dos teus testes
-        PickingPlan mockPlan = createMockPickingPlan();
+        if (this.mainController == null) {
+            setError("Error: MainController was not injected correctly.");
+            return;
+        }
 
-        // 1. Chamar o Serviço de Negócio
-        Map<String, PathResult> results = pickingPathService.calculatePickingPaths(mockPlan);
+        PickingPlan plan = mainController.getLastPickingPlan();
 
-        // 2. Obter os resultados
-        PathResult resultA = results.get("Strategy A (Deterministic Sweep)");
-        PathResult resultB = results.get("Strategy B (Nearest Neighbour)");
+        if (plan == null) {
+            setError("You must run [USEI03] Pack Trolleys first. No picking plan is available.");
+            return;
+        }
+        if (plan.getTotalTrolleys() == 0) {
+            setInfo("The current picking plan has 0 trolleys. Nothing to calculate.");
+            // Nota: "Info" não tem pop-up, o que é bom.
+            return;
+        }
 
-        // 3. Mostrar os resultados nas TextAreas
-        // Usamos o .toString() "bonito" que já tinhas no PathResult!
-        strategyAResultArea.setText(resultA.toString());
-        strategyBResultArea.setText(resultB.toString());
+        setInfo(String.format("Calculating paths for %d trolleys in Plan %s...",
+                plan.getTotalTrolleys(), plan.getId()));
+
+        PickingPathService pathService = new PickingPathService();
+        try {
+            Map<String, PickingPathService.PathResult> pathResults = pathService.calculatePickingPaths(plan);
+
+            if (pathResults.isEmpty()) {
+                setError("Could not calculate paths (check if picking plan has valid locations).");
+            } else {
+
+                PickingPathService.PathResult resultA = pathResults.get("Strategy A (Deterministic Sweep)");
+                if (resultA != null) {
+                    String cleanTextA = cleanAnsiCodes(resultA.toString());
+                    txtResultA.setText(cleanTextA.trim());
+                } else {
+                    txtResultA.setText("--- Failed to calculate Strategy A ---");
+                }
+
+                PickingPathService.PathResult resultB = pathResults.get("Strategy B (Nearest Neighbour)");
+                if (resultB != null) {
+                    String cleanTextB = cleanAnsiCodes(resultB.toString());
+                    txtResultB.setText(cleanTextB.trim());
+                } else {
+                    txtResultB.setText("--- Failed to calculate Strategy B ---");
+                }
+
+                setSuccess("USEI04 completed successfully!");
+            }
+
+        } catch (Exception e) {
+            setError("Error calculating picking paths (USEI04): " + e.getMessage());
+            txtResultA.appendText("\n\nStack Trace:\n");
+            e.printStackTrace(new java.io.PrintStream(new TextAreaOutputStream(txtResultA)));
+        }
     }
 
-    /**
-     * Helper method para criar um PickingPlan de teste.
-     * Baseado no Cenário 07 do teu USEI04test.java.
-     * @return Um PickingPlan simulado.
-     */
-    private PickingPlan createMockPickingPlan() {
-        PickingPlan plan = new PickingPlan("PLAN_MOCK_UI", HeuristicType.FIRST_FIT, 0);
-        Trolley t1 = new Trolley("T1_MOCK_UI", 100);
-
-        // Criar Assignments (Pontos: (1,10) e (2,1))
-        t1.addAssignment(createMockAssignment("ORD6", 1, "SKU_A", "1", "10")); // (1,10)
-        t1.addAssignment(createMockAssignment("ORD6", 2, "SKU_B", "2", "1"));  // (2,1)
-
-        plan.addTrolley(t1);
-        return plan;
+    private String cleanAnsiCodes(String text) {
+        if (text == null) {
+            return "";
+        }
+        return text.replaceAll("\\[\\d+m", "");
     }
 
-    /**
-     * Helper method para criar um PickingAssignment de teste.
-     * @return Um PickingAssignment simulado.
-     */
-    private PickingAssignment createMockAssignment(String orderId, int lineNo, String sku, String aisle, String bay) {
-        // Criamos um Item mock, pois é necessário pelo construtor do PickingAssignment
-        Item mockItem = new Item(sku, "Mock Item " + sku, "Mock Category", "unit", 1.0);
 
-        // O construtor do PickingAssignment que usaste nos testes
-        return new PickingAssignment(orderId, lineNo, mockItem, 1, "BOX_MOCK", aisle, bay);
+    // --- Helpers de Status (ATUALIZADOS) ---
+    private void setError(String message) {
+        lblStatus.setText("❌ " + message);
+        lblStatus.getStyleClass().removeAll("status-label-success", "status-label-info");
+        lblStatus.getStyleClass().add("status-label-error");
+
+        // ✅ Notificação Pop-up
+        if (mainController != null) {
+            mainController.showNotification(message, "error");
+        }
+    }
+
+    private void setSuccess(String message) {
+        lblStatus.setText("✅ " + message);
+        lblStatus.getStyleClass().removeAll("status-label-error", "status-label-info");
+        lblStatus.getStyleClass().add("status-label-success");
+
+        // ✅ Notificação Pop-up
+        if (mainController != null) {
+            mainController.showNotification(message, "success");
+        }
+    }
+
+    // Info não precisa de pop-up, fica só no label local.
+    private void setInfo(String message) {
+        lblStatus.setText("ℹ️ " + message);
+        lblStatus.getStyleClass().removeAll("status-label-error", "status-label-success");
+        lblStatus.getStyleClass().add("status-label-info");
+    }
+
+    public static class TextAreaOutputStream extends OutputStream {
+        private TextArea textArea;
+        public TextAreaOutputStream(TextArea textArea) { this.textArea = textArea; }
+        @Override
+        public void write(byte[] b, int off, int len) throws IOException {
+            String text = new String(b, off, len);
+            Platform.runLater(() -> textArea.appendText(text));
+        }
+        @Override
+        public void write(int b) throws IOException {
+            write(new byte[]{(byte) b}, 0, 1);
+        }
     }
 }

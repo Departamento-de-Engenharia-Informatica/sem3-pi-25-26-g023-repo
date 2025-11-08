@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.VBox?>
+
+<!-- Ligado ao teu style.css e a usar a classe .view-container -->
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
+            prefHeight="500.0" prefWidth="600.0"
+            styleClass="view-container" stylesheets="style.css"
+            xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="pt.ipp.isep.dei.UI.gui.views.Usei05Controller">
+    <top>
+        <!-- Título da Vista -->
+        <Label text="USEI05: Process Returns (Quarantine)" styleClass="view-title" BorderPane.alignment="CENTER_LEFT" />
+    </top>
+    <center>
+        <VBox alignment="CENTER_LEFT" spacing="15.0" BorderPane.alignment="CENTER">
+            <children>
+                <!-- Botão de Ação Principal -->
+                <Button fx:id="btnProcess" mnemonicParsing="false" onAction="#handleProcessReturns"
+                        text="Process Returns (LIFO)" styleClass="button-primary" />
+
+                <!-- Label de Status/Erro -->
+                <Label fx:id="lblStatus" styleClass="status-label" text="Ready to process." />
+
+                <!-- Secção de Output -->
+                <Label text="Processing Log:" styleClass="section-title" />
+
+                <!-- Área de Resultados -->
+                <TextArea fx:id="txtResult" editable="false" prefHeight="350.0" prefWidth="750.0"
+                          styleClass="result-area" wrapText="true" />
+            </children>
+        </VBox>
+    </center>
+</BorderPane>

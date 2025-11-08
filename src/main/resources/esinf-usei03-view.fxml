@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.BorderPane?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<BorderPane maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity"
+            prefHeight="500.0" prefWidth="600.0"
+            styleClass="view-container" stylesheets="style.css"
+            xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+            fx:controller="pt.ipp.isep.dei.UI.gui.views.Usei03Controller">
+    <top>
+        <!-- Traduzido -->
+        <Label text="USEI03: Pack Picking Trolleys" styleClass="view-title" BorderPane.alignment="CENTER_LEFT" />
+    </top>
+    <center>
+        <VBox alignment="CENTER_LEFT" spacing="15.0" BorderPane.alignment="CENTER">
+            <children>
+
+                <!-- Traduzido -->
+                <Label text="Step 1: Define Capacity and Heuristic" styleClass="section-title" />
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <children>
+                        <!-- Traduzido -->
+                        <Label text="Trolley Capacity (kg):" styleClass="input-label" />
+                        <TextField fx:id="txtCapacity" prefWidth="100.0" promptText="ex: 50.0" />
+                    </children>
+                </HBox>
+
+                <HBox alignment="CENTER_LEFT" spacing="10.0">
+                    <children>
+                        <!-- Traduzido -->
+                        <Label text="Packing Heuristic:" styleClass="input-label" />
+                        <ComboBox fx:id="comboHeuristic" prefWidth="250.0" />
+                    </children>
+                </HBox>
+
+                <!-- Traduzido -->
+                <Button fx:id="btnPack" mnemonicParsing="false" onAction="#handlePackTrolleys"
+                        text="Generate Picking Plan (USEI03)" styleClass="button-primary" />
+
+                <!-- Traduzido -->
+                <Label fx:id="lblStatus" styleClass="status-label" text="Ready to pack. (Depends on USEI02)" />
+
+                <!-- Traduzido -->
+                <Label text="Picking Plan Summary:" styleClass="section-title" />
+
+                <TextArea fx:id="txtResult" editable="false" prefHeight="250.0" prefWidth="560.0"
+                          styleClass="result-area" wrapText="true" />
+            </children>
+        </VBox>
+    </center>
+</BorderPane>
