@@ -2,7 +2,7 @@
 -- USBD03 - Create Database from Visual Paradigm Model
 -- =============================================
 
--- CLEAN UP EXISTING TABLES
+- - CLEAN UP EXISTING TABLES
 BEGIN
 FOR t IN (SELECT table_name FROM user_tables WHERE table_name IN (
         'OPERATOR', 'STATION', 'RAILWAY_LINE', 'LINE_SEGMENT',

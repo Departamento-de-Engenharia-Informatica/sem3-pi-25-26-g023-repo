@@ -77,6 +77,7 @@ public class OrderLine {
      * @param obj the object to compare with
      * @return true if the objects are equal, false otherwise
      */
+
     @Override
     public boolean equals(Object obj) {
         if (this == obj) return true;
