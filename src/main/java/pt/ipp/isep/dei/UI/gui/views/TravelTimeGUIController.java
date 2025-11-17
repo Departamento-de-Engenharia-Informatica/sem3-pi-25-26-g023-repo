@@ -1,24 +1,26 @@
-// package pt.ipp.isep.dei.UI.gui;
 package pt.ipp.isep.dei.UI.gui.views;
 
+import pt.ipp.isep.dei.controller.TravelTimeController;
+import pt.ipp.isep.dei.domain.EuropeanStation; // USAR EuropeanStation
+import pt.ipp.isep.dei.domain.Locomotive;
 import javafx.collections.FXCollections;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.TextArea;
-import pt.ipp.isep.dei.controller.TravelTimeController;
-import pt.ipp.isep.dei.domain.Locomotive;
-import pt.ipp.isep.dei.domain.Station;
-
 import java.util.List;
+import java.util.Collection; // Usar List ou Collection, mas do tipo correto
 
 public class TravelTimeGUIController {
 
+    // 1. ALTERAÇÃO ESSENCIAL: O ComboBox deve usar EuropeanStation
+    // Se o FXML estiver vinculado a 'Station', deve atualizar o FXML.
     @FXML
-    private ComboBox<Station> departureStationCombo;
+    private ComboBox<EuropeanStation> departureStationCombo;
     @FXML
-    private ComboBox<Station> arrivalStationCombo;
+    private ComboBox<EuropeanStation> arrivalStationCombo;
+
     @FXML
     private ComboBox<Locomotive> locomotiveCombo;
     @FXML
@@ -28,45 +30,33 @@ public class TravelTimeGUIController {
 
     private TravelTimeController backendController; // O controlador de lógica
 
-    /**
-     * Chamado pelo MainController para injetar a lógica de backend.
-     */
     public void setBackend(TravelTimeController backendController) {
         this.backendController = backendController;
-
-        // Agora que temos o controlador, populamos as ComboBox
         loadInitialData();
     }
 
-    /**
-     * O initialize é chamado ANTES do setBackend,
-     * por isso temos de popular os dados *depois* do setBackend.
-     */
     @FXML
     public void initialize() {
-        // Configura um listener na ComboBox de partida
-        // Isto replica a lógica da consola (só mostrar destinos válidos)
+        // O listener agora trabalha com EuropeanStation
         departureStationCombo.getSelectionModel().selectedItemProperty().addListener((options, oldVal, newVal) -> {
             if (newVal != null) {
-                // Quando uma estação de partida é selecionada,
-                // atualiza a lista de estações de chegada.
+                // getIdEstacao() está agora em EuropeanStation
                 updateArrivalStations(newVal.getIdEstacao());
             }
         });
     }
 
-    /**
-     * Carrega os dados iniciais (estações e locomotivas)
-     */
     private void loadInitialData() {
-        if (backendController == null) return; // Segurança
+        if (backendController == null) return;
 
         try {
-            // 1. Carrega todas as estações (para a partida)
-            List<Station> allStations = backendController.getStationRepository().findAll();
+            // 2. CORREÇÃO DA INCOMPATIBILIDADE: A variável deve ser do tipo retornado
+            List<EuropeanStation> allStations = backendController.getStationRepository().findAll();
+
+            // A ComboBox deve ser do tipo EuropeanStation para aceitar esta lista
             departureStationCombo.setItems(FXCollections.observableArrayList(allStations));
 
-            // 2. Carrega todas as locomotivas
+            // 3. Carrega todas as locomotivas
             List<Locomotive> allLocomotives = backendController.getLocomotiveRepository().findAll();
             locomotiveCombo.setItems(FXCollections.observableArrayList(allLocomotives));
 
@@ -77,31 +67,26 @@ public class TravelTimeGUIController {
         }
     }
 
-    /**
-     * Atualiza a ComboBox de chegada com base na partida selecionada.
-     */
     private void updateArrivalStations(int departureId) {
         try {
-            // Exatamente a mesma lógica da TravelTimeUI da consola
-            List<Station> connectedStations = backendController.getDirectlyConnectedStations(departureId);
+            List<EuropeanStation> connectedStations = backendController.getDirectlyConnectedStations(departureId);
+
+            // 4. A ComboBox de chegada deve aceitar a lista de EuropeanStation
             arrivalStationCombo.setItems(FXCollections.observableArrayList(connectedStations));
-            arrivalStationCombo.setDisable(false); // Ativa a ComboBox
+            arrivalStationCombo.setDisable(false);
         } catch (Exception e) {
             resultArea.setText("Erro ao buscar estações conectadas: " + e.getMessage());
         }
     }
 
-    /**
-     * Chamado quando o botão "Calcular" é clicado.
-     */
     @FXML
     void handleCalculateTravelTime(ActionEvent event) {
-        // 1. Obter os dados da UI
-        Station departure = departureStationCombo.getValue();
-        Station arrival = arrivalStationCombo.getValue();
+        // 5. CORREÇÃO: As variáveis locais usam EuropeanStation
+        EuropeanStation departure = departureStationCombo.getValue();
+        EuropeanStation arrival = arrivalStationCombo.getValue();
         Locomotive loco = locomotiveCombo.getValue();
 
-        // 2. Validar (como na consola)
+        // 6. Validar
         if (departure == null || arrival == null || loco == null) {
             resultArea.setText("ERRO: Preencha todos os campos (Partida, Chegada e Locomotiva).");
             return;
@@ -112,7 +97,7 @@ public class TravelTimeGUIController {
             return;
         }
 
-        // 3. Chamar o controlador de lógica (exatamente como na consola)
+        // 7. Chamar o controlador de lógica
         try {
             resultArea.setText("A calcular...");
             String result = backendController.calculateTravelTime(
@@ -121,7 +106,6 @@ public class TravelTimeGUIController {
                     loco.getIdLocomotiva()
             );
 
-            // 4. Mostrar o resultado
             resultArea.setText(result);
 
         } catch (Exception e) {

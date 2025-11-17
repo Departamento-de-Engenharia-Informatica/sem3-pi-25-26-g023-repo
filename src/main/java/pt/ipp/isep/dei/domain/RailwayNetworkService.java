@@ -32,7 +32,7 @@ public class RailwayNetworkService {
             throw new IllegalArgumentException("Locomotive cannot be null for path calculation.");
         }
 
-        List<Station> allStations = estacaoRepo.findAll();
+        List<EuropeanStation> allStations = estacaoRepo.findAll();
         List<LineSegment> allSegments = segmentoRepo.findAll();
 
         // Mapas para o algoritmo de Dijkstra
@@ -42,7 +42,7 @@ public class RailwayNetworkService {
         PriorityQueue<Map.Entry<Integer, Double>> pq = new PriorityQueue<>(Map.Entry.comparingByValue());
 
         // Inicializar distâncias
-        for (Station s : allStations) {
+        for (EuropeanStation s : allStations) {
             timeTo.put(s.getIdEstacao(), Double.POSITIVE_INFINITY);
         }
         timeTo.put(idPartida, 0.0);

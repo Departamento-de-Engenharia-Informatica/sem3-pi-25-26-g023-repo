@@ -1,6 +1,7 @@
 package pt.ipp.isep.dei.UI;
 
 import pt.ipp.isep.dei.controller.TravelTimeController;
+import pt.ipp.isep.dei.domain.EuropeanStation;
 import pt.ipp.isep.dei.domain.Station;
 import pt.ipp.isep.dei.domain.Locomotive;
 import pt.ipp.isep.dei.repository.StationRepository;
@@ -49,7 +50,7 @@ public class TravelTimeUI implements Runnable {
         try {
             // 1. List and select Departure Station
             System.out.println(ANSI_CYAN + "\n--- Available Stations ---" + ANSI_RESET);
-            List<Station> stations = stationRepo.findAll();
+            List<EuropeanStation> stations = stationRepo.findAll();
             if (stations.isEmpty()) {
                 showError("No stations found in the repository.");
                 return;
@@ -66,7 +67,7 @@ public class TravelTimeUI implements Runnable {
 
             // 2. List directly connected destinations
             System.out.println(ANSI_CYAN + "\n--- Directly Connected Destinations ---" + ANSI_RESET);
-            List<Station> connectedStations = controller.getDirectlyConnectedStations(departureId);
+            List<EuropeanStation> connectedStations = controller.getDirectlyConnectedStations(departureId);
 
             if (connectedStations.isEmpty()) {
                 showInfo("No directly connected stations found from this origin.");

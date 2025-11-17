@@ -141,17 +141,19 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + " 4. " + ANSI_RESET + "[USEI03] Pack Trolleys " + ANSI_ITALIC + "(Run US02 first)" + ANSI_RESET);
         System.out.println(ANSI_GREEN + " 5. " + ANSI_RESET + "[USEI04] Calculate Pick Path " + ANSI_ITALIC + "(Run US03 first)" + ANSI_RESET);
 
+
         // --- Railway & Station Ops ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- Railway & Station Ops (S1 & S2) ---" + ANSI_RESET);
         System.out.println(ANSI_GREEN + " 6. " + ANSI_RESET + "[USLP03] Calculate Train Travel Time (S1)");
         System.out.println(ANSI_GREEN + " 7. " + ANSI_RESET + "[USEI06] Query European Station Index (S2)");
         System.out.println(ANSI_GREEN + " 8. " + ANSI_RESET + "[USEI07] Build & Analyze 2D-Tree (S2)");
-        System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)"); // ✅ NEW OPTION
+        System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)");
+        System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "[USEI09] Proximity Search - Nearest N (S2)");
 
         // --- Info ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
-        System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "View Current Inventory");
-        System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "View Warehouse Info");
+        System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "View Current Inventory"); // Antigo 10
+        System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "View Warehouse Info");  // Antigo 11
 
         // --- Exit ---
         System.out.println("\n" + ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
@@ -200,12 +202,15 @@ public class CargoHandlingUI implements Runnable {
                 handleBuild2DTree(); // USEI07
                 break;
             case 9:
-                handleSpatialQueries(); // ✅ USEI08 - NEW
+                handleSpatialQueries(); // USEI08
                 break;
             case 10:
+                handleNearestNQuery(); // ✅ USEI09
+                break;
+            case 11: // Antigo 10
                 handleViewInventory();
                 break;
-            case 11:
+            case 12: // Antigo 11
                 handleViewWarehouseInfo();
                 break;
             case 0:
@@ -256,6 +261,59 @@ public class CargoHandlingUI implements Runnable {
             }
         }
     }
+
+    /**
+     * Handles the Proximity Search (Nearest-N) query using KD-Tree (USEI09).
+     */
+    private void handleNearestNQuery() {
+        showInfo("--- [USEI09] Proximity Search (Nearest-N with Filters) ---");
+
+        try {
+            // 1. Coordenada Alvo
+            System.out.println(ANSI_ITALIC + "Enter Target Coordinates (Haversine distance will be used):" + ANSI_RESET);
+            double targetLat = readDouble("Target Latitude [-90 to 90]: ", -90.0, 90.0);
+            double targetLon = readDouble("Target Longitude [-180 to 180]: ", -180.0, 180.0);
+
+            // 2. Número de Vizinhos (N)
+            int N = readInt(1, 100, ANSI_BOLD + "➡️  Enter N (Number of nearest stations, max 100): " + ANSI_RESET);
+
+            // 3. Filtro Opcional
+            String timeZoneFilter = readString("Time Zone Group filter (e.g., CET, EET, or press Enter for ANY): ");
+            String filter = timeZoneFilter.isEmpty() ? null : timeZoneFilter.toUpperCase();
+
+            showInfo(String.format("Executing Nearest-N search for N=%d...", N));
+            long startTime = System.nanoTime();
+
+            List<EuropeanStation> results = spatialKDTree.findNearestN(
+                    targetLat, targetLon, N, filter
+            );
+
+            long endTime = System.nanoTime();
+
+            // 4. Mostrar Resultados
+            System.out.printf("\n" + ANSI_BOLD + "✅ Found %d nearest stations (%.2f ms)%n" + ANSI_RESET,
+                    results.size(), (endTime - startTime) / 1_000_000.0);
+
+            if (results.isEmpty()) {
+                showInfo("No stations found matching the criteria.");
+            } else {
+                System.out.println("\n" + ANSI_BOLD + "--- TOP " + results.size() + " NEAREST STATIONS (Haversine Distance) ---" + ANSI_RESET);
+
+                int i = 1;
+                for (EuropeanStation s : results) {
+                    // Calculamos a distância APENAS para exibição.
+                    double distance = GeoDistance.haversine(targetLat, targetLon, s.getLatitude(), s.getLongitude());
+
+                    System.out.printf("%s %2d. %s | Distância: %s%.2f km%s %n",
+                            ANSI_CYAN, i++, formatStationDisplay(s), ANSI_YELLOW, distance, ANSI_RESET);
+                }
+            }
+
+        } catch (Exception e) {
+            showError("Error executing Nearest-N search (USEI09): " + e.getMessage());
+        }
+    }
+
 
     /**
      * Reads a double input from the user within a specified range.

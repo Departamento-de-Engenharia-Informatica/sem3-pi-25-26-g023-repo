@@ -1,25 +1,15 @@
 package pt.ipp.isep.dei.domain;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashMap;
 import java.util.List;
+import java.util.ArrayList;
 import java.util.Map;
+import java.util.HashMap;
 import java.util.stream.Collectors;
 
-/**
- * Implements a balanced 2D-Tree (KD-Tree) for storing EuropeanStation objects.
- * This class provides the underlying data structure for spatial indexing.
- *
- * <p>This implementation ensures balanced tree construction and handles stations with identical coordinates
- * by storing them in the same node, sorted by station name.</p>
- *
- * @version 2.0
- */
 public class KDTree {
 
     /**
-     * Represents a node in the KD-Tree containing stations with identical coordinates.
+     * Represents a node in the KD-Tree containing stations with identical coordinates (a bucket).
      */
     public static class Node {
         private final List<EuropeanStation> stations;
@@ -27,84 +17,45 @@ public class KDTree {
         private Node right;
         private final double latitude;
         private final double longitude;
+        private final int depth;
 
         /**
-         * Constructs a new KD-Tree node with the specified stations.
-         * Stations are sorted by name to ensure deterministic ordering.
+         * Constructs a new KD-Tree node.
          *
          * @param stationsInNode list of stations with identical coordinates to be stored in this node
-         * @throws IllegalArgumentException if stationsInNode is empty
+         * @param depth current depth in the tree
          */
-        public Node(List<EuropeanStation> stationsInNode) {
+        public Node(List<EuropeanStation> stationsInNode, int depth) {
             if (stationsInNode.isEmpty()) {
                 throw new IllegalArgumentException("Cannot create a tree node with an empty station list.");
             }
 
-            // Ensure stations are sorted by name (using natural ordering)
-            stationsInNode.sort(null);
+            stationsInNode.sort(null); // Ordena por nome (compareTo em EuropeanStation)
             this.stations = stationsInNode;
 
-            // Use coordinates from the first station (all stations have same coordinates)
             this.latitude = stationsInNode.get(0).getLatitude();
             this.longitude = stationsInNode.get(0).getLongitude();
             this.left = null;
             this.right = null;
+            this.depth = depth;
         }
 
-        /**
-         * Returns the coordinate value for the specified dimension at the given depth.
-         *
-         * @param depth the current depth in the tree (used to determine splitting dimension)
-         * @return the latitude if depth is even, longitude if depth is odd
-         */
-        public double getCoordinate(int depth) {
-            return (depth % 2 == 0) ? latitude : longitude;
-        }
+        // Getters para a lógica de construção e busca
+        public List<EuropeanStation> getStations() { return stations; }
+        public Node getLeft() { return left; }
+        public Node getRight() { return right; }
+        public double getLatitude() { return latitude; }
+        public double getLongitude() { return longitude; }
 
         /**
-         * Returns the list of stations in this node.
-         *
-         * @return list of stations with identical coordinates
+         * Returns the coordinate value for the specified dimension (0: latitude, 1: longitude).
          */
-        public List<EuropeanStation> getStations() {
-            return stations;
-        }
+        public double getCoordinate(int dim) { return (dim == 0) ? latitude : longitude; }
 
         /**
-         * Returns the left child node.
-         *
-         * @return left child node, or null if no left child
+         * Returns the current depth in the tree.
          */
-        public Node getLeft() {
-            return left;
-        }
-
-        /**
-         * Returns the right child node.
-         *
-         * @return right child node, or null if no right child
-         */
-        public Node getRight() {
-            return right;
-        }
-
-        /**
-         * Returns the latitude coordinate of this node.
-         *
-         * @return latitude value
-         */
-        public double getLatitude() {
-            return latitude;
-        }
-
-        /**
-         * Returns the longitude coordinate of this node.
-         *
-         * @return longitude value
-         */
-        public double getLongitude() {
-            return longitude;
-        }
+        public int getDepth() { return depth; }
     }
 
     private Node root;
@@ -119,20 +70,19 @@ public class KDTree {
     }
 
     /**
+     * **MÉTODO ESSENCIAL** para a classe SpatialSearch.
+     * Retorna o nó raiz da KD-Tree.
+     */
+    public Node getRoot() {
+        return this.root;
+    }
+
+
+    /**
      * Builds a balanced KD-Tree from pre-sorted lists of stations by latitude and longitude.
-     * This method uses a recursive median-based approach to ensure tree balance.
-     *
-     * @param stationsByLat list of stations sorted by latitude in ascending order
-     * @param stationsByLon list of stations sorted by longitude in ascending order
-     * @throws IllegalArgumentException if input lists are null, empty, or have different sizes
      */
     public void buildBalanced(List<EuropeanStation> stationsByLat, List<EuropeanStation> stationsByLon) {
-        if (stationsByLat == null || stationsByLon == null ||
-                stationsByLat.isEmpty() || stationsByLon.isEmpty() ||
-                stationsByLat.size() != stationsByLon.size()) {
-
-            throw new IllegalArgumentException("Input lists for 2D-Tree are invalid, empty, or have different sizes.");
-        }
+        if (stationsByLat == null || stationsByLat.isEmpty()) return;
 
         List<EuropeanStation> stationsLat = new ArrayList<>(stationsByLat);
         List<EuropeanStation> stationsLon = new ArrayList<>(stationsByLon);
@@ -141,11 +91,6 @@ public class KDTree {
 
     /**
      * Recursively builds a balanced KD-Tree node using median partitioning.
-     *
-     * @param stationsByLat stations sorted by latitude for the current partition
-     * @param stationsByLon stations sorted by longitude for the current partition
-     * @param depth current depth in the tree (determines splitting dimension)
-     * @return the root node of the constructed subtree, or null if partition is empty
      */
     private Node buildBalancedRecursive(List<EuropeanStation> stationsByLat, List<EuropeanStation> stationsByLon, int depth) {
         if (stationsByLat.isEmpty()) {
@@ -155,7 +100,6 @@ public class KDTree {
         this.size++;
         int dim = depth % 2; // 0 for latitude, 1 for longitude
 
-        // Select the appropriate list based on current dimension
         List<EuropeanStation> mainList = (dim == 0) ? stationsByLat : stationsByLon;
         int medianIndex = (mainList.size() - 1) / 2;
         EuropeanStation medianStation = mainList.get(medianIndex);
@@ -163,95 +107,63 @@ public class KDTree {
         double medianLat = medianStation.getLatitude();
         double medianLon = medianStation.getLongitude();
 
-        // Collect all stations with identical coordinates to the median station
+        // 1. Coleta o bucket de estações com coordenadas idênticas à mediana
         List<EuropeanStation> nodeStations = mainList.stream()
                 .filter(s -> Double.compare(s.getLatitude(), medianLat) == 0 &&
                         Double.compare(s.getLongitude(), medianLon) == 0)
                 .collect(Collectors.toList());
 
-        Node node = new Node(nodeStations);
+        Node node = new Node(nodeStations, depth);
 
-        // Partition both lists for left and right subtrees
+        // 2. Lógica de Partição (Preenchimento das listas left/right)
         List<EuropeanStation> leftLat = new ArrayList<>();
         List<EuropeanStation> rightLat = new ArrayList<>();
         List<EuropeanStation> leftLon = new ArrayList<>();
         List<EuropeanStation> rightLon = new ArrayList<>();
 
-        // Partition latitude-sorted list
         for (EuropeanStation station : stationsByLat) {
-            // Skip stations that are already included in the current node
-            if (Double.compare(station.getLatitude(), medianLat) == 0 &&
-                    Double.compare(station.getLongitude(), medianLon) == 0) {
-                continue;
-            }
+            if (nodeStations.contains(station)) continue;
 
-            // Partition based on current dimension
-            if ((dim == 0 && Double.compare(station.getLatitude(), medianLat) < 0) ||
-                    (dim == 1 && Double.compare(station.getLongitude(), medianLon) < 0)) {
-                leftLat.add(station);
-            } else {
-                rightLat.add(station);
-            }
+            boolean isLeft = (dim == 0) ?
+                    Double.compare(station.getLatitude(), medianLat) < 0 :
+                    Double.compare(station.getLongitude(), medianLon) < 0;
+
+            if (isLeft) leftLat.add(station); else rightLat.add(station);
         }
 
-        // Partition longitude-sorted list
         for (EuropeanStation station : stationsByLon) {
-            // Skip stations that are already included in the current node
-            if (Double.compare(station.getLatitude(), medianLat) == 0 &&
-                    Double.compare(station.getLongitude(), medianLon) == 0) {
-                continue;
-            }
+            if (nodeStations.contains(station)) continue;
 
-            // Partition based on current dimension
-            if ((dim == 0 && Double.compare(station.getLatitude(), medianLat) < 0) ||
-                    (dim == 1 && Double.compare(station.getLongitude(), medianLon) < 0)) {
-                leftLon.add(station);
-            } else {
-                rightLon.add(station);
-            }
+            boolean isLeft = (dim == 0) ?
+                    Double.compare(station.getLatitude(), medianLat) < 0 :
+                    Double.compare(station.getLongitude(), medianLon) < 0;
+
+            if (isLeft) leftLon.add(station); else rightLon.add(station);
         }
 
-        // Recursively build left and right subtrees
+        // 3. Chamadas recursivas
         node.left = buildBalancedRecursive(leftLat, leftLon, depth + 1);
         node.right = buildBalancedRecursive(rightLat, rightLon, depth + 1);
 
         return node;
     }
 
-    /**
-     * Returns the root node of the KD-Tree.
-     *
-     * @return root node of the tree, or null if tree is empty
-     */
-    public Node getRoot() {
-        return this.root;
-    }
+    // --- Métodos de Acesso e Análise ---
 
     /**
-     * Returns the number of nodes in the KD-Tree.
-     *
-     * @return the total number of nodes in the tree
+     * Returns the number of nodes in the KD-Tree (Resolve size access error).
      */
     public int size() {
         return this.size;
     }
 
     /**
-     * Calculates the height of the KD-Tree.
-     * The height is defined as the number of edges on the longest path from root to leaf.
-     *
-     * @return the height of the tree, or -1 if the tree is empty
+     * Calculates the height of the KD-Tree (Resolve height method error).
      */
     public int height() {
         return heightRecursive(root);
     }
 
-    /**
-     * Recursive helper method to calculate tree height.
-     *
-     * @param node current node
-     * @return height of the subtree rooted at this node
-     */
     private int heightRecursive(Node node) {
         if (node == null) {
             return -1;
@@ -260,10 +172,7 @@ public class KDTree {
     }
 
     /**
-     * Analyzes the distribution of bucket sizes in the KD-Tree.
-     * A bucket refers to a node containing multiple stations with identical coordinates.
-     *
-     * @return a map where keys are bucket sizes and values are the count of nodes with that size
+     * Analyzes the distribution of bucket sizes in the KD-Tree (Resolve getBucketSizes error).
      */
     public Map<Integer, Integer> getBucketSizes() {
         Map<Integer, Integer> bucketSizes = new HashMap<>();
@@ -271,12 +180,6 @@ public class KDTree {
         return bucketSizes;
     }
 
-    /**
-     * Recursive helper method to collect bucket size statistics.
-     *
-     * @param node current node being processed
-     * @param bucketSizes map to accumulate bucket size counts
-     */
     private void getBucketSizesRecursive(Node node, Map<Integer, Integer> bucketSizes) {
         if (node == null) {
             return;
@@ -285,5 +188,25 @@ public class KDTree {
         bucketSizes.put(bucketSize, bucketSizes.getOrDefault(bucketSize, 0) + 1);
         getBucketSizesRecursive(node.left, bucketSizes);
         getBucketSizesRecursive(node.right, bucketSizes);
+    }
+
+    // --- US USEI09: Proximity Search (Nearest-N) ---
+
+    /**
+     * Finds the N nearest stations to a target coordinate, optionally applying a time zone filter.
+     */
+    public List<EuropeanStation> findNearestN(
+            double targetLat, double targetLon, int N, String timeZoneFilter) {
+
+        if (this.root == null) {
+            return new ArrayList<>();
+        }
+
+        // Delega a lógica de busca à classe NearestNFinder
+        NearestNFinder finder = new NearestNFinder(N, timeZoneFilter, targetLat, targetLon);
+
+        finder.search(this.root);
+
+        return finder.getResults();
     }
 }
