@@ -112,6 +112,10 @@ public class Main {
             printLoadStep(String.format("  > KD-Tree built: %d nodes, height: %d, bucket distribution: %s",
                     spatialKDTree.size(), spatialKDTree.height(), spatialKDTree.getBucketSizes()), true);
 
+            printLoadStep("Initializing Spatial Search Engine (USEI08)...");
+            SpatialSearch spatialSearchEngine = new SpatialSearch(spatialKDTree);
+            printLoadStep(String.format("  > USEI08 Spatial Search ready! Complexity: O(√n) average case"), true);
+
             // 9️⃣ Launch UI
             System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);
             Thread.sleep(1000);
@@ -120,7 +124,8 @@ public class Main {
                     wms, manager, wagons,
                     travelTimeController, estacaoRepo, locomotivaRepo,
                     stationIndexManager,
-                    spatialKDTree
+                    spatialKDTree,
+                    spatialSearchEngine
             );
             cargoMenu.run();
 

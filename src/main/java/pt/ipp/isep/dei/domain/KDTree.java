@@ -9,7 +9,7 @@ import java.util.stream.Collectors;
 
 /**
  * Implements a balanced 2D-Tree (KD-Tree) for storing EuropeanStation objects.
- * This class supports efficient spatial queries including range searches and proximity searches.
+ * This class provides the underlying data structure for spatial indexing.
  *
  * <p>This implementation ensures balanced tree construction and handles stations with identical coordinates
  * by storing them in the same node, sorted by station name.</p>
@@ -21,7 +21,7 @@ public class KDTree {
     /**
      * Represents a node in the KD-Tree containing stations with identical coordinates.
      */
-    private static class Node {
+    public static class Node {
         private final List<EuropeanStation> stations;
         private Node left;
         private Node right;
@@ -59,6 +59,51 @@ public class KDTree {
          */
         public double getCoordinate(int depth) {
             return (depth % 2 == 0) ? latitude : longitude;
+        }
+
+        /**
+         * Returns the list of stations in this node.
+         *
+         * @return list of stations with identical coordinates
+         */
+        public List<EuropeanStation> getStations() {
+            return stations;
+        }
+
+        /**
+         * Returns the left child node.
+         *
+         * @return left child node, or null if no left child
+         */
+        public Node getLeft() {
+            return left;
+        }
+
+        /**
+         * Returns the right child node.
+         *
+         * @return right child node, or null if no right child
+         */
+        public Node getRight() {
+            return right;
+        }
+
+        /**
+         * Returns the latitude coordinate of this node.
+         *
+         * @return latitude value
+         */
+        public double getLatitude() {
+            return latitude;
+        }
+
+        /**
+         * Returns the longitude coordinate of this node.
+         *
+         * @return longitude value
+         */
+        public double getLongitude() {
+            return longitude;
         }
     }
 
@@ -174,138 +219,12 @@ public class KDTree {
     }
 
     /**
-     * Searches for all stations within a specified geographical rectangle with optional filters.
-     * This method uses the KD-Tree structure for efficient range queries.
+     * Returns the root node of the KD-Tree.
      *
-     * @param latMin minimum latitude of the search area (inclusive)
-     * @param latMax maximum latitude of the search area (inclusive)
-     * @param lonMin minimum longitude of the search area (inclusive)
-     * @param lonMax maximum longitude of the search area (inclusive)
-     * @param countryFilter country code filter (e.g., "PT", "ES"), or null for all countries
-     * @param isCityFilter filter for city stations (true/false), or null for all types
-     * @param isMainStationFilter filter for main stations (true/false), or null for all types
-     * @return list of stations matching the search criteria and filters
+     * @return root node of the tree, or null if tree is empty
      */
-    public List<EuropeanStation> searchInRange(
-            double latMin, double latMax,
-            double lonMin, double lonMax,
-            String countryFilter,
-            Boolean isCityFilter,
-            Boolean isMainStationFilter) {
-
-        List<EuropeanStation> results = new ArrayList<>();
-        searchInRangeRecursive(root, latMin, latMax, lonMin, lonMax, countryFilter,
-                isCityFilter, isMainStationFilter, 0, results);
-        return results;
-    }
-
-    /**
-     * Recursive helper method for range search.
-     *
-     * @param node current node being processed
-     * @param latMin minimum latitude boundary
-     * @param latMax maximum latitude boundary
-     * @param lonMin minimum longitude boundary
-     * @param lonMax maximum longitude boundary
-     * @param countryFilter country filter
-     * @param isCityFilter city station filter
-     * @param isMainStationFilter main station filter
-     * @param depth current depth in tree
-     * @param results list to accumulate matching stations
-     */
-    private void searchInRangeRecursive(
-            Node node,
-            double latMin, double latMax,
-            double lonMin, double lonMax,
-            String countryFilter,
-            Boolean isCityFilter,
-            Boolean isMainStationFilter,
-            int depth,
-            List<EuropeanStation> results) {
-
-        if (node == null) {
-            return;
-        }
-
-        double currentLat = node.latitude;
-        double currentLon = node.longitude;
-        int dim = depth % 2; // 0 = latitude, 1 = longitude
-
-        // Check if current node's coordinates are within the search rectangle
-        boolean inLatRange = (currentLat >= latMin && currentLat <= latMax);
-        boolean inLonRange = (currentLon >= lonMin && currentLon <= lonMax);
-
-        // If node is within range, check all its stations against filters
-        if (inLatRange && inLonRange) {
-            for (EuropeanStation station : node.stations) {
-                if (matchesFilters(station, countryFilter, isCityFilter, isMainStationFilter)) {
-                    results.add(station);
-                }
-            }
-        }
-
-        // Determine which subtrees to explore based on current dimension and search boundaries
-        if (dim == 0) { // Splitting dimension: latitude
-            if (latMin <= currentLat) {
-                searchInRangeRecursive(node.left, latMin, latMax, lonMin, lonMax,
-                        countryFilter, isCityFilter, isMainStationFilter,
-                        depth + 1, results);
-            }
-            if (latMax >= currentLat) {
-                searchInRangeRecursive(node.right, latMin, latMax, lonMin, lonMax,
-                        countryFilter, isCityFilter, isMainStationFilter,
-                        depth + 1, results);
-            }
-        } else { // Splitting dimension: longitude
-            if (lonMin <= currentLon) {
-                searchInRangeRecursive(node.left, latMin, latMax, lonMin, lonMax,
-                        countryFilter, isCityFilter, isMainStationFilter,
-                        depth + 1, results);
-            }
-            if (lonMax >= currentLon) {
-                searchInRangeRecursive(node.right, latMin, latMax, lonMin, lonMax,
-                        countryFilter, isCityFilter, isMainStationFilter,
-                        depth + 1, results);
-            }
-        }
-    }
-
-    /**
-     * Checks if a station matches all specified filters.
-     *
-     * @param station the station to check
-     * @param countryFilter country code filter
-     * @param isCityFilter city station filter
-     * @param isMainStationFilter main station filter
-     * @return true if the station matches all filters, false otherwise
-     */
-    private boolean matchesFilters(EuropeanStation station,
-                                   String countryFilter,
-                                   Boolean isCityFilter,
-                                   Boolean isMainStationFilter) {
-
-        // Apply country filter if specified
-        if (countryFilter != null && !countryFilter.equals("all")) {
-            if (!countryFilter.equalsIgnoreCase(station.getCountry())) {
-                return false;
-            }
-        }
-
-        // Apply city station filter if specified
-        if (isCityFilter != null) {
-            if (isCityFilter != station.isCity()) {
-                return false;
-            }
-        }
-
-        // Apply main station filter if specified
-        if (isMainStationFilter != null) {
-            if (isMainStationFilter != station.isMainStation()) {
-                return false;
-            }
-        }
-
-        return true;
+    public Node getRoot() {
+        return this.root;
     }
 
     /**

@@ -12,6 +12,7 @@ import javafx.scene.control.TextField;
 import pt.ipp.isep.dei.UI.gui.MainController;
 import pt.ipp.isep.dei.domain.EuropeanStation;
 import pt.ipp.isep.dei.domain.KDTree;
+import pt.ipp.isep.dei.domain.SpatialSearch;
 
 import java.util.List;
 import java.util.stream.Collectors;
@@ -31,10 +32,12 @@ public class Usei08Controller {
 
     private MainController mainController;
     private KDTree spatialKDTree;
+    private SpatialSearch spatialSearchEngine;
 
     public void setServices(MainController mainController, KDTree spatialKDTree) {
         this.mainController = mainController;
         this.spatialKDTree = spatialKDTree;
+        this.spatialSearchEngine = new SpatialSearch(spatialKDTree);
     }
 
     @FXML
@@ -80,7 +83,7 @@ public class Usei08Controller {
 
             lblStatus.setText("Searching..."); // Info local
             long startTime = System.nanoTime();
-            List<EuropeanStation> results = spatialKDTree.searchInRange(
+            List<EuropeanStation> results = spatialSearchEngine.searchByGeographicalArea(
                     latMin, latMax, lonMin, lonMax,
                     country,
                     isCity, isMain

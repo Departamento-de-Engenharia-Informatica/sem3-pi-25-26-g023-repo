@@ -38,7 +38,8 @@ public class CargoHandlingUI implements Runnable {
     private final StationRepository estacaoRepo;
     private final LocomotiveRepository locomotivaRepo;
     private final StationIndexManager stationIndexManager;
-    private final KDTree spatialKDTree; // ✅ ADDED FOR USEI08
+    private final KDTree spatialKDTree;
+    private final SpatialSearch spatialSearchEngine;
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
     private final Scanner scanner;
@@ -60,7 +61,8 @@ public class CargoHandlingUI implements Runnable {
                            TravelTimeController travelTimeController, StationRepository estacaoRepo,
                            LocomotiveRepository locomotivaRepo,
                            StationIndexManager stationIndexManager,
-                           KDTree spatialKDTree) {
+                           KDTree spatialKDTree,
+                            SpatialSearch spatialSearchEngine) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
@@ -68,7 +70,8 @@ public class CargoHandlingUI implements Runnable {
         this.estacaoRepo = estacaoRepo;
         this.locomotivaRepo = locomotivaRepo;
         this.stationIndexManager = stationIndexManager;
-        this.spatialKDTree = spatialKDTree; // ✅ INITIALIZE KD-TREE
+        this.spatialKDTree = spatialKDTree;
+        this.spatialSearchEngine = spatialSearchEngine;
         this.scanner = new Scanner(System.in);
     }
 
@@ -283,7 +286,7 @@ public class CargoHandlingUI implements Runnable {
     }
 
     /**
-     * Executes a spatial search with user-defined parameters.
+     * Executes a spatial search with user-defined parameters using SpatialSearchUSEI08.
      * Allows users to specify geographical boundaries and filters.
      */
     private void executeSpatialSearch() {
@@ -312,14 +315,15 @@ public class CargoHandlingUI implements Runnable {
             Boolean isCity = parseOptionalBoolean(cityFilter);
             Boolean isMain = parseOptionalBoolean(mainFilter);
 
-            // Execute search
-            showInfo("Executing spatial search...");
+            showInfo("Executing spatial search with USEI08 engine...");
             long startTime = System.nanoTime();
-            List<EuropeanStation> results = spatialKDTree.searchInRange(
+
+            List<EuropeanStation> results = spatialSearchEngine.searchByGeographicalArea(
                     latMin, latMax, lonMin, lonMax,
                     country.isEmpty() ? null : country.toUpperCase(),
                     isCity, isMain
             );
+
             long endTime = System.nanoTime();
 
             // Display results
@@ -352,93 +356,56 @@ public class CargoHandlingUI implements Runnable {
     }
 
     /**
-     * Executes predefined demo queries for USEI08.
-     * Shows practical examples of spatial queries with performance metrics.
+     * Executes the 5 required demo queries using SpatialSearchQueries class
      */
     private void executeDemoQueries() {
-        System.out.println("\n" + ANSI_BOLD + "--- USEI08 Demo Queries ---" + ANSI_RESET);
-        System.out.println(ANSI_ITALIC + "Executing 5 predefined spatial queries..." + ANSI_RESET);
+        System.out.println("\n" + ANSI_BOLD + "--- USEI08 - 5 Required Demo Queries ---" + ANSI_RESET);
 
-        // Demo 1: All stations in Portugal
-        System.out.println("\n1. " + ANSI_BOLD + "All stations in Portugal:" + ANSI_RESET);
-        long startTime = System.nanoTime();
-        List<EuropeanStation> portugal = spatialKDTree.searchInRange(
-                -90, 90, -180, 180, "PT", null, null
-        );
-        long endTime = System.nanoTime();
-        System.out.printf("   Found: %d stations (%.2f ms)%n",
-                portugal.size(), (endTime - startTime) / 1_000_000.0);
+        try {
+            // Criar o motor de queries com o spatialSearchEngine que já tens
+            SpatialSearchQueries queries = new SpatialSearchQueries(spatialSearchEngine);
 
-        // Demo 2: Main stations in Lisbon area
-        System.out.println("\n2. " + ANSI_BOLD + "Main stations in Lisbon area:" + ANSI_RESET);
-        startTime = System.nanoTime();
-        List<EuropeanStation> lisbon = spatialKDTree.searchInRange(
-                38.70, 38.75, -9.15, -9.10, "PT", true, true
-        );
-        endTime = System.nanoTime();
-        System.out.printf("   Found: %d stations (%.2f ms)%n",
-                lisbon.size(), (endTime - startTime) / 1_000_000.0);
-        if (!lisbon.isEmpty()) {
-            System.out.println(ANSI_ITALIC + "   Sample stations:" + ANSI_RESET);
-            lisbon.forEach(station ->
-                    System.out.println("     • " + station.getStation())
-            );
+            System.out.println(ANSI_ITALIC + "Executing 5 predefined spatial queries as required..." + ANSI_RESET);
+
+            // Executar todas as 5 queries
+            List<SpatialSearchQueries.QueryResult> results = queries.executeAllDemoQueries();
+
+            // Mostrar resultados
+            System.out.println("\n" + ANSI_BOLD + "QUERY RESULTS:" + ANSI_RESET);
+            for (SpatialSearchQueries.QueryResult result : results) {
+                System.out.printf("• %s\n", result.toString());
+            }
+
+            // Mostrar relatório de performance
+            System.out.println("\n" + ANSI_BOLD + "PERFORMANCE REPORT:" + ANSI_RESET);
+            System.out.println(queries.generatePerformanceReport());
+
+            // Mostrar estações de exemplo
+            System.out.println(ANSI_BOLD + "SAMPLE STATIONS:" + ANSI_RESET);
+            System.out.println(queries.getQuerySamples());
+
+            showSuccess("5 required demo queries completed successfully!");
+
+        } catch (Exception e) {
+            showError("Error in demo queries: " + e.getMessage());
         }
-
-        // Demo 3: City stations in France
-        System.out.println("\n3. " + ANSI_BOLD + "City stations in France:" + ANSI_RESET);
-        startTime = System.nanoTime();
-        List<EuropeanStation> france = spatialKDTree.searchInRange(
-                41.0, 51.0, -5.0, 10.0, "FR", true, null
-        );
-        endTime = System.nanoTime();
-        System.out.printf("   Found: %d stations (%.2f ms)%n",
-                france.size(), (endTime - startTime) / 1_000_000.0);
-
-        // Demo 4: Non-main stations in Italy
-        System.out.println("\n4. " + ANSI_BOLD + "Non-main stations in Italy:" + ANSI_RESET);
-        startTime = System.nanoTime();
-        List<EuropeanStation> italy = spatialKDTree.searchInRange(
-                35.0, 48.0, 6.0, 19.0, "IT", null, false
-        );
-        endTime = System.nanoTime();
-        System.out.printf("   Found: %d stations (%.2f ms)%n",
-                italy.size(), (endTime - startTime) / 1_000_000.0);
-
-        // Demo 5: All stations in Madrid area
-        System.out.println("\n5. " + ANSI_BOLD + "All stations in Madrid area:" + ANSI_RESET);
-        startTime = System.nanoTime();
-        List<EuropeanStation> madrid = spatialKDTree.searchInRange(
-                40.30, 40.50, -3.80, -3.60, "ES", null, null
-        );
-        endTime = System.nanoTime();
-        System.out.printf("   Found: %d stations (%.2f ms)%n",
-                madrid.size(), (endTime - startTime) / 1_000_000.0);
-
-        showSuccess("Demo queries completed successfully!");
-        System.out.println("\n" + ANSI_ITALIC + "Note: KD-Tree search complexity is O(√N + K)" + ANSI_RESET);
-        System.out.println(ANSI_ITALIC + "where N = total stations, K = results found" + ANSI_RESET);
     }
 
     /**
-     * Displays KD-Tree statistics and performance information.
+     * Displays KD-Tree statistics and USEI08 performance information.
      */
     private void showKDTreeStats() {
-        System.out.println("\n" + ANSI_BOLD + "--- KD-Tree Statistics ---" + ANSI_RESET);
-        System.out.println("Size: " + ANSI_CYAN + spatialKDTree.size() + ANSI_RESET + " nodes");
-        System.out.println("Height: " + ANSI_CYAN + spatialKDTree.height() + ANSI_RESET);
-        System.out.println("Bucket distribution: " + ANSI_CYAN + spatialKDTree.getBucketSizes() + ANSI_RESET);
+        System.out.println("\n" + ANSI_BOLD + "--- KD-Tree & USEI08 Statistics ---" + ANSI_RESET);
 
-        System.out.println("\n" + ANSI_BOLD + "Performance Analysis:" + ANSI_RESET);
-        System.out.println("Search complexity: " + ANSI_CYAN + "O(√N + K)" + ANSI_RESET + " where:");
-        System.out.println("  - N = total stations in KD-Tree");
-        System.out.println("  - K = number of results found");
-        System.out.println("This is significantly faster than linear scan " + ANSI_CYAN + "O(N)" + ANSI_RESET + " for large datasets.");
+        KDTree tree = spatialSearchEngine.getKdTree();
 
-        System.out.println("\n" + ANSI_BOLD + "Advantages:" + ANSI_RESET);
-        System.out.println("• Fast range queries for geographical areas");
-        System.out.println("• Efficient filtering by country and station type");
-        System.out.println("• Balanced tree structure ensures optimal performance");
+        System.out.println("KD-Tree Properties:");
+        System.out.println("  • Size: " + ANSI_CYAN + tree.size() + ANSI_RESET + " nodes");
+        System.out.println("  • Height: " + ANSI_CYAN + tree.height() + ANSI_RESET);
+        System.out.println("  • Bucket distribution: " + ANSI_CYAN + tree.getBucketSizes() + ANSI_RESET);
+
+        System.out.println("\n" + ANSI_BOLD + "USEI08 Performance Analysis:" + ANSI_RESET);
+        System.out.println(spatialSearchEngine.getComplexityAnalysis());
     }
 
     // ============================================================
