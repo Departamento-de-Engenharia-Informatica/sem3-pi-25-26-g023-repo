@@ -53,7 +53,7 @@ public class USEI01test implements Runnable {
         testResults.put("Scenario 06: Unload exceeding Bay capacity", testExcederCapacidadeBay());
         testResults.put("Scenario 07: Unload exceeding Warehouse capacity", testExcederCapacidadeWarehouse());
         testResults.put("Scenario 08: Unload with no available Warehouses", testSemWarehouses());
-        testResults.put("Scenario 09: Unload with duplicate boxes (should fail or ignore)", testCaixasDuplicadas()); // Assuming validation
+        testResults.put("Scenario 09: Unload with duplicate boxes (should fail or ignore)", testCaixasDuplicadas());
 
         printSummary();
     }
