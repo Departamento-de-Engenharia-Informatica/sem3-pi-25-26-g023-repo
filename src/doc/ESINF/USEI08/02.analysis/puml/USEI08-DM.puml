@@ -1,0 +1,65 @@
+@startuml DomainModel
+
+title USEI08 - Spatial Search by Geographical Area (DM)
+
+hide circle
+hide methods
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+' Spatial Search Engine
+class SpatialSearch {
+}
+
+' KD-Tree from USEI07
+class KDTree {
+}
+
+' KD-Tree Node structure
+class KDTreeNode {
+  latitude
+  longitude
+  stations
+  left
+  right
+}
+
+' Core Domain Entity
+class EuropeanStation {
+  stationName
+  latitude
+  longitude
+  country
+  isCity
+  isMainStation
+  timeZoneGroup
+}
+
+' Query Results container
+class SpatialSearchQueries {
+  description
+  stations
+  executionTime
+  stationsFound
+}
+
+' UI Component for spatial queries
+class CargoHandlingUI {
+}
+
+' Relationships
+SpatialSearch "1" *-- "1" KDTree : uses
+KDTree "1" *-- "1..*" KDTreeNode : contains
+KDTreeNode "1" o-- "1..*" EuropeanStation : stores
+SpatialSearchQueries "1" o-- "1..*" EuropeanStation : contains results
+CargoHandlingUI "1" *-- "1" SpatialSearch : manages
+CargoHandlingUI "1" *-- "1" SpatialSearchQueries : executes
+
+' Dependency relationships
+SpatialSearch ..> KDTreeNode : traverses
+SpatialSearch ..> EuropeanStation : filters
+SpatialSearchQueries ..> SpatialSearch : queries
+
+@enduml

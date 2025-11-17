@@ -1,0 +1,91 @@
+@startuml
+
+title USEI08 - Spatial Search Class Diagram
+
+hide circle
+hide empty members
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class CargoHandlingUI {
+  + handleSpatialQueries()
+  + executeSpatialSearch()
+  + executeDemoQueries()
+  + showKDTreeStats()
+}
+
+class SpatialSearch {
+  - kdTree : KDTree
+  + searchByGeographicalArea(latMin, latMax, lonMin, lonMax, filters) : List<EuropeanStation>
+  - searchInRangeRecursive(node, bounds, filters, depth, results) : void
+  - matchesFilters(station, filters) : boolean
+  - validateCoordinates(bounds) : void
+  + getComplexityAnalysis() : String
+}
+
+class SpatialSearchQueries {
+  - spatialSearch : SpatialSearch
+  + executeAllDemoQueries() : List<QueryResult>
+  + generatePerformanceReport() : String
+  + getQuerySamples() : String
+}
+
+class QueryResult {
+  - description : String
+  - stations : List<EuropeanStation>
+  - executionTimeNs : long
+  - stationsFound : int
+  + getExecutionTimeMs() : double
+}
+
+class KDTree {
+  - root : Node
+  + getRoot() : Node
+  + size() : int
+  + height() : int
+  + getBucketSizes() : Map<Integer, Integer>
+}
+
+class KDTreeNode {
+  - latitude : double
+  - longitude : double
+  - stations : List<EuropeanStation>
+  - left : KDTreeNode
+  - right : KDTreeNode
+  + getCoordinate(depth) : double
+  + getStations() : List<EuropeanStation>
+}
+
+class EuropeanStation {
+  - station : String
+  - latitude : double
+  - longitude : double
+  - country : String
+  - isCity : boolean
+  - isMainStation : boolean
+  - timeZoneGroup : String
+  + getStation() : String
+  + getLatitude() : double
+  + getLongitude() : double
+  + getCountry() : String
+  + isCity() : boolean
+  + isMainStation() : boolean
+}
+
+' Relationships
+CargoHandlingUI "1" *-- "1" SpatialSearch : manages
+CargoHandlingUI "1" *-- "1" SpatialSearchQueries : executes
+SpatialSearch "1" *-- "1" KDTree : uses
+SpatialSearchQueries "1" *-- "1" SpatialSearch : queries
+SpatialSearchQueries "1" *-- "1..*" QueryResult : generates
+KDTree "1" *-- "1..*" KDTreeNode : contains
+KDTreeNode "1" o-- "1..*" EuropeanStation : stores
+
+' Dependency relationships
+SpatialSearch ..> KDTreeNode : traverses
+SpatialSearch ..> EuropeanStation : filters
+QueryResult o-- "1..*" EuropeanStation : contains
+
+@enduml

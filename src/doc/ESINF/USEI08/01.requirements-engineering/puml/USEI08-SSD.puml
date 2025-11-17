@@ -1,0 +1,40 @@
+@startuml
+
+title USEI08 - Search by Geographical Area (SSD)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor User
+participant "CargoHandlingUI" as UI
+participant "SpatialSearch" as Search
+participant "KDTree" as KDTree
+participant "EuropeanStation" as Station
+
+User -> UI: selectSpatialSearchMenu()
+activate UI
+    UI --> User: displaySpatialSearchMenu()
+
+    User -> UI: enterSearchCriteria(latMin, latMax, lonMin, lonMax, filters)
+    activate UI
+        UI -> Search: searchByGeographicalArea(latMin, latMax, lonMin, lonMax, filters)
+        activate Search
+            Search -> Search: validateCoordinates(latMin, latMax, lonMin, lonMax)
+            Search -> KDTree: searchInRange(latMin, latMax, lonMin, lonMax)
+            activate KDTree
+                KDTree -> KDTree: searchInRangeRecursive(root, bounds, depth, results)
+                KDTree --> KDTree: applyFilters(stations, filters)
+                KDTree --> Search: List<EuropeanStation>
+            deactivate KDTree
+            Search --> UI: List<EuropeanStation>
+        deactivate Search
+
+        UI -> UI: formatResults(stations)
+        UI --> User: displaySearchResults(stations, performanceMetrics)
+    deactivate UI
+deactivate UI
+
+@enduml

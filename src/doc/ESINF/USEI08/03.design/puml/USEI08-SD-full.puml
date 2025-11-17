@@ -1,0 +1,82 @@
+@startuml
+
+title USEI08 - Spatial Search by Geographical Area (SD)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor Planner
+participant ":CargoHandlingUI" as UI
+participant ":SpatialSearch" as SpatialSearch
+participant "tree:KDTree" as KDTree
+participant "node:KDTreeNode" as KDTreeNode
+participant "stations:List<EuropeanStation>" as Stations
+
+Planner -> UI: selectSpatialSearch()
+activate UI
+    UI -> Planner: promptForGeographicalBounds()
+    Planner -> UI: enterBounds(latMin, latMax, lonMin, lonMax)
+
+    UI -> Planner: promptForOptionalFilters()
+    Planner -> UI: enterFilters(country, isCity, isMain)
+
+    UI -> SpatialSearch: searchByGeographicalArea(latMin, latMax, lonMin, lonMax, filters)
+    activate SpatialSearch
+
+        SpatialSearch -> SpatialSearch: validateCoordinates()
+
+        SpatialSearch -> KDTree: getRoot()
+        activate KDTree
+        return rootNode
+
+        SpatialSearch -> SpatialSearch: searchInRangeRecursive(rootNode, bounds, filters, 0, results)
+        activate SpatialSearch
+
+            loop for each node in KD-tree
+                SpatialSearch -> KDTreeNode: getCoordinate(depth)
+                activate KDTreeNode
+                return coordinate
+
+                SpatialSearch -> SpatialSearch: checkIfInRange(node, bounds)
+
+                opt "node within range"
+                    SpatialSearch -> KDTreeNode: getStations()
+                    activate KDTreeNode
+                    return stationList
+
+                    loop for each station in node
+                        SpatialSearch -> SpatialSearch: matchesFilters(station, filters)
+                        opt "station matches filters"
+                            SpatialSearch -> Stations: add(station)
+                        end
+                    end
+                end
+
+                SpatialSearch -> SpatialSearch: decideWhichSubtreesToExplore(node, bounds, depth)
+
+                opt "explore left subtree"
+                    SpatialSearch -> KDTreeNode: getLeft()
+                    activate KDTreeNode
+                    return leftNode
+                    SpatialSearch -> SpatialSearch: searchInRangeRecursive(leftNode, bounds, filters, depth+1, results)
+                end
+
+                opt "explore right subtree"
+                    SpatialSearch -> KDTreeNode: getRight()
+                    activate KDTreeNode
+                    return rightNode
+                    SpatialSearch -> SpatialSearch: searchInRangeRecursive(rightNode, bounds, filters, depth+1, results)
+                end
+            end
+
+        deactivate SpatialSearch
+
+    return searchResults
+
+    UI -> Planner: displayResults(searchResults, performanceMetrics)
+deactivate UI
+
+@enduml
