@@ -2,6 +2,6 @@
 <project version="4">
   <component name="SqlDialectMappings">
     <file url="file://$PROJECT_DIR$/src/doc/BDDAD/USBD12/wagons_by_type_gauge_operator.sql" dialect="GenericSQL" />
-    <file url="file://$PROJECT_DIR$/src/doc/BDDAD/USBD18/segments_by_track_type/segments_by_track_type.sql" dialect="GenericSQL" />
+    <file url="file://$PROJECT_DIR$/src/doc/BDDAD/USBD18/segments_by_track_type.sql" dialect="GenericSQL" />
   </component>
 </project>
