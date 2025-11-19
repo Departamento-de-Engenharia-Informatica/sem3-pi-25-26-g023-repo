@@ -116,6 +116,11 @@ public class Main {
             SpatialSearch spatialSearchEngine = new SpatialSearch(spatialKDTree);
             printLoadStep(String.format("  > USEI08 Spatial Search ready! Complexity: O(√n) average case"), true);
 
+
+            printLoadStep("Initializing Radius Search Engine (USEI10)...");
+            // A USEI10 usa a mesma KDTree da USEI08, então já está pronta
+            printLoadStep("  > USEI10 Radius Search ready! Complexity: O(√n + k) average case", true);
+
             // 9️⃣ Launch UI
             System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);
             Thread.sleep(1000);

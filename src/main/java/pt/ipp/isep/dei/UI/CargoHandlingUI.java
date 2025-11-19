@@ -5,6 +5,10 @@ import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
 
+import pt.ipp.isep.dei.domain.RadiusSearch;
+import pt.ipp.isep.dei.domain.StationDistance;
+import pt.ipp.isep.dei.domain.DensitySummary;
+
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -87,7 +91,7 @@ public class CargoHandlingUI implements Runnable {
             showMenu();
             try {
                 // Read option - updated range for new menu items
-                option = readInt(0, 11, ANSI_BOLD + "Option: " + ANSI_RESET);
+                option = readInt(0, 13, ANSI_BOLD + "Option: " + ANSI_RESET); // Mude de 11 para 13
 
                 // --- Robustness: Catches errors from handlers ---
                 try {
@@ -149,11 +153,11 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + " 8. " + ANSI_RESET + "[USEI07] Build & Analyze 2D-Tree (S2)");
         System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)");
         System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "[USEI09] Proximity Search - Nearest N (S2)");
-
+        System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "[USEI10] Radius Search & Density Summary (S2)");
         // --- Info ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
-        System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "View Current Inventory"); // Antigo 10
-        System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "View Warehouse Info");  // Antigo 11
+        System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "View Current Inventory"); // Antigo 11
+        System.out.println(ANSI_GREEN + "13. " + ANSI_RESET + "View Warehouse Info");  // Antigo 12
 
         // --- Exit ---
         System.out.println("\n" + ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
@@ -207,10 +211,13 @@ public class CargoHandlingUI implements Runnable {
             case 10:
                 handleNearestNQuery(); // ✅ USEI09
                 break;
-            case 11: // Antigo 10
-                handleViewInventory();
+            case 11: //  USEI10
+                handleRadiusSearch(); // USEI10
                 break;
             case 12: // Antigo 11
+                handleViewInventory();
+                break;
+            case 13: // Antigo 12
                 handleViewWarehouseInfo();
                 break;
             case 0:
@@ -900,6 +907,146 @@ public class CargoHandlingUI implements Runnable {
                 printBayDetails(wh);
             }
         }
+    }
+
+    /**
+     * Handles Radius Search and Density Summary operations (USEI10).
+     * Provides search within radius and statistical analysis.
+     */
+    private void handleRadiusSearch() {
+        showInfo("--- [USEI10] Radius Search & Density Summary ---");
+
+        try {
+            // 1. Get target coordinates
+            System.out.println(ANSI_ITALIC + "Enter Target Coordinates:" + ANSI_RESET);
+            double targetLat = readDouble("Target Latitude [-90 to 90]: ", -90.0, 90.0);
+            double targetLon = readDouble("Target Longitude [-180 to 180]: ", -180.0, 180.0);
+
+            // 2. Get search radius
+            double radiusKm = readDouble(0.1, 1000.0, ANSI_BOLD + "➡️  Search radius (km, 0.1-1000): " + ANSI_RESET);
+
+            // 3. Create RadiusSearch instance
+            RadiusSearch radiusSearch = new RadiusSearch(spatialKDTree);
+
+            showInfo(String.format("Executing radius search within %.1f km...", radiusKm));
+            long startTime = System.nanoTime();
+
+            // 4. Execute search with summary
+            Object[] results = radiusSearch.radiusSearchWithSummary(targetLat, targetLon, radiusKm);
+            BST<StationDistance, StationDistance> stationsTree = (BST<StationDistance, StationDistance>) results[0];
+            DensitySummary summary = (DensitySummary) results[1];
+
+            long endTime = System.nanoTime();
+            double executionTimeMs = (endTime - startTime) / 1_000_000.0;
+
+            // 5. Display results
+            System.out.printf("\n" + ANSI_BOLD + "✅ USEI10 Results (%.2f ms)%n" + ANSI_RESET, executionTimeMs);
+
+            // Show density summary
+            System.out.println(summary.getFormattedSummary());
+
+            // Show stations ordered by distance
+            List<StationDistance> stations = stationsTree.inOrderTraversal();
+            if (!stations.isEmpty()) {
+                System.out.println(ANSI_BOLD + "--- STATIONS ORDERED BY DISTANCE ---" + ANSI_RESET);
+
+                int displayLimit = Math.min(10, stations.size());
+                for (int i = 0; i < displayLimit; i++) {
+                    StationDistance sd = stations.get(i);
+                    System.out.printf("%s%2d.%s %s %s(%.2f km)%s%n",
+                            ANSI_CYAN, i + 1, ANSI_RESET,
+                            formatStationDisplay(sd.getStation()),
+                            ANSI_YELLOW, sd.getDistanceKm(), ANSI_RESET);
+                }
+
+                if (stations.size() > displayLimit) {
+                    System.out.printf(ANSI_ITALIC + "   ... and %d more stations%s%n",
+                            stations.size() - displayLimit, ANSI_RESET);
+                }
+            } else {
+                showInfo("No stations found within the specified radius.");
+            }
+
+            // 6. Offer additional options
+            System.out.println("\n" + ANSI_BOLD + "Additional Options:" + ANSI_RESET);
+            System.out.println(ANSI_GREEN + "1. " + ANSI_RESET + "Execute another radius search");
+            System.out.println(ANSI_GREEN + "2. " + ANSI_RESET + "Run demo queries");
+            System.out.println(ANSI_YELLOW + "0. " + ANSI_RESET + "Back to main menu");
+
+            int choice = readInt(0, 2, ANSI_BOLD + "Choose option: " + ANSI_RESET);
+
+            switch (choice) {
+                case 1:
+                    handleRadiusSearch(); // Recursive call for another search
+                    break;
+                case 2:
+                    executeUSEI10DemoQueries(radiusSearch);
+                    break;
+                case 0:
+                    // Return to main menu
+                    break;
+            }
+
+        } catch (Exception e) {
+            showError("Error executing radius search (USEI10): " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+    /**
+     * Executes predefined demo queries for USEI10
+     */
+    private void executeUSEI10DemoQueries(RadiusSearch radiusSearch) {
+        showInfo("--- USEI10 Demo Queries ---");
+
+        // Demo queries for major European cities
+        Object[][] demoQueries = {
+                {"Paris, France", 48.8566, 2.3522, 50.0},
+                {"Lisbon, Portugal", 38.7223, -9.1393, 30.0},
+                {"Madrid, Spain", 40.4168, -3.7038, 40.0},
+                {"Berlin, Germany", 52.5200, 13.4050, 25.0},
+                {"Rome, Italy", 41.9028, 12.4964, 35.0}
+        };
+
+        System.out.println(ANSI_BOLD + "Executing 5 demo radius searches..." + ANSI_RESET);
+
+        for (Object[] query : demoQueries) {
+            String location = (String) query[0];
+            double lat = (Double) query[1];
+            double lon = (Double) query[2];
+            double radius = (Double) query[3];
+
+            System.out.println("\n" + ANSI_BOLD + "🔍 " + location + ANSI_RESET);
+            System.out.println("📍 Coordinates: (" + lat + ", " + lon + ")");
+            System.out.println("📏 Radius: " + radius + " km");
+
+            long startTime = System.nanoTime();
+            Object[] results = radiusSearch.radiusSearchWithSummary(lat, lon, radius);
+            long endTime = System.nanoTime();
+
+            DensitySummary summary = (DensitySummary) results[1];
+            List<StationDistance> stations = ((BST<StationDistance, StationDistance>) results[0]).inOrderTraversal();
+
+            System.out.printf("⏱️  Time: %.2f ms | ", (endTime - startTime) / 1_000_000.0);
+            System.out.printf("📊 Found: %d stations | ", stations.size());
+            System.out.printf("🏙️  Cities: %d | ", summary.getStationsByCityType().getOrDefault(true, 0));
+            System.out.printf("⭐ Main: %d%n", summary.getStationsByMainStation().getOrDefault(true, 0));
+
+            // Show top 3 closest stations
+            if (!stations.isEmpty()) {
+                System.out.print("   Closest: ");
+                for (int i = 0; i < Math.min(3, stations.size()); i++) {
+                    StationDistance sd = stations.get(i);
+                    System.out.printf("%s (%.1f km) | ",
+                            sd.getStation().getStation(), sd.getDistanceKm());
+                }
+                System.out.println();
+            }
+
+            System.out.println("─".repeat(60));
+        }
+
+        showSuccess("USEI10 demo queries completed!");
     }
 
     // ============================================================

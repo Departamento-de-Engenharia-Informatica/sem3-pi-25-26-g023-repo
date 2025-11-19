@@ -209,4 +209,63 @@ public class KDTree {
 
         return finder.getResults();
     }
+
+    /**
+     * Finds all stations within a specified radius of a target coordinate.
+     *
+     * @param targetLat Latitude do ponto alvo
+     * @param targetLon Longitude do ponto alvo
+     * @param radiusKm Raio de busca em quilômetros
+     * @return Lista de estações dentro do raio especificado
+     */
+    public List<EuropeanStation> radiusSearch(double targetLat, double targetLon, double radiusKm) {
+        List<EuropeanStation> results = new ArrayList<>();
+        radiusSearchRecursive(root, targetLat, targetLon, radiusKm, results, 0);
+        return results;
+    }
+
+    /**
+     * Recursive method to search for stations within the specified radius.
+     * Utiliza pruning baseado na distância mínima entre o ponto alvo e os retângulos de cada nó.
+     */
+    private void radiusSearchRecursive(Node node, double targetLat, double targetLon,
+                                       double radiusKm, List<EuropeanStation> results, int depth) {
+        if (node == null) {
+            return;
+        }
+
+        // Calcula distância do ponto alvo para este nó
+        double distanceToNode = GeoDistance.haversine(targetLat, targetLon,
+                node.getLatitude(), node.getLongitude());
+
+        // Se o nó está dentro do raio, adiciona todas as suas estações
+        if (distanceToNode <= radiusKm) {
+            results.addAll(node.getStations());
+        }
+
+        int dim = depth % 2;
+        double targetCoord = (dim == 0) ? targetLat : targetLon;
+        double nodeCoord = node.getCoordinate(dim);
+
+        // Determina qual subárvore explorar primeiro (mais próxima)
+        Node closerSubtree, fartherSubtree;
+        if (targetCoord < nodeCoord) {
+            closerSubtree = node.getLeft();
+            fartherSubtree = node.getRight();
+        } else {
+            closerSubtree = node.getRight();
+            fartherSubtree = node.getLeft();
+        }
+
+        // Sempre explora a subárvore mais próxima
+        radiusSearchRecursive(closerSubtree, targetLat, targetLon, radiusKm, results, depth + 1);
+
+        // Calcula distância mínima para a subárvore mais distante
+        double minDistanceToFarther = Math.abs(targetCoord - nodeCoord);
+
+        // Se a distância mínima for menor ou igual ao raio, precisa explorar a subárvore mais distante
+        if (minDistanceToFarther <= radiusKm) {
+            radiusSearchRecursive(fartherSubtree, targetLat, targetLon, radiusKm, results, depth + 1);
+        }
+    }
 }
