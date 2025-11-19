@@ -27,7 +27,7 @@ public class NearestNFinder {
         this.targetLat = targetLat;
         this.targetLon = targetLon;
 
-        // Inicializa o Max-Heap (Comparator inverte a ordem natural)
+
         this.nearestNeighbors = new PriorityQueue<>(N, Comparator.comparingDouble(Neighbor::getDistance).reversed());
     }
 
@@ -55,19 +55,21 @@ public class NearestNFinder {
             }
         }
 
-        // 2. Determina a ordem da busca e o eixo de divisão
-        int dim = node.getDepth() % 2; // Eixo de divisão (0: lat, 1: lon)
-        double targetCoord = node.getCoordinate(dim); // Coordenada alvo no eixo de divisão
-        double nodeCoord = node.getCoordinate(dim);    // Coordenada do nó no eixo de divisão
 
-        // Determina os sub-árvores
+        int dim = node.getDepth() % 2;
+
+        double targetCoord = (dim == 0) ? targetLat : targetLon;
+        double nodeCoord = node.getCoordinate(dim);
+
+
+
         KDTree.Node closerSubtree = (targetCoord < nodeCoord) ? node.getLeft() : node.getRight();
         KDTree.Node fartherSubtree = (targetCoord < nodeCoord) ? node.getRight() : node.getLeft();
 
-        // Busca no lado mais próximo
+
         search(closerSubtree);
 
-        // 3. Poda (Pruning)
+
 
         if (nearestNeighbors.size() < N) {
             // Se ainda não encontrou N vizinhos, precisa explorar o outro lado
