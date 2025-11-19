@@ -19,6 +19,8 @@ public class KDTree {
         private final double longitude;
         private final int depth;
 
+
+
         /**
          * Constructs a new KD-Tree node.
          *
