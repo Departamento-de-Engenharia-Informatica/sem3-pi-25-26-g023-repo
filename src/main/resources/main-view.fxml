@@ -33,6 +33,7 @@
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI07" styleClass="sidebar-button" text="[USEI07] Analyze 2D-Tree (S2)" />
 
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI08" styleClass="sidebar-button" text="[USEI08] Spatial Queries (S2)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI09" styleClass="sidebar-button" text="[USEI09] Nearest-N Search (S2)" />
                 <Label styleClass="sidebar-section-title" text="Database (S3)" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowBDDAD" styleClass="sidebar-button" text="BDDAD Functions" />
             </children>

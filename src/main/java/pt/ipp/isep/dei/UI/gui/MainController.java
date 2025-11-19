@@ -300,6 +300,32 @@ public class MainController {
     }
 
     @FXML
+    void handleShowUSEI09(ActionEvent event) {
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/esinf-usei09-view.fxml"));
+
+            // 1. CORREÇÃO: Mudar o tipo para BorderPane
+            BorderPane view = loader.load();
+
+            // 2. Injetar serviços no Controller (manter lógica existente)
+            Usei09Controller controller = loader.getController();
+            controller.setServices(this, this.spatialKDTree);
+
+            // 3. Mostrar a vista
+            centerContentPane.getChildren().setAll(view);
+
+            // 4. ANCORAGEM: Preencher o AnchorPane pai (centerContentPane)
+            AnchorPane.setTopAnchor(view, 0.0);
+            AnchorPane.setBottomAnchor(view, 0.0);
+            AnchorPane.setLeftAnchor(view, 0.0);
+            AnchorPane.setRightAnchor(view, 0.0);
+
+        } catch (IOException e) {
+            // ... (lidar com erro de carregamento)
+        }
+    }
+
+    @FXML
     public void handleShowESINF(ActionEvent event) {
         statusLabel.setText("ESINF Feature (Under Construction)");
         centerContentPane.getChildren().clear();
