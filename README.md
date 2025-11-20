@@ -14,7 +14,11 @@ Please navigate to the specific Sprint documentation below:
 
 Focus: Inventory Management (WMS), Pick Path Sequencing, BDDAD Data Definition (DDL), and Initial LAPR3 Travel Time calculations.
 
-* **[🔗 View SPRINT 1 Documentation (README_SPRINT1.md)]**
+* **[🔗 View SPRINT 1 Documentation](README_SPRINT1.md)**
+
+---
+
+
 
 ---
 
@@ -22,6 +26,6 @@ Focus: Inventory Management (WMS), Pick Path Sequencing, BDDAD Data Definition (
 
 Focus: **KD-Trees** (Spatial Search), **Max-Heaps** (k-NN), **Graph Algorithms** (LAPR3), Advanced BDDAD Queries (DML/DQL), and **ARQCP** low-level integrations.
 
-* **[🔗 View SPRINT 2 Documentation (README_SPRINT2.md)]**
+* **[🔗 View SPRINT 2 Documentation](README_SPRINT2.md)**
 
 ---
