@@ -1,43 +1,26 @@
-# Define the RISC-V cross-compiler
-CC = riscv64-unknown-elf-gcc
+CC = riscv32-linux-gcc
+CFLAGS = -Wall -Wextra -fanalyzer -g
+ARCHFLAGS = -march=rv32imd -mabi=ilp32d
+LIBRV32 = ${HOME}/bin/bootlin/riscv32-buildroot-linux-gnu/sysroot
 
-# Compilation flags
-# -g: Add debug info
-# -O2: Optimization level 2
-# -march=rv64gc: Target 64-bit RISC-V with General, Atomic, and Compressed instructions
-# -mabi=lp64d: Use 64-bit Long/Pointer and 64-bit Double-precision floats
-CFLAGS = -g -O2 -march=rv64gc -mabi=lp64d
+.PHONY: clean run debug
 
-# Name of the final executable
-TARGET = usac02_test
+program.elf: main.o asm.o 
+	$(CC) $(CFLAGS) $(ARCHFLAGS) main.o asm.o -o program.elf
 
-# List of source files
-C_SRCS = main.c
-ASM_SRCS = usac02_decrypt.s
+main.o: main.c asm.h
+	$(CC) $(CFLAGS) $(ARCHFLAGS) -c main.c -o main.o
 
-# Generate object file names from source file names
-OBJS = $(C_SRCS:.c=.o) $(ASM_SRCS:.s=.o)
+asm.o: asm.s asm.h
+	$(CC) $(CFLAGS) $(ARCHFLAGS) -c asm.s -o asm.o
 
-# Default rule: build the target executable
-all: $(TARGET)
-
-# Linking rule: combines all object files into the final executable
-$(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $(TARGET) $(OBJS)
-
-# Compilation rule for C files (.c -> .o)
-%.o: %.c
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Compilation rule for Assembly files (.s -> .o)
-%.o: %.s
-	$(CC) $(CFLAGS) -c $< -o $@
-
-# Clean rule: removes generated files
 clean:
-	rm -f $(TARGET) $(OBJS)
+	rm -f *.o *.elf
 
-# Run rule: builds the target and executes it with qemu
-run: all
-	@echo "--- Running $(TARGET) with qemu-riscv64 ---"
-	qemu-riscv64 ./$(TARGET)
+run: clean program.elf
+	qemu-riscv32 -L $(LIBRV32) ./program.elf
+
+debug: program.elf
+	@echo "On other terminal window do:"
+	@echo "riscv32-linux-gdb-tui ./program.elf "
+	qemu-riscv32 -L $(LIBRV32) -g 1234 program.elf -S
