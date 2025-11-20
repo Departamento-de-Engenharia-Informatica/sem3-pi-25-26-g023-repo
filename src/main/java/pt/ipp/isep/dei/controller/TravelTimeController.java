@@ -2,7 +2,6 @@ package pt.ipp.isep.dei.controller;
 
 import pt.ipp.isep.dei.domain.EuropeanStation;
 import pt.ipp.isep.dei.domain.Locomotive;
-// Outras classes (LineSegment, RailwayPath, Repositórios, Service)
 import pt.ipp.isep.dei.domain.LineSegment;
 import pt.ipp.isep.dei.domain.RailwayPath;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
@@ -19,6 +18,8 @@ import java.util.Optional;
 import java.util.Set;
 
 public class TravelTimeController {
+
+    private static final double LOCOMOTIVE_DEFAULT_MAX_SPEED = 160.0; // Limite padrão para o cálculo de tempo
 
     private final StationRepository estacaoRepo;
     private final LocomotiveRepository locomotivaRepo;
@@ -56,7 +57,8 @@ public class TravelTimeController {
 
         Locomotive selectedLocomotive = optLocomotiva.get();
 
-        RailwayPath path = networkService.findFastestPath(idEstacaoPartida, idEstacaoChegada, selectedLocomotive);
+        // O NetworkService já não recebe a Locomotiva, mas sim a velocidade limite
+        RailwayPath path = networkService.findFastestPath(idEstacaoPartida, idEstacaoChegada, LOCOMOTIVE_DEFAULT_MAX_SPEED);
 
         if (path == null || path.isEmpty()) {
             return String.format("❌ ERROR: No railway path found between %s and %s.",
@@ -86,15 +88,17 @@ public class TravelTimeController {
         if (reachableStations.isEmpty()) {
             sb.append("   No directly connected stations found.\n");
         } else {
-            Optional<Locomotive> defaultLoco = locomotivaRepo.findAll().stream().findFirst();
-            double speedForEstimation = defaultLoco.map(Locomotive::getMaxSpeed).orElse(100.0);
+            // CORREÇÃO: Usar a constante, pois getMaxSpeed() não existe mais
+            // double speedForEstimation = defaultLoco.map(Locomotive::getMaxSpeed).orElse(100.0);
+            double speedForEstimation = LOCOMOTIVE_DEFAULT_MAX_SPEED; // <--- CORREÇÃO
 
             // CORREÇÃO DE TIPO
             for (EuropeanStation destino : reachableStations) {
                 Optional<LineSegment> directSegment = segmentoRepo.findDirectSegment(idEstacaoPartida, destino.getIdEstacao());
                 if (directSegment.isPresent()) {
                     LineSegment seg = directSegment.get();
-                    double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), speedForEstimation);
+                    // CORREÇÃO: Usar a constante, pois getMaxSpeed() não existe mais
+                    double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), speedForEstimation); // <--- CORREÇÃO
                     double timeHours = (effectiveSpeed > 0 && seg.getComprimento() > 0) ? (seg.getComprimento() / effectiveSpeed) : Double.POSITIVE_INFINITY;
                     long timeMinutes = (!Double.isInfinite(timeHours) && !Double.isNaN(timeHours)) ? Math.round(timeHours * 60) : -1;
                     sb.append(String.format("   -> %s (ID: %d) | Dist: %.2f km | Est. Time: ~%s min%n",
@@ -152,8 +156,9 @@ public class TravelTimeController {
         // ... (Corpo do método usa partida.getStation() e chegada.getStation()) ...
         StringBuilder sb = new StringBuilder();
         sb.append(String.format("Results for travel from %s to %s:%n", partida.getStation(), chegada.getStation()));
-        sb.append(String.format("   (Selected Locomotive: ID %d - %s, Max Speed: %.1f km/h)%n",
-                locomotiva.getIdLocomotiva(), locomotiva.getModelo(), locomotiva.getMaxSpeed()));
+        // CORREÇÃO: Mudar de Max Speed para PowerKW e usar o valor da constante
+        sb.append(String.format("   (Selected Locomotive: ID %d - %s, Power: %.0f kW, Max Speed Assumption: %.1f km/h)%n", // <--- MUDANÇA
+                locomotiva.getIdLocomotiva(), locomotiva.getModelo(), locomotiva.getPowerKW(), LOCOMOTIVE_DEFAULT_MAX_SPEED)); // <--- MUDANÇA
         sb.append("-".repeat(60) + "\n");
         sb.append("   Fastest path (by segments):\n");
 
@@ -188,7 +193,8 @@ public class TravelTimeController {
             }
 
 
-            double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), locomotiva.getMaxSpeed());
+            // CORREÇÃO: Usar a constante, pois getMaxSpeed() não existe mais
+            double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), LOCOMOTIVE_DEFAULT_MAX_SPEED); // <--- CORREÇÃO
             double segmentTimeHours = Double.POSITIVE_INFINITY;
             if (effectiveSpeed > 0 && seg.getComprimento() > 0) {
                 segmentTimeHours = seg.getComprimento() / effectiveSpeed;

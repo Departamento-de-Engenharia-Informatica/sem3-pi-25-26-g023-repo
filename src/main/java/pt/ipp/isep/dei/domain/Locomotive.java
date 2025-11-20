@@ -1,14 +1,20 @@
 package pt.ipp.isep.dei.domain;
 
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleDoubleProperty;
+import javafx.beans.property.StringProperty;
+import javafx.beans.property.DoubleProperty;
+
+
 /**
  * Represents a locomotive in the railway system.
  * <p>
  * Each locomotive has:
  * <ul>
- * <li>A unique ID.</li>
+ * <li>A unique ID (int).</li>
  * <li>A model name.</li>
  * <li>A type, either "diesel" or "electric".</li>
- * <li>A maximum speed in km/h.</li> // <-- NOVO
+ * <li>A power rating in kW (double).</li>
  * </ul>
  * This class is immutable; all fields are final and can only be set via the constructor.
  */
@@ -17,7 +23,7 @@ public class Locomotive {
     private final int idLocomotiva;
     private final String modelo;
     private final String tipo; // "diesel" or "electric"
-    private final double maxSpeed; // <-- NOVO CAMPO (km/h)
+    private final double powerKW; // <--- MUDANÇA: AGORA É POTÊNCIA (kW)
 
     /**
      * Constructs a Locomotive object.
@@ -25,18 +31,17 @@ public class Locomotive {
      * @param idLocomotiva Unique identifier of the locomotive.
      * @param modelo       Model name of the locomotive.
      * @param tipo         Type of the locomotive ("diesel" or "eletrica").
-     * @param maxSpeed     Maximum speed of the locomotive in km/h. // <-- NOVO PARÂMETRO
+     * @param powerKW      Power rating of the locomotive in kW.
      */
-    public Locomotive(int idLocomotiva, String modelo, String tipo, double maxSpeed) { // <-- ASSINATURA ALTERADA
+    public Locomotive(int idLocomotiva, String modelo, String tipo, double powerKW) {
         this.idLocomotiva = idLocomotiva;
         this.modelo = modelo;
         this.tipo = tipo;
-        this.maxSpeed = maxSpeed; // <-- ATRIBUIÇÃO
+        this.powerKW = powerKW; // <--- ATRIBUIÇÃO CORRIGIDA
     }
 
     /**
-     * Returns the unique ID of the locomotive.
-     *
+     * Returns the unique ID of the locomotive (como int).
      * @return Locomotive ID.
      */
     public int getIdLocomotiva() {
@@ -44,8 +49,15 @@ public class Locomotive {
     }
 
     /**
+     * Returns the unique ID of the locomotive (como String, para UI).
+     * @return Locomotive ID como String.
+     */
+    public String getLocomotiveId() {
+        return String.valueOf(idLocomotiva);
+    }
+
+    /**
      * Returns the model name of the locomotive.
-     *
      * @return Model name.
      */
     public String getModelo() {
@@ -54,30 +66,45 @@ public class Locomotive {
 
     /**
      * Returns the type of the locomotive ("diesel" or "electric").
-     *
      * @return Type as a string.
      */
     public String getTipo() {
         return tipo;
     }
 
-    /** // <-- NOVO GETTER
-     * Returns the maximum speed of the locomotive in km/h.
-     *
-     * @return Maximum speed in km/h.
+    /**
+     * Returns the power rating of the locomotive in kW.
+     * @return Power in kW.
      */
-    public double getMaxSpeed() {
-        return maxSpeed;
+    public double getPowerKW() { // <--- GETTER RENOMEADO
+        return powerKW;
     }
 
-    /**
-     * Returns a string representation of the locomotive.
-     *
-     * @return A string in the format: "ID: {id} - Model {model} ({type}) - Max Speed: {speed} km/h". // <-- ALTERADO
-     */
+    // -------------------------------------------------------------------
+    // --- MÉTODOS JavaFX Property (para TableView Binding) ---
+    // -------------------------------------------------------------------
+
+    public StringProperty locomotiveIdProperty() {
+        return new SimpleStringProperty(String.valueOf(idLocomotiva));
+    }
+
+    public StringProperty modelProperty() {
+        return new SimpleStringProperty(modelo);
+    }
+
+    public StringProperty typeProperty() {
+        return new SimpleStringProperty(tipo);
+    }
+
+    public DoubleProperty powerKWProperty() { // <--- PROPERTY RENOMEADA
+        return new SimpleDoubleProperty(powerKW);
+    }
+
+    // -------------------------------------------------------------------
+
     @Override
     public String toString() {
-        // Incluir a velocidade máxima na representação textual
-        return String.format("ID: %d - Modelo %s (%s) - Max Speed: %.1f km/h", idLocomotiva, modelo, tipo, maxSpeed); // <-- ALTERADO
+        // MUDANÇA NA SAÍDA TEXTUAL
+        return String.format("ID: %d - Modelo %s (%s) - Power: %.0f kW", idLocomotiva, modelo, tipo, powerKW);
     }
 }

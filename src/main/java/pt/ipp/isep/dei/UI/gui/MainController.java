@@ -160,6 +160,17 @@ public class MainController {
                 }
             }
 
+            // ✅ --- NOVO BLOCO PARA BDDADMainController (ADICIONADO) ---
+            else if (controller instanceof BDDADMainController) {
+                if (backendService instanceof MainController) {
+                    // O BDDADMainController precisa do MainController para chamar loadOperatorCrudView()
+                    ((BDDADMainController) controller).setServices((MainController) backendService);
+                } else {
+                    System.err.println("Erro de injeção: BDDADMainController esperava um MainController.");
+                }
+            }
+            // --- FIM DO NOVO BLOCO DE INJEÇÃO ---
+
             // --- END OF INJECTION ---
 
             centerContentPane.getChildren().clear();
@@ -342,8 +353,20 @@ public class MainController {
         loadView("lapr3-travel-time-view.fxml", this.travelTimeController);
     }
 
+    /**
+     * Tratador do menu principal BDDAD. Carrega o menu de escolha de entidades.
+     */
     @FXML
     public void handleShowBDDAD(ActionEvent event) {
+        statusLabel.setText("BDDAD Features Menu");
+        // Carrega o novo menu de CRUDs
+        loadView("bdad-main-view.fxml", this);
+    }
+
+    /**
+     * Carrega o ecrã CRUD para a entidade Operator. Chamado pelo BDDADMainController.
+     */
+    public void loadOperatorCrudView() {
         statusLabel.setText("BDDAD Features: Operator CRUD");
         // Limpa o painel central antes de carregar a nova vista
         centerContentPane.getChildren().clear();
@@ -368,11 +391,42 @@ public class MainController {
         } catch (Exception e) {
             statusLabel.setText("❌ Error loading BDDAD CRUD view.");
             System.err.println("Error loading FXML for BDDAD CRUD: " + e.getMessage());
-            // Aqui você pode adicionar mainController.showNotification se for o MainController
-            // mainController.showNotification("Failed to load DB CRUD screen.", "error");
             e.printStackTrace();
         }
     }
+
+    /**
+     * Carrega o ecrã CRUD para a entidade Locomotive. Chamado pelo BDDADMainController.
+     */
+    public void loadLocomotiveCrudView() {
+        statusLabel.setText("BDDAD Features: Locomotive CRUD");
+        centerContentPane.getChildren().clear();
+
+        try {
+            // 1. Carrega o FXML
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/locomotive-crud-view.fxml"));
+            Parent root = loader.load();
+
+            // 2. Obtém o Controller e injeta o serviço
+            LocomotiveCRUDController controller = loader.getController();
+            // IMPORTANTE: O nome do controller é 'LocomotiveCRUDController'
+            controller.setServices(this);
+
+            // 3. Adiciona e ancora a nova vista
+            centerContentPane.getChildren().add(root);
+            AnchorPane.setTopAnchor(root, 0.0);
+            AnchorPane.setLeftAnchor(root, 0.0);
+            AnchorPane.setRightAnchor(root, 0.0);
+            AnchorPane.setBottomAnchor(root, 0.0);
+
+        } catch (Exception e) {
+            statusLabel.setText("❌ Error loading Locomotive CRUD view.");
+            System.err.println("Error loading FXML for Locomotive CRUD: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
+
     /**
      * Mostra uma notificação pop-up no canto superior direito.
      * Esta função pode ser chamada por qualquer controlador filho.
@@ -425,4 +479,29 @@ public class MainController {
         notificationPane.getChildren().add(notificationLabel);
         fadeIn.play();
     }
+
+    public void loadWagonCrudView() {
+        statusLabel.setText("BDDAD Features: Wagon CRUD");
+        centerContentPane.getChildren().clear();
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/wagon-crud-view.fxml"));
+            Parent root = loader.load();
+
+            WagonCRUDController controller = loader.getController();
+            controller.setServices(this);
+
+            centerContentPane.getChildren().add(root);
+            AnchorPane.setTopAnchor(root, 0.0);
+            AnchorPane.setLeftAnchor(root, 0.0);
+            AnchorPane.setRightAnchor(root, 0.0);
+            AnchorPane.setBottomAnchor(root, 0.0);
+
+        } catch (Exception e) {
+            statusLabel.setText("❌ Error loading Wagon CRUD view.");
+            System.err.println("Error loading FXML for Wagon CRUD: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
 }

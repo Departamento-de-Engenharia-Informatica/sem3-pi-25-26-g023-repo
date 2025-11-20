@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.layout.VBox?>
+
+<VBox alignment="TOP_CENTER" spacing="20.0" styleClass="view-container, split-pane-content"
+      stylesheets="@style.css" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1"
+      fx:controller="pt.ipp.isep.dei.UI.gui.views.BDDADMainController">
+    <padding>
+        <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
+    </padding>
+
+    <Label text="BDDAD Features: CRUD Operations" styleClass="view-title" />
+    <Label text="Selecione a entidade para gerir:" styleClass="section-title" />
+
+    <VBox alignment="TOP_CENTER" spacing="10.0">
+
+        <Button text="Operator (Entidade BDDAD)" onAction="#handleShowOperatorCRUD" prefWidth="300.0" styleClass="button-feature"/>
+
+        <Button text="Locomotive (CRUD)" onAction="#handleShowLocomotiveCRUD" prefWidth="300.0" styleClass="button-feature"/>
+        <Button text="Wagon (CRUD)" onAction="#handleShowWagonCRUD" prefWidth="300.0" styleClass="button-feature"/>
+        <Button text="Segment (A implementar)" prefWidth="300.0" disable="true"/>
+    </VBox>
+</VBox>

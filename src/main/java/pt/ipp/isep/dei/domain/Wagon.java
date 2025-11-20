@@ -1,45 +1,75 @@
 package pt.ipp.isep.dei.domain;
 
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.StringProperty;
+import javafx.beans.property.IntegerProperty;
+
 import java.util.ArrayList;
 import java.util.List;
 
-/**
- * Represents a wagon containing boxes to be unloaded into warehouse inventory.
- */
 public class Wagon {
-    private final String wagonId;
+
+    // --- Railway/CRUD Fields (Immutable) ---
+    private final String idWagon; // <--- CORREÇÃO: ID AGORA É STRING
+    private final int modelId;
+    private final int serviceYear;
+
+    // --- WMS Fields ---
     private final List<Box> boxes = new ArrayList<>();
 
     /**
-     * Creates a new wagon with the specified identifier.
-     * @param wagonId unique identifier for the wagon
+     * Constructs a Wagon object used for CRUD/DB loading (String ID).
+     */
+    public Wagon(String idWagon, int modelId, int serviceYear) { // <--- CONSTRUTOR ALTERADO
+        this.idWagon = idWagon;
+        this.modelId = modelId;
+        this.serviceYear = serviceYear;
+    }
+
+    /**
+     * Constructor for WMS loading where a String ID is used (Original usage).
      */
     public Wagon(String wagonId) {
-
-        this.wagonId = wagonId;
+        this.idWagon = wagonId; // Não há mais conversão problemática
+        this.modelId = 0;
+        this.serviceYear = 0;
     }
 
-    /**
-     * Adds a box to the wagon.
-     * @param b the box to add
-     */
-    public void addBox(Box b) {
 
-        boxes.add(b);
+    // --- Getters ---
+
+    public String getIdWagon() { // <--- RETORNA STRING
+        return idWagon;
     }
 
-    /**
-     * @return all boxes in the wagon
-     */
-    public List<Box> getBoxes() {
-
-        return boxes;
+    public String getWagonId() { // <--- MANTIDO PARA COMPATIBILIDADE WMS (retorna String)
+        return idWagon;
     }
 
-    /**
-     * @return the wagon identifier
-     */
-    public String getWagonId() {
-        return wagonId;
+    public int getModelId() {
+        return modelId;
+    }
+
+    public int getServiceYear() {
+        return serviceYear;
+    }
+
+    // --- WMS methods ---
+    public void addBox(Box b) { boxes.add(b); }
+    public List<Box> getBoxes() { return boxes; }
+
+    // --- JavaFX Property Methods ---
+
+    public StringProperty wagonIdProperty() {
+        return new SimpleStringProperty(idWagon);
+    }
+
+    public StringProperty modelIdProperty() {
+        return new SimpleStringProperty(String.valueOf(modelId));
+    }
+
+    public IntegerProperty serviceYearProperty() {
+        return new SimpleIntegerProperty(serviceYear);
     }
 }

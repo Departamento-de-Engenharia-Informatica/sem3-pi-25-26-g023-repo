@@ -13,7 +13,10 @@ import java.util.stream.Collectors;
 public class OrderAllocator {
 
     /** Allocation mode: STRICT (all or nothing) or PARTIAL (allow partial allocation). */
-    public enum Mode { STRICT, PARTIAL }
+    public enum Mode {
+        STRICT,
+        PARTIAL
+    } // <--- ESTE ENUM ESTAVA EM FALTA!
 
     private Map<String, Item> items;
 

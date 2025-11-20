@@ -20,16 +20,16 @@ public class RailwayNetworkService {
 
     /**
      * Finds the fastest path between two stations using Dijkstra's algorithm,
-     * considering the selected locomotive's maximum speed. // <-- ALTERADO
+     * considering a given maximum speed limit.
      *
      * @param idPartida ID da estação de partida.
      * @param idChegada ID da estação de chegada.
-     * @param locomotive A locomotiva selecionada para a viagem. // <-- NOVO PARÂMETRO
+     * @param maxSpeedLimit A velocidade máxima em km/h a ser usada no cálculo. // <--- NOVO PARÂMETRO
      * @return O caminho mais rápido (RailwayPath) ou null se não houver caminho.
      */
-    public RailwayPath findFastestPath(int idPartida, int idChegada, Locomotive locomotive) { // <-- ASSINATURA ALTERADA
-        if (locomotive == null) {
-            throw new IllegalArgumentException("Locomotive cannot be null for path calculation.");
+    public RailwayPath findFastestPath(int idPartida, int idChegada, double maxSpeedLimit) { // <--- ASSINATURA ALTERADA
+        if (maxSpeedLimit <= 0) {
+            throw new IllegalArgumentException("Maximum speed limit must be a positive value.");
         }
 
         List<EuropeanStation> allStations = estacaoRepo.findAll();
@@ -66,8 +66,8 @@ public class RailwayNetworkService {
 
                 if (v != -1) { // Se 'seg' está ligado a 'u'
                     // --- ALTERAÇÃO PRINCIPAL ---
-                    // Calcular a velocidade efetiva: o mínimo entre a velocidade do segmento e a da locomotiva
-                    double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), locomotive.getMaxSpeed());
+                    // Calcular a velocidade efetiva: o mínimo entre a velocidade do segmento e o limite
+                    double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), maxSpeedLimit); // <--- CORREÇÃO
 
                     // Calcular o tempo de viagem para este segmento
                     double travelTime;
