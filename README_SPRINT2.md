@@ -72,7 +72,7 @@ Implementation of the conceptual model updates and the core scheduling functiona
     * [🏗️ Domain Model Update (PlantUML)](src/doc/LAPR3/USLP05/domain-model-update.puml)
 * **USLP06: Data Dictionary/Glossary Update** 📖
     * *Objective: Update the data dictionary/glossary according to the changed requirements.*
-    * [📖 Glossary Update](src/doc/LAPR3/USLP06/glossary-update.md)
+    * [📖 Glossary Update](src/doc/LAPR3/USLP06)
 * **USLP07: Train Dispatch Scheduler** ⏱️
     * *Objective: Implement a scheduler that allows dispatching a list of trains (simple or complex routes) with a planned departure date/time.*
     * [📜 Requirements](src/doc/LAPR3/USLP07/01.requirements-engineering/USLP07-requirements.md)
