@@ -2,150 +2,207 @@ package pt.ipp.isep.dei.DatabaseConnection;
 
 import java.sql.*;
 
-/**
- * Utility class for managing database connections and reading selected tables.
- * <p>
- * This class provides methods to obtain JDBC connections to the Oracle database
- * and to read data from specific tables, such as {@code RAILWAY_LINE}, {@code LINE_SEGMENT},
- * and {@code ROLLING_STOCK} (locomotives). It also includes a {@code main} method
- * for testing or demonstration purposes.
- * <p>
- * IMPORTANT: Users of {@link #getConnection()} are responsible for closing the connection.
- */
-
 public class DatabaseConnection {
 
     // --- Connection Details (Ensure these are correct) ---
-    private static final String DB_URL = "jdbc:oracle:thin:@vsgate-s1.dei.isep.ipp.pt:10945:xe";
-    private static final String DB_USER = "system"; // Verify if correct
+    private static final String DB_URL = "jdbc:oracle:thin:@vsgate-s1.dei.isep.ipp.pt:10221:xe";
+    private static final String DB_USER = "system";
     private static final String DB_PASSWORD = "oracle"; // <-- CHANGE TO CORRECT PASSWORD
     // --- End of Details ---
 
-    // Load Oracle JDBC driver
     static {
         try {
             Class.forName("oracle.jdbc.driver.OracleDriver");
         } catch (ClassNotFoundException e) {
             System.err.println("❌ FATAL ERROR: Oracle JDBC Driver not found in classpath!");
             System.err.println("   Verify that the Maven 'ojdbc' dependency is correctly included in pom.xml.");
-            System.exit(1); // Exit if driver fails to load
+            System.exit(1);
         }
     }
 
-    /**
-     * Obtains a new connection to the database.
-     * <p>
-     * The caller is responsible for closing the connection to prevent resource leaks.
-     *
-     * @return a new {@link Connection} object
-     * @throws SQLException if a database access error occurs
-     */
     public static Connection getConnection() throws SQLException {
         return DriverManager.getConnection(DB_URL, DB_USER, DB_PASSWORD);
     }
 
     /**
-     * Connects to the database and prints selected data from the tables:
-     * {@code RAILWAY_LINE}, {@code LINE_SEGMENT}, and {@code ROLLING_STOCK}.
-     * <p>
-     * This method is mainly intended for testing, debugging, or inspection purposes.
+     * Extracts and prints data from literally all major tables defined in the DDL.
      */
     public static void printSelectedDatabaseData() {
-        System.out.println("\n--- Reading Database Data ---");
+        System.out.println("\n\n############################################################");
+        System.out.println("### FULL DATABASE EXTRACTION (USBD04 DML Verification) ###");
+        System.out.println("############################################################");
 
         try (Connection conn = getConnection()) {
 
-            // 1. Print RAILWAY_LINE
-            System.out.println("\n" + "=".repeat(60));
-            System.out.println("   Table: RAILWAY_LINE");
-            System.out.println("=".repeat(60));
-            String lineSql = "SELECT line_id, name, owner_id, start_facility_id, end_facility_id, gauge " +
-                    "FROM RAILWAY_LINE ORDER BY line_id";
-            int lineCount = 0;
-            try (PreparedStatement stmt = conn.prepareStatement(lineSql);
+            // =========================================================================
+            // 1. OPERATOR (Tabela Mestra)
+            // =========================================================================
+            printSectionTitle("OPERATOR");
+            String sql1 = "SELECT operator_id, name FROM OPERATOR ORDER BY operator_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql1);
                  ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
                 while (rs.next()) {
-                    int lineId = rs.getInt("line_id");
-                    String name = rs.getString("name");
-                    String ownerId = rs.getString("owner_id");
-                    int startFacilityId = rs.getInt("start_facility_id");
-                    int endFacilityId = rs.getInt("end_facility_id");
-                    int gauge = rs.getInt("gauge");
-                    System.out.printf("   -> LineID: %d | Name: %s | Owner: %s | Facilities: %d <-> %d | Gauge: %d\n",
-                            lineId, name, ownerId, startFacilityId, endFacilityId, gauge);
-                    lineCount++;
+                    System.out.printf("   -> ID: %s | Name: %s\n", rs.getString(1), rs.getString(2));
+                    count++;
                 }
-                if (lineCount == 0) System.out.println("   -> RAILWAY_LINE table is empty or not found.");
-            } catch (SQLException e) {
-                System.err.println("   ❌ Error reading RAILWAY_LINE: " + e.getMessage());
+                if (count == 0) System.out.println("   -> OPERATOR table is empty.");
             }
 
-            // 2. Print LINE_SEGMENT
-            System.out.println("\n" + "=".repeat(80));
-            System.out.println("   Table: LINE_SEGMENT");
-            System.out.println("=".repeat(80));
-            String segmentSql = "SELECT segment_id, line_id, segment_order, electrified, max_weight_kg_m, length_m, number_tracks " +
+            // =========================================================================
+            // 2. STATION & FACILITY (Pontos Geográficos)
+            // =========================================================================
+            printSectionTitle("STATION (Pontos Geográficos)");
+            String sql2 = "SELECT station_id, name, latitude, longitude FROM STATION ORDER BY station_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql2);
+                 ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    System.out.printf("   -> ID: %s | Name: %s | Coords: %.6f, %.6f\n",
+                            rs.getString(1), rs.getString(2), rs.getDouble(3), rs.getDouble(4));
+                    count++;
+                }
+                if (count == 0) System.out.println("   -> STATION table is empty.");
+            }
+
+            // =========================================================================
+            // 3. RAILWAY_LINE (Com proprietário)
+            // =========================================================================
+            printSectionTitle("RAILWAY_LINE");
+            String sql3 = "SELECT RL.line_id, RL.name AS line_name, O.name AS owner_name " +
+                    "FROM RAILWAY_LINE RL JOIN OPERATOR O ON RL.owner_operator_id = O.operator_id " +
+                    "ORDER BY RL.line_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql3);
+                 ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    System.out.printf("   -> LineID: %s | Name: %s | Owner: %s\n",
+                            rs.getString(1), rs.getString(2), rs.getString(3));
+                    count++;
+                }
+                if (count == 0) System.out.println("   -> RAILWAY_LINE table is empty.");
+            }
+
+            // =========================================================================
+            // 4. LINE_SEGMENT (Detalhe da Linha)
+            // =========================================================================
+            printSectionTitle("LINE_SEGMENT (Detalhes Técnicos)");
+            String sql4 = "SELECT segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length " +
                     "FROM LINE_SEGMENT ORDER BY line_id, segment_order";
-            int segmentCount = 0;
-            try (PreparedStatement stmt = conn.prepareStatement(segmentSql);
+            try (PreparedStatement stmt = conn.prepareStatement(sql4);
                  ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
                 while (rs.next()) {
-                    int segId = rs.getInt("segment_id");
-                    int lineId = rs.getInt("line_id");
-                    int segOrder = rs.getInt("segment_order");
-                    String electrified = rs.getString("electrified");
-                    double maxWeight = rs.getDouble("max_weight_kg_m");
-                    double lengthM = rs.getDouble("length_m");
-                    int numTracks = rs.getInt("number_tracks");
-                    System.out.printf("   -> SegID: %d | LineID: %d | Order: %d | Electr: %s | MaxWeight: %.0f kg/m | Length: %.1f m | Tracks: %d\n",
-                            segId, lineId, segOrder, electrified, maxWeight, lengthM, numTracks);
-                    segmentCount++;
+                    System.out.printf("   -> SegID: %s | Line: %s | Order: %d | Electr: %s | MaxWeight: %.0f kg/m | Length: %.1f m | Tracks: %d | Siding: %d (%.0f m)\n",
+                            rs.getString(1), rs.getString(2), rs.getInt(3), rs.getString(4), rs.getDouble(5), rs.getDouble(6), rs.getInt(7), rs.getInt(8), rs.getDouble(9));
+                    count++;
                 }
-                if (segmentCount == 0) System.out.println("   -> LINE_SEGMENT table is empty or not found.");
-            } catch (SQLException e) {
-                System.err.println("   ❌ Error reading LINE_SEGMENT: " + e.getMessage());
+                if (count == 0) System.out.println("   -> LINE_SEGMENT table is empty.");
             }
 
-            // 3. Print ROLLING_STOCK (Locomotives)
-            System.out.println("\n" + "=".repeat(70));
-            System.out.println("   Table: ROLLING_STOCK (Locomotives)");
-            System.out.println("=".repeat(70));
-            String locoSql = "SELECT stock_id, operator_id, name, make, model, service_year, type, max_speed " +
-                    "FROM ROLLING_STOCK WHERE type IN ('Electric', 'Diesel') ORDER BY stock_id";
-            int locoCount = 0;
-            try (PreparedStatement stmt = conn.prepareStatement(locoSql);
+            // =========================================================================
+            // 5. LOCOMOTIVE (Com potência e modelo)
+            // =========================================================================
+            printSectionTitle("LOCOMOTIVE (Física e Modelo)");
+            String sql5 = "SELECT L.stock_id, L.locomotive_type, L.power_kw, R.model, R.gauge_mm, O.name AS operator_name " +
+                    "FROM LOCOMOTIVE L " +
+                    "JOIN ROLLING_STOCK R ON L.stock_id = R.stock_id " +
+                    "JOIN OPERATOR O ON R.operator_id = O.operator_id " +
+                    "ORDER BY L.stock_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql5);
                  ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
                 while (rs.next()) {
-                    String stockId = rs.getString("stock_id");
-                    String operatorId = rs.getString("operator_id");
-                    String name = rs.getString("name");
-                    String make = rs.getString("make");
-                    String model = rs.getString("model");
-                    int serviceYear = rs.getInt("service_year");
-                    String type = rs.getString("type");
-                    double maxSpeed = rs.getDouble("max_speed");
-                    System.out.printf("   -> ID: %s | Op: %s | Name: %s | Make: %s | Model: %s | Year: %d | Type: %s | MaxSpeed: %.1f\n",
-                            stockId, operatorId, name, make, model, serviceYear, type, maxSpeed);
-                    locoCount++;
+                    System.out.printf("   -> ID: %s | Type: %s | Power: %.0f kW | Model: %s | Gauge: %.0f mm | Operator: %s\n",
+                            rs.getString(1), rs.getString(2), rs.getDouble(3), rs.getString(4), rs.getDouble(5), rs.getString(6));
+                    count++;
                 }
-                if (locoCount == 0) System.out.println("   -> No locomotives found.");
-            } catch (SQLException e) {
-                System.err.println("   ❌ Error reading ROLLING_STOCK: " + e.getMessage());
+                if (count == 0) System.out.println("   -> LOCOMOTIVE table is empty.");
+            }
+
+            // =========================================================================
+            // 6. WAGON_MODEL (Modelos de Vagões)
+            // =========================================================================
+            printSectionTitle("WAGON_MODEL (Definições)");
+            String sql6 = "SELECT model_id, model_name, wagon_type, weight_t, payload_t, volume_m3 FROM WAGON_MODEL ORDER BY model_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql6);
+                 ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    System.out.printf("   -> ID: %d | Name: %s (%s) | Tara: %.1f t | Payload: %.1f t | Volume: %.1f m3\n",
+                            rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getDouble(5), rs.getDouble(6));
+                    count++;
+                }
+                if (count == 0) System.out.println("   -> WAGON_MODEL table is empty.");
+            }
+
+            // =========================================================================
+            // 7. WAGON (Stock de Vagões)
+            // =========================================================================
+            printSectionTitle("WAGON (Estoque Operacional)");
+            String sql7 = "SELECT W.stock_id, WM.model_name, W.service_year, O.name AS operator_name " +
+                    "FROM WAGON W JOIN ROLLING_STOCK R ON W.stock_id = R.stock_id " +
+                    "JOIN WAGON_MODEL WM ON W.model_id = WM.model_id " +
+                    "JOIN OPERATOR O ON R.operator_id = O.operator_id ORDER BY W.stock_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql7);
+                 ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    System.out.printf("   -> ID: %s | Model: %s | Year: %d | Operator: %s\n",
+                            rs.getString(1), rs.getString(2), rs.getInt(3), rs.getString(4));
+                    count++;
+                }
+                if (count == 0) System.out.println("   -> WAGON table is empty.");
+            }
+
+            // =========================================================================
+            // 8. TRAIN (Viagens Agendadas)
+            // =========================================================================
+            printSectionTitle("TRAIN (Viagens Agendadas)");
+            String sql8 = "SELECT T.train_id, O.name AS operator_name, T.train_date, T.train_time, T.locomotive_id, F1.name AS start_facility " +
+                    "FROM TRAIN T JOIN OPERATOR O ON T.operator_id = O.operator_id " +
+                    "JOIN FACILITY F1 ON T.start_facility_id = F1.facility_id ORDER BY T.train_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql8);
+                 ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    System.out.printf("   -> Train: %s | Op: %s | Date/Time: %s %s | Loco: %s | From: %s\n",
+                            rs.getString(1), rs.getString(2), rs.getDate(3), rs.getString(4), rs.getString(5), rs.getString(6));
+                    count++;
+                }
+                if (count == 0) System.out.println("   -> TRAIN table is empty.");
+            }
+
+            // =========================================================================
+            // 9. TRAIN_WAGON_USAGE (Uso de Vagões em Comboios)
+            // =========================================================================
+            printSectionTitle("TRAIN_WAGON_USAGE (Relações N:M)");
+            String sql9 = "SELECT TWU.usage_id, TWU.train_id, TWU.wagon_id, TWU.usage_date " +
+                    "FROM TRAIN_WAGON_USAGE TWU ORDER BY TWU.usage_date DESC";
+            try (PreparedStatement stmt = conn.prepareStatement(sql9);
+                 ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    System.out.printf("   -> UsageID: %s | Train: %s | Wagon: %s | Date: %s\n",
+                            rs.getString(1), rs.getString(2), rs.getString(3), rs.getDate(4));
+                    count++;
+                }
+                if (count == 0) System.out.println("   -> TRAIN_WAGON_USAGE table is empty.");
             }
 
         } catch (SQLException e) {
-            System.err.println("❌ GENERAL FAILURE IN DB CONNECTION OR OPERATION: " + e.getMessage());
+            System.err.println("❌ FALHA GERAL NA CONEXÃO OU OPERAÇÃO DE DB: Verifique as credenciais e se as tabelas foram criadas. " + e.getMessage());
         } catch (Exception e) {
-            System.err.println("❌ Unexpected error during database read: " + e.getMessage());
+            System.err.println("❌ Erro inesperado durante a leitura da base de dados: " + e.getMessage());
             e.printStackTrace();
         }
     }
 
-    /**
-     * Main method to execute the database read for demonstration purposes.
-     *
-     * @param args command-line arguments (ignored)
-     */
+    // Método helper para formatação
+    private static void printSectionTitle(String title) {
+        System.out.println("\n" + "#".repeat(20) + " " + title + " " + "#".repeat(20));
+    }
+
     public static void main(String[] args) {
         printSelectedDatabaseData();
     }

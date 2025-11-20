@@ -13,7 +13,6 @@ import pt.ipp.isep.dei.controller.TravelTimeController;
 import pt.ipp.isep.dei.domain.*;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
-import javafx.scene.Node;
 import javafx.util.Duration;
 
 import java.io.IOException;
@@ -345,16 +344,35 @@ public class MainController {
 
     @FXML
     public void handleShowBDDAD(ActionEvent event) {
-        statusLabel.setText("BDDAD Features");
+        statusLabel.setText("BDDAD Features: Operator CRUD");
+        // Limpa o painel central antes de carregar a nova vista
         centerContentPane.getChildren().clear();
 
-        Label t = new Label("BDDAD Screen (Under Construction)");
-        t.getStyleClass().add("view-title");
-        centerContentPane.getChildren().add(t);
-        AnchorPane.setTopAnchor(t, 25.0);
-        AnchorPane.setLeftAnchor(t, 25.0);
-    }
+        try {
+            // 1. Carrega o FXML
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/database-crud-view.fxml"));
+            Parent root = loader.load();
 
+            // 2. Obtém o Controller e injeta o serviço
+            DatabaseCRUDController controller = loader.getController();
+            // Assume que 'this' é o MainController, que é o que o DatabaseCRUDController espera.
+            controller.setServices(this);
+
+            // 3. Adiciona e ancora a nova vista para preencher o painel central
+            centerContentPane.getChildren().add(root);
+            AnchorPane.setTopAnchor(root, 0.0);
+            AnchorPane.setLeftAnchor(root, 0.0);
+            AnchorPane.setRightAnchor(root, 0.0);
+            AnchorPane.setBottomAnchor(root, 0.0);
+
+        } catch (Exception e) {
+            statusLabel.setText("❌ Error loading BDDAD CRUD view.");
+            System.err.println("Error loading FXML for BDDAD CRUD: " + e.getMessage());
+            // Aqui você pode adicionar mainController.showNotification se for o MainController
+            // mainController.showNotification("Failed to load DB CRUD screen.", "error");
+            e.printStackTrace();
+        }
+    }
     /**
      * Mostra uma notificação pop-up no canto superior direito.
      * Esta função pode ser chamada por qualquer controlador filho.
