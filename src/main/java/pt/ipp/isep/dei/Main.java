@@ -109,7 +109,6 @@ public class Main {
             // 8️⃣ KD-Tree Spatial Queries
             printLoadStep("Building balanced KD-Tree for spatial queries (USEI08)...");
             KDTree spatialKDTree = buildSpatialKDTree(europeanStations);
-// CORRIGIDO: Chamar .toString() na Map para garantir que o String.format() a processa corretamente.
             String bucketInfo = spatialKDTree.getBucketSizes().toString();
             printLoadStep(String.format("  > KD-Tree built: %d nodes, height: %d, bucket distribution: %s",
                     spatialKDTree.size(), spatialKDTree.height(), bucketInfo), true);
