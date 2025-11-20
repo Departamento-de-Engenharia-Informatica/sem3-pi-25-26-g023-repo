@@ -18,7 +18,7 @@ public class DatabaseConnection {
     // --- Connection Details (Ensure these are correct) ---
     private static final String DB_URL = "jdbc:oracle:thin:@vsgate-s1.dei.isep.ipp.pt:10945:xe";
     private static final String DB_USER = "system"; // Verify if correct
-    private static final String DB_PASSWORD = "lapr"; // <-- CHANGE TO CORRECT PASSWORD
+    private static final String DB_PASSWORD = "oracle"; // <-- CHANGE TO CORRECT PASSWORD
     // --- End of Details ---
 
     // Load Oracle JDBC driver
