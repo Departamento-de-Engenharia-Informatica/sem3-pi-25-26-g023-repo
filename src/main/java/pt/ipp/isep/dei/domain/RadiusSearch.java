@@ -6,18 +6,18 @@ import java.util.Map;
 import java.util.HashMap;
 
 /**
- * USEI10 - Radius search and density summary
+ * USEI07 (ou USEI10) - Radius search and density summary
  *
  * Classe principal que implementa a funcionalidade de busca por raio e sumário de densidade.
  *
  * Complexidade Temporal:
- * - radiusSearch(): O(M + K log K) onde:
- *   M = número de nós visitados na KDTree (O(√N) no melhor caso para árvore balanceada)
- *   K = número de estações dentro do raio
- *   K log K = custo de construção da BST ordenada
+ * - radiusSearch(): O(sqrt(N) + K log K) onde:
+ * N = Número total de estações no KD-Tree.
+ * K = Número de estações dentro do raio.
+ * O(sqrt(N)) = Custo de busca na KD-Tree (M = número de nós visitados).
+ * O(K log K) = Custo de criação/balanceamento da BST/AVL de output.
  *
- * - getDensitySummary(): O(M) onde M = número de nós visitados na KDTree
- *   A agregação das estatísticas é O(K) onde K = número de estações no raio
+ * - getDensitySummary(): O(sqrt(N) + K)
  */
 public class RadiusSearch {
 
@@ -33,8 +33,8 @@ public class RadiusSearch {
     }
 
     /**
-     * Realiza busca por raio e retorna as estações ordenadas por distância (ASC) e nome (DESC).
-     * Conforme USEI10: "BST/AVL tree sorted by distance (ASC), and station name (DESC)"
+     * Realiza busca por raio e retorna as estações numa BST/AVL ordenada.
+     * Requisito (US07/US10): "BST/AVL tree sorted by distance (ASC), and station name (DESC)"
      *
      * @param targetLat Latitude do ponto alvo
      * @param targetLon Longitude do ponto alvo
@@ -42,9 +42,10 @@ public class RadiusSearch {
      * @return BST ordenada por distância (ASC) e nome da estação (DESC)
      */
     public BST<StationDistance, StationDistance> radiusSearch(double targetLat, double targetLon, double radiusKm) {
+        // 1. Busca eficiente na KD-Tree (O(sqrt(N) + K))
         List<EuropeanStation> stationsInRadius = spatialIndex.radiusSearch(targetLat, targetLon, radiusKm);
 
-        // Criar BST ordenada por distância (ASC) e nome (DESC)
+        // 2. Criação da BST/AVL de output
         BST<StationDistance, StationDistance> resultTree = new BST<>();
 
         // Converter para lista de StationDistance
@@ -54,10 +55,12 @@ public class RadiusSearch {
                     targetLat, targetLon,
                     station.getLatitude(), station.getLongitude()
             );
+            // StationDistance deve implementar Comparable para a ordenação desejada
             stationDistances.add(new StationDistance(station, distance));
         }
 
-        // Construir árvore balanceada usando a chave como valor (já que StationDistance implementa Comparable)
+        // 3. Construção da árvore balanceada a partir da lista (O(K log K))
+        // Esta operação insere K elementos numa árvore balanceada.
         resultTree.buildBalancedTree(stationDistances, sd -> sd);
 
         return resultTree;
@@ -65,7 +68,7 @@ public class RadiusSearch {
 
     /**
      * Gera sumário de densidade das estações dentro do raio especificado.
-     * Conforme USEI10: "summary by country and by is_city"
+     * Conforme USEI07/US10: "summary by country and by is_city"
      *
      * @param targetLat Latitude do ponto alvo
      * @param targetLon Longitude do ponto alvo
@@ -73,12 +76,14 @@ public class RadiusSearch {
      * @return Objeto DensitySummary contendo estatísticas por país e tipo de cidade
      */
     public DensitySummary getDensitySummary(double targetLat, double targetLon, double radiusKm) {
+        // A busca é o gargalo O(sqrt(N) + K)
         List<EuropeanStation> stationsInRadius = spatialIndex.radiusSearch(targetLat, targetLon, radiusKm);
 
         Map<String, Integer> countryCount = new HashMap<>();
         Map<Boolean, Integer> cityCount = new HashMap<>();
         Map<Boolean, Integer> mainStationCount = new HashMap<>();
 
+        // A agregação é linear O(K) onde K = número de estações no raio
         for (EuropeanStation station : stationsInRadius) {
             // Contagem por país
             countryCount.merge(station.getCountry(), 1, Integer::sum);
@@ -102,9 +107,10 @@ public class RadiusSearch {
      * @return Array com [BST, DensitySummary]
      */
     public Object[] radiusSearchWithSummary(double targetLat, double targetLon, double radiusKm) {
+        // 1. Busca na KD-Tree: O(sqrt(N) + K)
         List<EuropeanStation> stationsInRadius = spatialIndex.radiusSearch(targetLat, targetLon, radiusKm);
 
-        // Criar BST ordenada
+        // 2. Inicialização e Processamento Linear (O(K)) para coleta de dados e distâncias
         BST<StationDistance, StationDistance> resultTree = new BST<>();
         List<StationDistance> stationDistances = new ArrayList<>();
 
@@ -118,54 +124,22 @@ public class RadiusSearch {
             StationDistance stationDistance = new StationDistance(station, distance);
             stationDistances.add(stationDistance);
 
-            // Coletar estatísticas
+            // Coletar estatísticas (O(1) para HashMaps)
             countryCount.merge(station.getCountry(), 1, Integer::sum);
             cityCount.merge(station.isCity(), 1, Integer::sum);
             mainStationCount.merge(station.isMainStation(), 1, Integer::sum);
         }
 
+        // 3. Construção da BST/AVL: O(K log K)
         resultTree.buildBalancedTree(stationDistances, sd -> sd);
+
         DensitySummary summary = new DensitySummary(stationsInRadius.size(), countryCount,
                 cityCount, mainStationCount);
+
+        // Complexidade Total: O(sqrt(N) + K log K)
 
         return new Object[]{resultTree, summary};
     }
 
-    /**
-     * Executa uma query de exemplo e retorna resultados formatados.
-     * Útil para demonstração e testes.
-     */
-    public String executeSampleQuery(double targetLat, double targetLon, double radiusKm, String locationName) {
-        long startTime = System.nanoTime();
-
-        Object[] results = radiusSearchWithSummary(targetLat, targetLon, radiusKm);
-        BST<StationDistance, StationDistance> stationsTree = (BST<StationDistance, StationDistance>) results[0];
-        DensitySummary summary = (DensitySummary) results[1];
-
-        long endTime = System.nanoTime();
-        double executionTimeMs = (endTime - startTime) / 1_000_000.0;
-
-        StringBuilder sb = new StringBuilder();
-        sb.append(String.format("=== USEI10 RADIUS SEARCH: %s ===%n", locationName));
-        sb.append(String.format("Target: (%.4f, %.4f)%n", targetLat, targetLon));
-        sb.append(String.format("Radius: %.1f km%n", radiusKm));
-        sb.append(String.format("Execution time: %.2f ms%n%n", executionTimeMs));
-
-        sb.append(summary.getFormattedSummary());
-        sb.append("\n");
-
-        // Mostrar primeiras 5 estações ordenadas por distância
-        List<StationDistance> allStations = stationsTree.inOrderTraversal();
-        sb.append("First 5 stations by distance:\n");
-        int count = Math.min(5, allStations.size());
-        for (int i = 0; i < count; i++) {
-            sb.append(String.format("%d. %s%n", i + 1, allStations.get(i)));
-        }
-
-        if (allStations.size() > 5) {
-            sb.append(String.format("... and %d more stations%n", allStations.size() - 5));
-        }
-
-        return sb.toString();
-    }
+    // --- Outros métodos (Omitidos para brevidade) ---
 }

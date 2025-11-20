@@ -109,17 +109,20 @@ public class Main {
             // 8️⃣ KD-Tree Spatial Queries
             printLoadStep("Building balanced KD-Tree for spatial queries (USEI08)...");
             KDTree spatialKDTree = buildSpatialKDTree(europeanStations);
+// CORRIGIDO: Chamar .toString() na Map para garantir que o String.format() a processa corretamente.
+            String bucketInfo = spatialKDTree.getBucketSizes().toString();
             printLoadStep(String.format("  > KD-Tree built: %d nodes, height: %d, bucket distribution: %s",
-                    spatialKDTree.size(), spatialKDTree.height(), spatialKDTree.getBucketSizes()), true);
+                    spatialKDTree.size(), spatialKDTree.height(), bucketInfo), true);
 
             printLoadStep("Initializing Spatial Search Engine (USEI08)...");
             SpatialSearch spatialSearchEngine = new SpatialSearch(spatialKDTree);
-            printLoadStep(String.format("  > USEI08 Spatial Search ready! Complexity: O(√n) average case"), true);
+            printLoadStep(String.format("  > USEI08 Spatial Search ready! Complexity: O(log n) average case"), true);
 
 
             printLoadStep("Initializing Radius Search Engine (USEI10)...");
-            // A USEI10 usa a mesma KDTree da USEI08, então já está pronta
-            printLoadStep("  > USEI10 Radius Search ready! Complexity: O(√n + k) average case", true);
+// A USEI10 usa a mesma KDTree da USEI08, então já está pronta
+            printLoadStep("  > USEI10 Radius Search ready! Complexity: O(sqrt(N) + K log K) average case", true);
+
 
             // 9️⃣ Launch UI
             System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);

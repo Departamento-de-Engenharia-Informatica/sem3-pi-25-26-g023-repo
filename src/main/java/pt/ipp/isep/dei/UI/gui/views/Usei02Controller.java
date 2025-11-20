@@ -25,8 +25,8 @@ public class Usei02Controller {
     @FXML
     private TextArea txtResult;
 
-    private final String ORDERS_FILE = Paths.get("src", "main", "java", "pt", "ipp", "isep", "dei", "pt/ipp/isep/dei/FicheirosCSV", "orders.csv").toString();
-    private final String ORDER_LINES_FILE = Paths.get("src", "main", "java", "pt", "ipp", "isep", "dei", "pt/ipp/isep/dei/FicheirosCSV", "order_lines.csv").toString();
+    private final String ORDERS_FILE = Paths.get("src", "main", "java", "pt", "ipp", "isep", "dei", "FicheirosCSV", "orders.csv").toString();
+    private final String ORDER_LINES_FILE = Paths.get("src", "main", "java", "pt", "ipp", "isep", "dei", "FicheirosCSV", "order_lines.csv").toString();
 
     private MainController mainController;
     private InventoryManager manager;

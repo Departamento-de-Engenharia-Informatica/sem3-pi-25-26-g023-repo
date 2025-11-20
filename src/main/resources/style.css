@@ -628,3 +628,133 @@
 
     /* Fundo e borda removidos, como pediste */
 }
+/* Exemplo de estilos que devem existir no style.css */
+
+/* Define o fundo escuro para o SplitPane */
+.split-pane-content {
+    -fx-background-color: #333333; /* Cor principal de fundo escuro */
+}
+
+/* Define o fundo para os painéis internos dentro do SplitPane */
+.view-content-panel {
+    -fx-background-color: #3c3f41; /* Cor ligeiramente diferente ou igual ao split-pane-content */
+}
+
+/* --- FUNDOS DE TEMA (Para garantir que as classes do FXML funcionam) --- */
+
+/* Fundo da Janela Principal e do SplitPane */
+.view-container, .split-pane-content, .view-content-panel {
+    /* Define o fundo escuro (ex: cinza chumbo) */
+    -fx-background-color: #3C3F41;
+}
+
+/* Define a cor padrão do texto (Light Grey / White) para toda a aplicação */
+/* Isso é aplicado a todos os descendentes do container */
+.view-container {
+    -fx-text-fill: #BBBBBB; /* Cinza claro para o texto normal */
+}
+
+/* --- REGRAS DE ALTO CONTRASTE --- */
+
+/* 1. Labels e Textos Estáticos */
+/* Garante que todos os Labels usam a cor clara */
+.label {
+    -fx-text-fill: #BBBBBB;
+}
+
+/* 2. Botões (Geralmente precisam de uma cor mais forte) */
+.button {
+    -fx-text-fill: #D8D8D8; /* Branco ligeiramente mais claro */
+}
+
+/* 3. Campos de Texto e Áreas de Texto (O mais crítico) */
+/* Assegura que o texto digitado e os resultados na TextArea sejam claros */
+.text-field, .text-area, .combo-box {
+    -fx-text-fill: #EAEAEA; /* Branco quase puro para legibilidade */
+    -fx-control-inner-background: #4C5052; /* Fundo dos campos ligeiramente mais escuro que o painel */
+}
+
+/* Assegura que o texto digitado no TextArea (como os resultados) seja claro */
+.text-area .content {
+    -fx-fill: #EAEAEA;
+    -fx-background-color: #4C5052;
+}
+
+/* Títulos de Vistas */
+.view-title {
+    -fx-text-fill: #A9B7C6; /* Azul claro ou cinza claro para títulos */
+    -fx-font-size: 1.5em;
+    -fx-font-weight: bold;
+}
+/* --- FUNDOS GERAIS E LAYOUT --- */
+
+/* Fundo da Janela Principal e dos Painéis de Conteúdo */
+.view-container, .split-pane-content, .view-content-panel {
+    -fx-background-color: #3C3F41; /* Fundo escuro */
+    -fx-text-fill: #BBBBBB; /* Cor base do texto */
+}
+
+/* --- CORREÇÃO DO SPLITPANE (Remoção da Barra Branca) --- */
+
+.split-pane-divider {
+    -fx-background-color: #3C3F41;
+    -fx-border-color: #3C3F41;
+}
+
+/* --- ESTILOS DE INPUTS E TEXTO --- */
+
+/* 1. Labels e Textos Estáticos */
+.label {
+    -fx-text-fill: #BBBBBB; /* Garante que os rótulos são claros */
+}
+
+/* 2. Campos de Texto e Áreas de Texto (O mais crítico) */
+.text-field, .text-area, .combo-box {
+    -fx-control-inner-background: #4C5052; /* Fundo dos campos escuro */
+    -fx-border-color: #555555;
+    -fx-border-radius: 3px;
+    -fx-text-fill: #EAEAEA; /* Texto digitado: Branco puro para alta legibilidade */
+}
+
+/* 3. CORREÇÃO DOS PLACEHOLDERS */
+.text-field, .text-area {
+    -fx-prompt-text-fill: #999999; /* Placeholder em cinza claro para contraste */
+}
+
+
+/* --- BOTÕES E CONTROLES DE AÇÃO --- */
+
+/* OTIMIZAÇÃO: Removemos -fx-background-color e -fx-border-color do seletor genérico .button
+   Isto PRESERVA o design e os efeitos hover da barra lateral. */
+.button {
+    -fx-text-fill: #D8D8D8; /* Apenas forçamos a cor do texto para ser clara */
+    /* Removemos fundos/bordas genéricas para evitar conflitos com a barra lateral */
+}
+
+/* Cores Primárias (Regra de destaque que deve ser explícita) */
+.button-primary {
+    -fx-background-color: #4A86C8;
+    -fx-text-fill: white;
+}
+
+/* --- TÍTULOS E STATUS --- */
+
+.view-title {
+    -fx-text-fill: #A9B7C6;
+    -fx-font-size: 1.5em;
+    -fx-font-weight: bold;
+}
+
+.status-label-error {
+    -fx-text-fill: #FF6B6B;
+}
+
+.status-label-success {
+    -fx-text-fill: #7CC887;
+}
+
+/* Fundo da TextArea de Resultados */
+.result-area .content {
+    -fx-fill: #EAEAEA;
+    -fx-background-color: #4C5052;
+}

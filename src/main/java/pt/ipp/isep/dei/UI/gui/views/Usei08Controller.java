@@ -14,11 +14,13 @@ import pt.ipp.isep.dei.domain.EuropeanStation;
 import pt.ipp.isep.dei.domain.KDTree;
 import pt.ipp.isep.dei.domain.SpatialSearch;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
 public class Usei08Controller {
 
+    // --- FXML existentes ---
     @FXML
     private TextField txtLatMin, txtLatMax, txtLonMin, txtLonMax, txtCountry;
     @FXML
@@ -30,9 +32,22 @@ public class Usei08Controller {
     @FXML
     private TextArea txtResult;
 
+    // --- NOVOS FXML para Paginação ---
+    // Assumir que estes foram adicionados ao FXML
+    @FXML
+    private Button btnPrev, btnNext;
+    @FXML
+    private Label lblPaginationInfo;
+
+    // --- Variáveis de Serviço e Estado ---
     private MainController mainController;
     private KDTree spatialKDTree;
     private SpatialSearch spatialSearchEngine;
+
+    // NOVO: Estado para a Paginação (Lazy Load)
+    private List<EuropeanStation> allResults;
+    private int currentPage = 0;
+    private static final int ITEMS_PER_PAGE = 50; // Apenas 50 itens por página
 
     public void setServices(MainController mainController, KDTree spatialKDTree) {
         this.mainController = mainController;
@@ -47,6 +62,11 @@ public class Usei08Controller {
         cmbIsMain.setItems(options);
         cmbIsCity.setValue("Any");
         cmbIsMain.setValue("Any");
+
+        // Inicializa botões de paginação como desativados
+        if (btnPrev != null) btnPrev.setDisable(true);
+        if (btnNext != null) btnNext.setDisable(true);
+        if (lblPaginationInfo != null) lblPaginationInfo.setText("");
     }
 
     @FXML
@@ -54,6 +74,13 @@ public class Usei08Controller {
         lblStatus.setText("");
         txtResult.clear();
         lblStatus.getStyleClass().removeAll("status-label-success", "status-label-error");
+
+        // Limpa resultados anteriores e estado de paginação
+        this.allResults = new ArrayList<>();
+        this.currentPage = 0;
+        if (btnPrev != null) btnPrev.setDisable(true);
+        if (btnNext != null) btnNext.setDisable(true);
+        if (lblPaginationInfo != null) lblPaginationInfo.setText("");
 
         if (spatialKDTree == null) {
             setErrorStatus("Error: KDTree was not injected correctly.");
@@ -81,8 +108,10 @@ public class Usei08Controller {
             Boolean isCity = parseOptionalBoolean(cmbIsCity.getValue());
             Boolean isMain = parseOptionalBoolean(cmbIsMain.getValue());
 
-            lblStatus.setText("Searching..."); // Info local
+            lblStatus.setText("Searching (O(√N) average case)..."); // Info local
             long startTime = System.nanoTime();
+
+            // EXECUÇÃO DA BUSCA EFICIENTE (O(√N + K))
             List<EuropeanStation> results = spatialSearchEngine.searchByGeographicalArea(
                     latMin, latMax, lonMin, lonMax,
                     country,
@@ -91,17 +120,18 @@ public class Usei08Controller {
             long endTime = System.nanoTime();
 
             double timeMs = (endTime - startTime) / 1_000_000.0;
-            String successMsg = String.format("Found %d stations (%.2f ms)", results.size(), timeMs);
-            setSuccessStatus(successMsg); // Isto agora também faz o pop-up
 
-            if (results.isEmpty()) {
+            // 1. SALVA TODOS OS RESULTADOS E INICIA A PAGINAÇÃO
+            this.allResults = results;
+            this.currentPage = 0;
+
+            if (allResults.isEmpty()) {
                 txtResult.setText("--- No stations found matching these filters ---");
+                setSuccessStatus(String.format("Found 0 stations (%.2f ms)", timeMs));
             } else {
-                StringBuilder sb = new StringBuilder();
-                results.stream().forEach(station ->
-                        sb.append(formatStationDisplay(station)).append("\n")
-                );
-                txtResult.setText(sb.toString());
+                // 2. RENDERIZA APENAS A PRIMEIRA PÁGINA (Lazy Load)
+                updatePagination();
+                setSuccessStatus(String.format("Found %d stations (%.2f ms). Displaying page 1.", allResults.size(), timeMs));
             }
 
         } catch (NumberFormatException e) {
@@ -112,7 +142,63 @@ public class Usei08Controller {
         }
     }
 
-    // --- MÉTODOS HELPER ---
+    // --- NOVOS MÉTODOS DE PAGINAÇÃO ---
+
+    /**
+     * Lógica para avançar página.
+     */
+    @FXML
+    void handleNextPage(ActionEvent event) {
+        int totalPages = (int) Math.ceil((double) allResults.size() / ITEMS_PER_PAGE);
+        if (currentPage < totalPages - 1) {
+            currentPage++;
+            updatePagination();
+        }
+    }
+
+    /**
+     * Lógica para retroceder página.
+     */
+    @FXML
+    void handlePrevPage(ActionEvent event) {
+        if (currentPage > 0) {
+            currentPage--;
+            updatePagination();
+        }
+    }
+
+    /**
+     * Implementa o Lazy Load: fatia a lista completa e atualiza a exibição.
+     */
+    private void updatePagination() {
+        int totalResults = allResults.size();
+        int totalPages = (int) Math.ceil((double) totalResults / ITEMS_PER_PAGE);
+
+        int startIndex = currentPage * ITEMS_PER_PAGE;
+        int endIndex = Math.min(startIndex + ITEMS_PER_PAGE, totalResults);
+
+        // 1. Lazy Load: Obtém a sublista para a página atual (O(1) para subList de ArrayList)
+        List<EuropeanStation> pageResults = allResults.subList(startIndex, endIndex);
+
+        // 2. Renderização
+        StringBuilder sb = new StringBuilder();
+        sb.append(String.format("--- Página %d de %d (Resultados %d - %d de %d) ---\n\n",
+                currentPage + 1, totalPages, startIndex + 1, endIndex, totalResults));
+
+        // Renderiza apenas os 50 elementos da página
+        pageResults.stream().forEach(station ->
+                sb.append(formatStationDisplay(station)).append("\n")
+        );
+
+        txtResult.setText(sb.toString());
+
+        // 3. Atualiza Botões e Info
+        if (btnPrev != null) btnPrev.setDisable(currentPage == 0);
+        if (btnNext != null) btnNext.setDisable(currentPage >= totalPages - 1);
+        if (lblPaginationInfo != null) lblPaginationInfo.setText(String.format("Pág. %d/%d", currentPage + 1, totalPages));
+    }
+
+    // --- MÉTODOS HELPER (Inalterados) ---
 
     private String formatStationDisplay(EuropeanStation station) {
         return station.getStation() +
@@ -144,15 +230,12 @@ public class Usei08Controller {
         return null; // "Any"
     }
 
-    // --- Helpers de Status (ATUALIZADOS) ---
-
     private void setErrorStatus(String message) {
         lblStatus.setText("❌ " + message);
         lblStatus.getStyleClass().add("status-label-error");
 
-        // ✅ Notificação Pop-up
         if (mainController != null) {
-
+            mainController.showNotification(message, "error");
         }
     }
 
@@ -160,9 +243,8 @@ public class Usei08Controller {
         lblStatus.setText("✅ " + message);
         lblStatus.getStyleClass().add("status-label-success");
 
-        // ✅ Notificação Pop-up
         if (mainController != null) {
-
+            mainController.showNotification(message, "success");
         }
     }
 }

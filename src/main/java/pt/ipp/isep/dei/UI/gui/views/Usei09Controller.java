@@ -28,6 +28,7 @@ public class Usei09Controller {
     private MainController mainController;
     private KDTree spatialKDTree;
 
+
     /**
      * Injeta os serviços necessários do MainController.
      */
