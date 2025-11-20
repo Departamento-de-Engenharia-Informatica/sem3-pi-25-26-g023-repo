@@ -54,159 +54,149 @@ INSERT INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES
                                                                 ('L012', 'Ramal São Mamede de Infesta - Leça do Balio', 'IP'),
                                                                 ('L013', 'Ramal Leça do Balio - Leixões', 'IP');
 
--- 4. INSERT LINE_SEGMENT DATA (22 Segments)
-INSERT INTO LINE_SEGMENT (segment_id, line_id, start_station_id, end_station_id, segment_length_km, track_type, gauge_mm, is_electrified) VALUES
-                                                                                                                                              ('SEG001', 'L001', 'ST007', 'ST005', 2.618, 'Quadruple', 1668, 'Y'),
-                                                                                                                                              ('SEG002', 'L002', 'ST005', 'ST013', 2.443, 'Quadruple', 1668, 'Y'),
-                                                                                                                                              ('SEG003', 'L003', 'ST013', 'ST020', 26.560, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG004', 'L003', 'ST020', 'ST018', 10.000, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG005', 'L004', 'ST020', 'ST008', 5.286, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG006', 'L004', 'ST008', 'ST015', 6.000, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG007', 'L005', 'ST008', 'ST012', 10.387, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG008', 'L005', 'ST012', 'ST017', 12.000, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG009', 'L005', 'ST017', 'ST019', 3.100, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG010', 'L006', 'ST012', 'ST017', 4.890, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG011', 'L007', 'ST017', 'ST021', 6.000, 'Single', 1668, 'Y'),
-                                                                                                                                              ('SEG012', 'L007', 'ST021', 'ST022', 5.000, 'Single', 1668, 'Y'),
-                                                                                                                                              ('SEG013', 'L007', 'ST022', 'ST023', 12.000, 'Single', 1668, 'Y'),
-                                                                                                                                              ('SEG014', 'L008', 'ST021', 'ST016', 20.829, 'Single', 1668, 'Y'),
-                                                                                                                                              ('SEG015', 'L009', 'ST016', 'ST011', 4.264, 'Single', 1668, 'Y'),
-                                                                                                                                              ('SEG016', 'L010', 'ST013', 'ST027', 3.883, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG017', 'L011', 'ST027', 'ST025', 1.174, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG018', 'L011', 'ST025', 'ST026', 2.534, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG019', 'L012', 'ST025', 'ST026', 1.566, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG020', 'L012', 'ST026', 'ST024', 1.453, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG021', 'L013', 'ST026', 'ST024', 3.597, 'Double', 1668, 'Y'),
-                                                                                                                                              ('SEG022', 'L013', 'ST024', 'ST026', 4.334, 'Double', 1668, 'Y');
+-- 4. INSERT FACILITY DATA
+INSERT INTO FACILITY (facility_id, name) VALUES
+                                             (1, 'Terminal de Carga Norte'),
+                                             (2, 'Terminal de Carga Sul'),
+                                             (3, 'Porto de Leixões'),
+                                             (4, 'Zona Industrial de Nine');
 
--- 5. INSERT ROLLING_STOCK DATA (8 Locomotives + 41 Wagons)
+-- 5. INSERT WAGON_MODEL DATA
+INSERT INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm) VALUES
+                                                                                (1, 'Regmms 32 94 356 3', 'Manufacturer A', 'Container Wagon', 1668),
+                                                                                (2, 'Tadgs 32 94 082 3', 'Manufacturer B', 'Cereal Wagon', 1668),
+                                                                                (3, 'Tdgs 41 94 074 1', 'Manufacturer C', 'Cereal Wagon', 1668),
+                                                                                (4, 'Gabs 81 94 181 1', 'Manufacturer D', 'Covered Wagon', 1668),
+                                                                                (5, 'Kbs 41 94 333', 'Manufacturer E', 'Wood Wagon', 1668);
+
+-- 6. INSERT ROLLING_STOCK DATA (8 Locomotives + 41 Wagons)
 INSERT INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES
 -- Locomotives (8)
-('RS001', 'MEDWAY', 'Eurosprinter', 1668),
-('RS002', 'MEDWAY', 'Eurosprinter', 1668),
-('RS003', 'MEDWAY', 'Eurosprinter', 1668),
-('RS004', 'MEDWAY', 'CP 1900', 1668),
-('RS005', 'MEDWAY', 'E4000', 1668),
-('RS006', 'MEDWAY', 'E4000', 1668),
-('RS007', 'CAPTRAIN', 'E4000', 1668),
-('RS008', 'CAPTRAIN', 'E4000', 1668),
+('5621', 'MEDWAY', 'Eurosprinter', 1668),
+('5623', 'MEDWAY', 'Eurosprinter', 1668),
+('5630', 'MEDWAY', 'Eurosprinter', 1668),
+('1903', 'MEDWAY', 'CP 1900', 1668),
+('5034', 'MEDWAY', 'E4000', 1668),
+('5036', 'MEDWAY', 'E4000', 1668),
+('335.001', 'CAPTRAIN', 'E4000', 1668),
+('335.003', 'CAPTRAIN', 'E4000', 1668),
 
 -- Container Wagons Regmms (16)
-('WG001', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG002', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG003', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG004', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG005', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG006', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG007', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG008', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG009', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG010', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG011', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG012', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG013', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG014', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG015', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
-('WG016', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 077', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 078', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 079', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 080', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 081', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 082', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 083', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 084', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 085', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 086', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 087', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 088', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 089', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 090', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 091', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
+('356 3 092', 'MEDWAY', 'Regmms 32 94 356 3', 1668),
 
 -- Cereal Wagons Tadgs (4)
-('WG017', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
-('WG018', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
-('WG019', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
-('WG020', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
+('082 3 045', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
+('082 3 046', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
+('082 3 047', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
+('082 3 048', 'MEDWAY', 'Tadgs 32 94 082 3', 1668),
 
 -- Cereal Wagons Tdgs (6)
-('WG021', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
-('WG022', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
-('WG023', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
-('WG024', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
-('WG025', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
-('WG026', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
+('074 1 001', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
+('074 1 002', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
+('074 1 003', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
+('074 1 004', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
+('074 1 005', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
+('074 1 006', 'MEDWAY', 'Tdgs 41 94 074 1', 1668),
 
 -- Covered Wagons Gabs (5)
-('WG027', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
-('WG028', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
-('WG029', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
-('WG030', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
-('WG031', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
+('181 1 010', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
+('181 1 011', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
+('181 1 012', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
+('181 1 013', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
+('181 1 014', 'MEDWAY', 'Gabs 81 94 181 1', 1668),
 
 -- Wood Wagons Kbs (10)
-('WG032', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG033', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG034', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG035', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG036', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG037', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG038', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG039', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG040', 'MEDWAY', 'Kbs 41 94 333', 1668),
-('WG041', 'MEDWAY', 'Kbs 41 94 333', 1668);
+('333 0 001', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 002', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 003', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 004', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 005', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 006', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 007', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 008', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 009', 'MEDWAY', 'Kbs 41 94 333', 1668),
+('333 0 010', 'MEDWAY', 'Kbs 41 94 333', 1668);
 
--- 6. INSERT LOCOMOTIVE DATA
+-- 7. INSERT LOCOMOTIVE DATA
 INSERT INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, supports_multiple_gauges) VALUES
-                                                                                           ('RS001', 'Electric', 5600, 'Y'),
-                                                                                           ('RS002', 'Electric', 5600, 'Y'),
-                                                                                           ('RS003', 'Electric', 5600, 'Y'),
-                                                                                           ('RS004', 'Diesel', 1623, 'N'),
-                                                                                           ('RS005', 'Diesel', 3178, 'N'),
-                                                                                           ('RS006', 'Diesel', 3178, 'N'),
-                                                                                           ('RS007', 'Diesel', 3178, 'N'),
-                                                                                           ('RS008', 'Diesel', 3178, 'N');
+                                                                                           ('5621', 'Electric', 5600, 'Y'),
+                                                                                           ('5623', 'Electric', 5600, 'Y'),
+                                                                                           ('5630', 'Electric', 5600, 'Y'),
+                                                                                           ('1903', 'Diesel', 1623, 'N'),
+                                                                                           ('5034', 'Diesel', 3178, 'N'),
+                                                                                           ('5036', 'Diesel', 3178, 'N'),
+                                                                                           ('335.001', 'Diesel', 3178, 'N'),
+                                                                                           ('335.003', 'Diesel', 3178, 'N');
 
--- 7. INSERT WAGON DATA (41 Wagons)
-INSERT INTO WAGON (stock_id, wagon_type, payload_capacity_kg) VALUES
+-- 8. INSERT WAGON DATA (41 Wagons)
+INSERT INTO WAGON (stock_id, model_id, operator_id, service_year) VALUES
 -- Container Wagons Regmms (16)
-('WG001', 'Container Wagon', 60600),
-('WG002', 'Container Wagon', 60600),
-('WG003', 'Container Wagon', 60600),
-('WG004', 'Container Wagon', 60600),
-('WG005', 'Container Wagon', 60600),
-('WG006', 'Container Wagon', 60600),
-('WG007', 'Container Wagon', 60600),
-('WG008', 'Container Wagon', 60600),
-('WG009', 'Container Wagon', 60600),
-('WG010', 'Container Wagon', 60600),
-('WG011', 'Container Wagon', 60600),
-('WG012', 'Container Wagon', 60600),
-('WG013', 'Container Wagon', 60600),
-('WG014', 'Container Wagon', 60600),
-('WG015', 'Container Wagon', 60600),
-('WG016', 'Container Wagon', 60600),
+('356 3 077', 1, 'MEDWAY', 2010),
+('356 3 078', 1, 'MEDWAY', 2010),
+('356 3 079', 1, 'MEDWAY', 2010),
+('356 3 080', 1, 'MEDWAY', 2010),
+('356 3 081', 1, 'MEDWAY', 2010),
+('356 3 082', 1, 'MEDWAY', 2010),
+('356 3 083', 1, 'MEDWAY', 2010),
+('356 3 084', 1, 'MEDWAY', 2010),
+('356 3 085', 1, 'MEDWAY', 2010),
+('356 3 086', 1, 'MEDWAY', 2010),
+('356 3 087', 1, 'MEDWAY', 2010),
+('356 3 088', 1, 'MEDWAY', 2010),
+('356 3 089', 1, 'MEDWAY', 2010),
+('356 3 090', 1, 'MEDWAY', 2010),
+('356 3 091', 1, 'MEDWAY', 2010),
+('356 3 092', 1, 'MEDWAY', 2010),
 
 -- Cereal Wagons Tadgs (4)
-('WG017', 'Cereal Wagon', 56000),
-('WG018', 'Cereal Wagon', 56000),
-('WG019', 'Cereal Wagon', 56000),
-('WG020', 'Cereal Wagon', 56000),
+('082 3 045', 2, 'MEDWAY', 2012),
+('082 3 046', 2, 'MEDWAY', 2012),
+('082 3 047', 2, 'MEDWAY', 2012),
+('082 3 048', 2, 'MEDWAY', 2012),
 
 -- Cereal Wagons Tdgs (6)
-('WG021', 'Cereal Wagon', 26200),
-('WG022', 'Cereal Wagon', 26200),
-('WG023', 'Cereal Wagon', 26200),
-('WG024', 'Cereal Wagon', 26200),
-('WG025', 'Cereal Wagon', 26200),
-('WG026', 'Cereal Wagon', 26200),
+('074 1 001', 3, 'MEDWAY', 2015),
+('074 1 002', 3, 'MEDWAY', 2015),
+('074 1 003', 3, 'MEDWAY', 2015),
+('074 1 004', 3, 'MEDWAY', 2015),
+('074 1 005', 3, 'MEDWAY', 2015),
+('074 1 006', 3, 'MEDWAY', 2015),
 
 -- Covered Wagons Gabs (5)
-('WG027', 'Covered Wagon', 50200),
-('WG028', 'Covered Wagon', 50200),
-('WG029', 'Covered Wagon', 50200),
-('WG030', 'Covered Wagon', 50200),
-('WG031', 'Covered Wagon', 50200),
+('181 1 010', 4, 'MEDWAY', 2018),
+('181 1 011', 4, 'MEDWAY', 2018),
+('181 1 012', 4, 'MEDWAY', 2018),
+('181 1 013', 4, 'MEDWAY', 2018),
+('181 1 014', 4, 'MEDWAY', 2018),
 
 -- Wood Wagons Kbs (10)
-('WG032', 'Wood Wagon', 25800),
-('WG033', 'Wood Wagon', 25800),
-('WG034', 'Wood Wagon', 25800),
-('WG035', 'Wood Wagon', 25800),
-('WG036', 'Wood Wagon', 25800),
-('WG037', 'Wood Wagon', 25800),
-('WG038', 'Wood Wagon', 25800),
-('WG039', 'Wood Wagon', 25800),
-('WG040', 'Wood Wagon', 25800),
-('WG041', 'Wood Wagon', 25800);
+('333 0 001', 5, 'MEDWAY', 2020),
+('333 0 002', 5, 'MEDWAY', 2020),
+('333 0 003', 5, 'MEDWAY', 2020),
+('333 0 004', 5, 'MEDWAY', 2020),
+('333 0 005', 5, 'MEDWAY', 2020),
+('333 0 006', 5, 'MEDWAY', 2020),
+('333 0 007', 5, 'MEDWAY', 2020),
+('333 0 008', 5, 'MEDWAY', 2020),
+('333 0 009', 5, 'MEDWAY', 2020),
+('333 0 010', 5, 'MEDWAY', 2020);
 
 COMMIT;
 
 -- Verification
-SELECT 'USBD04 COMPLETED - Database populated with 8 locomotives and 41 wagons' as status FROM DUAL;
+SELECT 'USBD04 COMPLETED - Database populated successfully' as status FROM DUAL;
