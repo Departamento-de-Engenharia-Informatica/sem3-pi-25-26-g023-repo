@@ -242,6 +242,31 @@ INSERT INTO TRAIN_WAGON_USAGE (usage_id, train_id, wagon_id, usage_date) VALUES
                                                                              ('USG012', '5437', '074 1 004', DATE '2025-10-06'),
                                                                              ('USG013', '5437', '082 3 047', DATE '2025-10-06');
 
+-- 13. INSERT LINE_SEGMENT DATA
+INSERT INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES
+                                                                                                                                                            (1, 'L001', 1, 'Yes', 8000, 2618, 4, NULL, NULL),
+                                                                                                                                                            (3, 'L002', 1, 'Yes', 8000, 2443, 4, NULL, NULL),
+                                                                                                                                                            (10, 'L003', 1, 'Yes', 8000, 26560, 2, NULL, NULL),
+                                                                                                                                                            (11, 'L003', 2, 'Yes', 8000, 10000, 2, NULL, NULL),
+                                                                                                                                                            (15, 'L004', 1, 'Yes', 8000, 5286, 2, NULL, NULL),
+                                                                                                                                                            (16, 'L004', 2, 'Yes', 8000, 6000, 2, NULL, NULL),
+                                                                                                                                                            (14, 'L005', 1, 'Yes', 8000, 10387, 2, NULL, NULL),
+                                                                                                                                                            (12, 'L005', 2, 'Yes', 8000, 12000, 2, NULL, NULL),
+                                                                                                                                                            (13, 'L005', 3, 'Yes', 8000, 3100, 2, NULL, NULL),
+                                                                                                                                                            (20, 'L006', 1, 'Yes', 6400, 4890, 2, NULL, NULL),
+                                                                                                                                                            (18, 'L007', 1, 'Yes', 8000, 6000, 1, NULL, NULL),
+                                                                                                                                                            (21, 'L007', 2, 'Yes', 8000, 5000, 1, 2000, 864),
+                                                                                                                                                            (22, 'L007', 3, 'Yes', 8000, 12000, 1, NULL, NULL),
+                                                                                                                                                            (25, 'L008', 1, 'Yes', 8000, 20829, 1, 11000, 266),
+                                                                                                                                                            (26, 'L009', 1, 'Yes', 8000, 4264, 1, NULL, NULL),
+                                                                                                                                                            (30, 'L010', 1, 'Yes', 8000, 3883, 2, NULL, NULL),
+                                                                                                                                                            (31, 'L011', 1, 'Yes', 8400, 1174, 2, NULL, NULL),
+                                                                                                                                                            (32, 'L011', 2, 'Yes', 8000, 2534, 2, NULL, NULL),
+                                                                                                                                                            (33, 'L012', 1, 'Yes', 8000, 1566, 2, NULL, NULL),
+                                                                                                                                                            (34, 'L012', 2, 'Yes', 8000, 1453, 2, NULL, NULL),
+                                                                                                                                                            (35, 'L013', 1, 'Yes', 8100, 3597, 2, NULL, NULL),
+                                                                                                                                                            (36, 'L013', 2, 'Yes', 8000, 4334, 2, NULL, NULL);
+
 COMMIT;
 
 -- Verification
