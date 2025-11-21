@@ -14,6 +14,9 @@ import pt.ipp.isep.dei.domain.*;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.util.Duration;
+import pt.ipp.isep.dei.repository.FacilityRepository;
+import pt.ipp.isep.dei.repository.LocomotiveRepository;
+import pt.ipp.isep.dei.repository.TrainRepository;
 
 import java.io.IOException;
 import java.net.URL;
@@ -38,6 +41,10 @@ public class MainController {
     private TravelTimeController travelTimeController;
     private StationIndexManager stationIndexManager;
     private KDTree spatialKDTree;
+    private TrainRepository trainRepository;
+    private FacilityRepository facilityRepository;
+    private LocomotiveRepository locomotiveRepository;
+    private DispatcherService dispatcherService;
 
     // --- Global Status Flags ---
     private boolean isAllocationsRun = false;
@@ -346,12 +353,38 @@ public class MainController {
         AnchorPane.setTopAnchor(t, 25.0);
         AnchorPane.setLeftAnchor(t, 25.0);
     }
-
     @FXML
-    public void handleShowLAPR3(ActionEvent event) {
-        statusLabel.setText("LAPR3 Features");
-        loadView("lapr3-travel-time-view.fxml", this.travelTimeController);
+    public void handleShowSimulation(ActionEvent event) throws IOException {
+        if (this.statusLabel != null) {
+            this.statusLabel.setText("USLP07 - Simulação Completa e Conflitos");
+        }
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/lapr3-simulation-view.fxml"));
+        TrainSimulationController controller = new TrainSimulationController();
+
+        // Injetar dependências
+        controller.setDependencies(
+                this,
+                this.trainRepository,
+                this.facilityRepository,
+                this.dispatcherService,
+                this.locomotiveRepository
+        );
+
+        // Definir controller no FXMLLoader
+        loader.setController(controller);
+        Parent root = loader.load();
+
+        // Inicializar controller (carregar comboios)
+        controller.initController();
+
+        // Associar ação do botão manualmente (opcional)
+        controller.runButton.setOnAction(e -> controller.runSimulation());
+
+        // Colocar a view no painel principal
+        this.mainPane.setCenter(root);
     }
+
 
     /**
      * Tratador do menu principal BDDAD. Carrega o menu de escolha de entidades.

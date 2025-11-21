@@ -6,7 +6,7 @@
 <?import javafx.scene.layout.AnchorPane?>
 <?import javafx.scene.layout.BorderPane?>
 <?import javafx.scene.layout.HBox?>
-<?import javafx.scene.layout.StackPane?> <!-- ✅ IMPORT ADICIONADO -->
+<?import javafx.scene.layout.StackPane?>
 <?import javafx.scene.layout.VBox?>
 
 <BorderPane fx:id="mainPane" prefHeight="800.0" prefWidth="1200.0" styleClass="root" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.MainController">
@@ -25,11 +25,12 @@
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI03" styleClass="sidebar-button" text="[USEI03] Pack Trolleys" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI04" styleClass="sidebar-button" text="[USEI04] Calculate Pick Path" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI05" styleClass="sidebar-button" text="[USEI05] Process Quarantine" />
-                <Label styleClass="sidebar-section-title" text="Railway Ops (S1/S2)" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowLAPR3" styleClass="sidebar-button" text="[USLP03] Travel Time (S1)" />
+                <Label styleClass="sidebar-section-title" text="Railway Ops (S1/S2/S3)" />
+                <!-- ✅ NOVO BOTÃO PARA USLP07 (S3) -->
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowSimulation" styleClass="sidebar-button" text="[USLP07] Full Simulation (S3)" />
+
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI06" styleClass="sidebar-button" text="[USEI06] Station Index (S2)" />
 
-                <!-- ✅ CORREÇÃO DE TEXTO DO BOTÃO -->
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI07" styleClass="sidebar-button" text="[USEI07] Analyze 2D-Tree (S2)" />
 
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI08" styleClass="sidebar-button" text="[USEI08] Spatial Queries (S2)" />
@@ -48,16 +49,9 @@
         </HBox>
     </bottom>
 
-    <!--
-      ✅
-      TODA A SECÇÃO <center> FOI ATUALIZADA
-      PARA USAR UM StackPane
-      ✅
-    -->
     <center>
         <StackPane>
             <children>
-                <!-- 1. O teu conteúdo original (header + content pane) -->
                 <VBox>
                     <children>
                         <HBox fx:id="globalStatusHeader" styleClass="global-status-header" alignment="CENTER_LEFT" spacing="15.0">
@@ -84,20 +78,14 @@
                     </children>
                 </VBox>
 
-                <!--
-                    2. NOVO PAINEL DE NOTIFICAÇÕES (flutuante)
-                    Esta VBox vai ficar no canto superior direito.
-                -->
                 <VBox fx:id="notificationPane" alignment="TOP_RIGHT" spacing="10.0" pickOnBounds="false" styleClass="notification-container">
                     <StackPane.alignment>TOP_RIGHT</StackPane.alignment>
                     <padding>
                         <Insets top="20.0" right="20.0" bottom="20.0" left="20.0" />
                     </padding>
-                    <!-- As notificações (Labels) serão adicionadas aqui via código -->
                 </VBox>
 
             </children>
         </StackPane>
     </center>
-
 </BorderPane>
