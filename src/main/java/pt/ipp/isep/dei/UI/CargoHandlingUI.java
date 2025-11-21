@@ -7,15 +7,16 @@ import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
 import pt.ipp.isep.dei.repository.TrainRepository;
-import pt.ipp.isep.dei.repository.FacilityRepository; // Import necessário
+import pt.ipp.isep.dei.repository.FacilityRepository;
 
-// Correções de Imports
 import pt.ipp.isep.dei.domain.SpatialSearchQueries;
 import pt.ipp.isep.dei.domain.PickingPathService;
 import pt.ipp.isep.dei.domain.HeuristicType;
 import pt.ipp.isep.dei.domain.RadiusSearch;
 import pt.ipp.isep.dei.domain.StationDistance;
 import pt.ipp.isep.dei.domain.DensitySummary;
+import pt.ipp.isep.dei.domain.SchedulerResult;
+import pt.ipp.isep.dei.domain.TrainTrip;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -25,7 +26,11 @@ import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.time.format.DateTimeFormatter; // Para formatação de tempo no output
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
 
 /**
  * Main User Interface for the Cargo Handling Terminal.
@@ -76,8 +81,8 @@ public class CargoHandlingUI implements Runnable {
                            KDTree spatialKDTree,
                            SpatialSearch spatialSearchEngine,
                            SchedulerController schedulerController,
-                           DispatcherService dispatcherService, // <--- NOVO
-                           FacilityRepository facilityRepo) {     // <--- NOVO
+                           DispatcherService dispatcherService,
+                           FacilityRepository facilityRepo) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
@@ -248,7 +253,7 @@ public class CargoHandlingUI implements Runnable {
     }
 
     // ============================================================
-    // === USLP07 FULL SIMULATION HANDLER (ATUALIZADO PARA SELEÇÃO) ===
+    // === USLP07 FULL SIMULATION HANDLER (ATUALIZADO PARA SELEÇÃO E DELAY LINE) ===
     // ============================================================
 
     /**
@@ -301,21 +306,34 @@ public class CargoHandlingUI implements Runnable {
 
 
             // 2. Executa a Simulação
-            // CORREÇÃO: Usar o tipo de retorno REALMENTE FORNECIDO pelo DispatcherService
-            Map<String, List<SimulationSegmentEntry>> allSimulationResults = dispatcherService.runSimulation(trainsToSimulate);
+            // Chama o método no DispatcherService que agora retorna SchedulerResult
+            SchedulerResult schedulerResult = dispatcherService.scheduleTrains(trainsToSimulate);
 
-            if (allSimulationResults.isEmpty()) {
+            // Usa o campo público 'scheduledTrips' (da SchedulerResult)
+            Map<String, TrainTrip> scheduledTripsMap = schedulerResult.scheduledTrips.stream()
+                    .collect(Collectors.toMap(
+                            TrainTrip::getTripId,
+                            trip -> trip,
+                            (existing, replacement) -> existing
+                    ));
+
+
+            if (scheduledTripsMap.isEmpty()) {
                 showError("No valid scheduled trips could be simulated for the selected trains (check routes).");
                 return;
             }
 
-            showSuccess("Full simulation completed successfully for " + allSimulationResults.size() + " trains!");
+            showSuccess("Full simulation completed successfully for " + scheduledTripsMap.size() + " trains!");
 
             // 3. Imprime a Linha Temporal Segmento a Segmento
-            printSimulationTimetables(allSimulationResults);
+            printSimulationTimetables(scheduledTripsMap, schedulerResult.resolvedConflicts);
 
             // 4. Verifica e Reporta Conflitos / Cruzamentos
-            List<String> conflictReport = dispatcherService.checkConflictsAndSuggestCrossings();
+            // Usa o campo público 'resolvedConflicts' (da SchedulerResult)
+            List<String> conflictReport = schedulerResult.resolvedConflicts.stream()
+                    .map(c -> c.toString())
+                    .collect(Collectors.toList());
+
             printConflictReport(conflictReport);
 
 
@@ -329,55 +347,85 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Imprime a tabela de tempos de passagem por segmento para todos os comboios simulados.
+     * VERSÃO CORRIGIDA: Usa o log de conflitos para injetar DELAYs nos pontos de espera logísticos (siding points).
+     * @param scheduledTripsMap O mapa de viagens agendadas.
+     * @param conflicts Lista de conflitos resolvidos.
      */
-    private void printSimulationTimetables(Map<String, List<SimulationSegmentEntry>> allResults) { // <--- ASSINATURA CORRIGIDA
+    private void printSimulationTimetables(Map<String, TrainTrip> scheduledTripsMap, List<Conflict> conflicts) {
         System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
         System.out.println(ANSI_BOLD + "                            DETAILED SEGMENT TIMETABLE (SIMULATION OUTPUT) " + ANSI_RESET);
         System.out.println(ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
 
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        for (Map.Entry<String, List<SimulationSegmentEntry>> entry : allResults.entrySet()) {
-            String trainId = entry.getKey();
-            List<SimulationSegmentEntry> timetable = entry.getValue();
+        // 1. Mapear Atrasos a Injetar por Comboio/Estação
+        // Key: TripID, Value: Map<FacilityID_PontoDeEspera, TotalDelayMinutesAcumulados>
+        Map<String, Map<Integer, Long>> delayPoints = new HashMap<>();
+
+        // Distribui os atrasos para os pontos de espera reportados no log de conflitos
+        for (Conflict c : conflicts) {
+            String delayedTripId = c.tripId2;
+            int waitFacilityId = c.getSafeWaitFacilityId();
+            long delay = c.delayMinutes;
+
+            // Acumula os delays na estação de espera reportada no log de conflitos
+            delayPoints.computeIfAbsent(delayedTripId, k -> new HashMap<>())
+                    .merge(waitFacilityId, delay, Long::sum);
+        }
+
+
+        // Iterar sobre todos os comboios agendados
+        for (Map.Entry<String, TrainTrip> entry : scheduledTripsMap.entrySet()) {
+            TrainTrip trip = entry.getValue();
+            String trainId = trip.getTripId();
+            List<SimulationSegmentEntry> timetable = trip.getSegmentEntries();
 
             if (timetable.isEmpty()) continue;
 
-            // Encontra o comboio para obter a hora de partida planeada (do TrainRepository)
-            Train train = trainRepo.findById(trainId).orElse(null);
+            Train originalTrain = trainRepo.findById(trainId).orElse(null);
+            if (originalTrain == null) continue;
 
-            // Tenta obter info da locomotiva
+            // Variáveis de tempo originais e recalculadas
+            LocalDateTime initialDeparture = originalTrain.getDepartureTime();
+            LocalDateTime actualDeparture = trip.getDepartureTime();
+            Duration totalDelayDuration = Duration.between(initialDeparture, actualDeparture);
+            long totalDelayMinutes = totalDelayDuration.toMinutes();
+
+            // HORA BASE: Usamos a HORA DE PARTIDA ORIGINAL como ponto de partida visual
+            LocalDateTime currentTime = initialDeparture;
+
+
+            // 4. Tenta obter info da locomotiva e velocidade
             Locomotive loco = null;
             String locoInfo = "N/A (0 kW)";
             double maxCalculatedSpeed = 0.0;
 
-            // CORREÇÃO CRÍTICA: Tenta obter a velocidade calculada do primeiro segmento para o cabeçalho
-            if (!timetable.isEmpty()) {
-                maxCalculatedSpeed = timetable.get(0).getCalculatedSpeedKmh();
-            }
+            maxCalculatedSpeed = trip.getMaxTrainSpeed();
 
-            if (train != null && train.getLocomotiveId() != null) {
+            if (originalTrain.getLocomotiveId() != null) {
                 try {
-                    loco = locomotivaRepo.findById(Integer.parseInt(train.getLocomotiveId())).orElse(null);
+                    loco = locomotivaRepo.findById(Integer.parseInt(originalTrain.getLocomotiveId())).orElse(null);
                     if (loco != null) {
                         locoInfo = String.format("%s (%.0f kW)", loco.getLocomotiveId(), loco.getPowerKW());
                     }
                 } catch (NumberFormatException e) {
-                    locoInfo = train.getLocomotiveId() + " (Power N/A)";
+                    locoInfo = originalTrain.getLocomotiveId() + " (Power N/A)";
                 }
             }
 
 
-            // --- SUMÁRIO DETALHADO DO COMBOIO ---
-            System.out.printf(ANSI_BOLD + "\n🚆 Train %s — Scheduled Departure %s%n" + ANSI_RESET,
-                    trainId, train != null ? train.getDepartureTime().toLocalTime().format(timeFormatter) : "N/A");
+            // 5. Formatação do Título
+            String originalDepartureStr = initialDeparture.toLocalTime().format(timeFormatter);
+            String departureDisplay = originalDepartureStr; // Visualmente parte na hora original (o DELAY será injetado)
 
-            // CORREÇÃO CRÍTICA: Usar a velocidade calculada real (lida do primeiro segmento)
+            // --- SUMÁRIO DETALHADO DO COMBOIO ---
+            System.out.printf(ANSI_BOLD + "\n🚆 Train %s — Final Departure %s%n" + ANSI_RESET,
+                    trainId, departureDisplay);
+
             String speedDisplay = (maxCalculatedSpeed > 0 && maxCalculatedSpeed != Double.POSITIVE_INFINITY)
                     ? String.format("%.0f km/h", maxCalculatedSpeed)
-                    : "N/A (check power/weight)";
+                    : "N/A";
 
-            // O cabeçalho agora mostra a velocidade máxima calculada (em vez de 'Assumed Freight Speed: 100 km/h')
             System.out.printf(ANSI_ITALIC + "   Composition: Locomotive %s | Max Calculated Speed: %s%n" + ANSI_RESET, locoInfo, speedDisplay);
 
 
@@ -386,14 +434,68 @@ public class CargoHandlingUI implements Runnable {
                     "ID\tFROM FACILITY\t\tTO FACILITY\t\tTYPE\tLENGTH\t\tENTRY\t\tEXIT\t\tSPEED (C/A)" + ANSI_RESET);
             System.out.println("-".repeat(95));
 
-            // --- CONTEÚDO DA TABELA ---
-            for (SimulationSegmentEntry segmentEntry : timetable) {
-                // toTableString já usa o calculatedSpeedKmh para a coluna C/A
-                System.out.println(segmentEntry.toTableString());
+
+            // --- 6. CONTEÚDO DA TABELA (Segmentos e Injeção de Delays Logísticos) ---
+            for (int i = 0; i < timetable.size(); i++) {
+                SimulationSegmentEntry segment = timetable.get(i);
+
+                int startFacilityId = segment.getSegment().getIdEstacaoInicio();
+                Map<Integer, Long> tripDelays = delayPoints.getOrDefault(trainId, Map.of());
+                long accumulatedDelayAtThisFacility = tripDelays.getOrDefault(startFacilityId, 0L);
+
+                // Passo A: INJETAR DELAY no ponto de espera (se a estação de INÍCIO for um ponto de atraso)
+                if (accumulatedDelayAtThisFacility > 0) {
+
+                    String facilityName = segment.getStartFacilityName();
+
+                    LocalDateTime delayStart = currentTime;
+                    currentTime = currentTime.plusMinutes(accumulatedDelayAtThisFacility);
+                    LocalDateTime delayEnd = currentTime;
+
+                    System.out.printf(ANSI_YELLOW +
+                                    ANSI_BOLD + "DELAY\t%-20s\t%-20s\t%-5s\t%s%4d min\t%s\t%s\t%s%n" + ANSI_RESET,
+                            facilityName.substring(0, Math.min(facilityName.length(), 16)),
+                            facilityName.substring(0, Math.min(facilityName.length(), 16)),
+                            "WAIT",
+                            "",
+                            accumulatedDelayAtThisFacility,
+                            delayStart.toLocalTime().format(timeFormatter),
+                            delayEnd.toLocalTime().format(timeFormatter),
+                            "0/0"
+                    );
+
+                    // Nota: O agendador do seu código acumula o atraso na partida, mas
+                    // esta lógica mostra a espera no ponto logístico correto (e.g., Caminha).
+                    delayPoints.get(trainId).remove(startFacilityId);
+                }
+
+                // Passo B: Calcular e Imprimir Segmento
+                double segmentTimeHours = segment.getSegment().getComprimento() / segment.getCalculatedSpeedKmh();
+                long secondsToAdd = Math.round(segmentTimeHours * 3600);
+
+                LocalDateTime entryVisual = currentTime;
+                LocalDateTime exitVisual = currentTime.plusSeconds(secondsToAdd);
+
+                // Imprime o segmento com o novo tempo visualmente correto
+                System.out.printf("%-7s\t%-20s\t%-20s\t%-6s\t%7.1f km\t%8s\t%8s\t%10.0f/%-3.0f%n",
+                        segment.getSegmentId(),
+                        segment.getStartFacilityName().substring(0, Math.min(segment.getStartFacilityName().length(), 16)),
+                        segment.getEndFacilityName().substring(0, Math.min(segment.getEndFacilityName().length(), 16)),
+                        segment.getSegment().getNumberTracks() > 1 ? "Double" : "Single",
+                        segment.getSegment().getComprimento(),
+                        entryVisual.toLocalTime().format(timeFormatter),
+                        exitVisual.toLocalTime().format(timeFormatter),
+                        segment.getCalculatedSpeedKmh(),
+                        segment.getSegment().getVelocidadeMaxima()
+                );
+
+                // Atualiza o tempo para o início do próximo segmento
+                currentTime = exitVisual;
             }
             System.out.println("-".repeat(95));
         }
     }
+
 
     /**
      * Imprime o relatório de conflitos e sugestões de cruzamento.
@@ -406,31 +508,18 @@ public class CargoHandlingUI implements Runnable {
         if (conflictReport.isEmpty()) {
             System.out.println(ANSI_GREEN + "✅ No single-track conflicts detected in the current schedule." + ANSI_RESET);
         } else {
-            // Conta o número de conflitos assumindo que as linhas de conflito começam com "⚠️"
-            int numConflicts = (int) conflictReport.stream().filter(line -> line.startsWith("⚠️")).count();
-            System.out.printf(ANSI_RED + "⚠️ Found %d conflict event(s):%n" + ANSI_RESET, numConflicts);
+            // Conta os conflitos (cada linha deve ser uma ocorrência de conflito resolvido)
+            int numConflicts = conflictReport.size();
+
+            // Mensagem atualizada para refletir que os conflitos foram resolvidos e não apenas detetados.
+            System.out.printf(ANSI_RED + "⚠️ Found %d conflict event(s) (All conflicts were resolved by delay):%n" + ANSI_RESET, numConflicts);
 
             for (String reportLine : conflictReport) {
-                if (reportLine.startsWith("⚠️")) {
-                    System.out.println(ANSI_RED + reportLine + ANSI_RESET);
-                } else if (reportLine.contains("- RECOMMENDED CROSSING:")) {
-                    System.out.println(ANSI_YELLOW + reportLine + ANSI_RESET);
-                } else {
-                    System.out.println(reportLine); // Para detalhes de tempo (TXX: HH:mm - HH:mm)
-                }
+                // Imprime a string diretamente (já deve conter a formatação de cor do Conflict.toString())
+                System.out.println(reportLine);
             }
         }
     }
-
-    // ============================================================
-    // === USLP07 SCHEDULER HANDLER (REMOVIDO / SUBSTITUÍDO) ===
-    // ============================================================
-
-    /*
-     * O método handleDispatchTrains original foi substituído por handleRunFullSimulation().
-     * O código anterior foi removido para evitar erros de compilação com a lógica obsoleta.
-     */
-
 
     // ============================================================
     // === USEI08 SPATIAL QUERIES HANDLERS (Mantidos) ===
@@ -1005,10 +1094,10 @@ public class CargoHandlingUI implements Runnable {
             System.out.printf(ANSI_BOLD + "Height: %s%d%n" + ANSI_RESET,
                     ANSI_CYAN, stats.get("height"));
 
-            System.out.println(ANSI_BOLD + "  Node Capacity (Stations per Node):" + ANSI_RESET);
-
             @SuppressWarnings("unchecked")
             Map<Integer, Integer> buckets = (Map<Integer, Integer>) stats.get("bucketSizes");
+
+            System.out.println(ANSI_BOLD + "  Node Capacity (Stations per Node):" + ANSI_RESET);
 
             buckets.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())

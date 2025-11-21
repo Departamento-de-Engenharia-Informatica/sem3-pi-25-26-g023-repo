@@ -93,14 +93,21 @@ public class Main {
             );
             printLoadStep("  > LAPR3 components initialized.", true);
 
-            // 6.1. Inicialização do USLP07 (Scheduler)
+            // 6.1. Inicialização de Repositórios de Alto Nível
+            printLoadStep("Initializing Dispatcher dependencies...");
+            WagonRepository wagonRepo = new WagonRepository();
+            TrainRepository trainRepo = new TrainRepository(); // Repositório para ler TRAINs da DB
+            // MOVIDO PARA AQUI: FacilityRepository precisa ser inicializado ANTES do SchedulerService
+            FacilityRepository facilityRepo = new FacilityRepository(); // Repositório para mapear Facility IDs para nomes
+
+
+            // 6.2. Inicialização do Scheduler e Controller
             printLoadStep("Initializing Scheduler components (USLP07)...");
-            WagonRepository wagonRepo = new WagonRepository(); // Novo Repo
 
-            // CORREÇÃO CRÍTICA: Passar o estacaoRepo (StationRepository) para SchedulerService
-            SchedulerService schedulerService = new SchedulerService(estacaoRepo);
+            // CORREÇÃO CRÍTICA: Passar o estacaoRepo (StationRepository) e facilityRepo para SchedulerService
+            SchedulerService schedulerService = new SchedulerService(estacaoRepo, facilityRepo); // <-- CORRIGIDO AQUI
 
-            // FIX 1: Adicionar networkService ao SchedulerController
+            // Adicionar networkService ao SchedulerController
             SchedulerController schedulerController = new SchedulerController(
                     schedulerService,
                     segmentoRepo,
@@ -110,17 +117,16 @@ public class Main {
             );
             printLoadStep("  > USLP07 Scheduler controller ready.", true);
 
-            // 6.2. Inicialização dos novos serviços de Simulação
+            // 6.3. Inicialização dos novos serviços de Simulação
             printLoadStep("Initializing Dispatcher Service (USLP07 Simulation)...");
-            TrainRepository trainRepo = new TrainRepository(); // Repositório para ler TRAINs da DB
-            FacilityRepository facilityRepo = new FacilityRepository(); // Repositório para mapear Facility IDs para nomes
 
-            // CORREÇÃO FINAL: Adicionar locomotivaRepo como 4º argumento ao construtor do DispatcherService
+            // CORREÇÃO FINAL: Adicionar o novo schedulerService ao construtor
             DispatcherService dispatcherService = new DispatcherService(
                     trainRepo,
                     networkService,
                     facilityRepo,
-                    locomotivaRepo // <--- CORRIGIDO: Argumento em falta
+                    locomotivaRepo,
+                    schedulerService
             );
             printLoadStep("  > USLP07 Dispatcher Service ready.", true);
 
@@ -158,11 +164,11 @@ public class Main {
             printLoadStep("  > USEI10 Radius Search ready! Complexity: O(sqrt(N) + K log K) average case", true);
 
 
-            // 9️⃣ Launch UI - AGORA COM 12 ARGUMENTOS (10 + 2 Novos)
+            // 9️⃣ Launch UI - AGORA COM TODOS OS ARGUMENTOS CORRETOS
             System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);
             Thread.sleep(1000);
 
-            // FIX 2: Adicionar DispatcherService e FacilityRepository ao construtor
+            // Adicionar DispatcherService e FacilityRepository ao construtor
             CargoHandlingUI cargoMenu = new CargoHandlingUI(
                     wms, manager, wagons,
                     travelTimeController, estacaoRepo, locomotivaRepo,
@@ -171,7 +177,7 @@ public class Main {
                     spatialSearchEngine,
                     schedulerController,
                     dispatcherService,
-                    facilityRepo
+                    facilityRepo // Passado corretamente
             );
             cargoMenu.run();
 
