@@ -1,8 +1,8 @@
-// File: pt.ipp.isep.dei.domain.DispatcherService.java
 package pt.ipp.isep.dei.domain;
 
 import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.TrainRepository;
+import pt.ipp.isep.dei.repository.SegmentLineRepository; // NOVO IMPORT: Para aceder a INVERSE_ID_PREFIX
 
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -10,6 +10,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -141,8 +142,18 @@ public class DispatcherService {
     }
 
     // =================================================================================
-    // 2. Deteção e Resolução de Conflitos
+    // 2. Deteção e Resolução de Conflitos (LÓGICA CORRIGIDA)
     // =================================================================================
+
+    /**
+     * Retorna o ID FÍSICO do segmento (normalizando X e INV_X para X).
+     */
+    private String getPhysicalTrackId(String segmentId) {
+        if (segmentId.startsWith(SegmentLineRepository.INVERSE_ID_PREFIX)) {
+            return segmentId.substring(SegmentLineRepository.INVERSE_ID_PREFIX.length());
+        }
+        return segmentId;
+    }
 
     /**
      * Analisa a linha temporal global para encontrar conflitos (em via única) e sugere cruzamentos.
@@ -151,38 +162,56 @@ public class DispatcherService {
         List<String> conflictReport = new ArrayList<>();
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        for (Map.Entry<String, List<SimulationSegmentEntry>> entry : timeline.entrySet()) {
+        // 1. Agrupa as passagens pelo ID FÍSICO do segmento (normalizando INV_X para X)
+        Map<String, List<SimulationSegmentEntry>> allEntriesByPhysicalTrack = new HashMap<>();
+
+        for (List<SimulationSegmentEntry> entries : this.timeline.values()) {
+            for (SimulationSegmentEntry entry : entries) {
+                // A chave de agregação é o ID FÍSICO (X para X e INV_X)
+                String physicalId = getPhysicalTrackId(entry.getSegmentId());
+                allEntriesByPhysicalTrack.computeIfAbsent(physicalId, k -> new ArrayList<>()).add(entry);
+            }
+        }
+
+        // 2. Itera sobre cada recurso físico (via) para verificar colisões
+        for (Map.Entry<String, List<SimulationSegmentEntry>> entry : allEntriesByPhysicalTrack.entrySet()) {
             List<SimulationSegmentEntry> segmentEntries = entry.getValue();
 
-            // Só verificar se há pelo menos 2 comboios e se é via única
+            // Só verifica se houver colisões potenciais e se for via única
             if (segmentEntries.size() < 2 || segmentEntries.get(0).getSegment().getNumberTracks() > 1) {
                 continue;
             }
 
-            segmentEntries.sort((a, b) -> a.getEntryTime().compareTo(b.getEntryTime()));
+            segmentEntries.sort(Comparator.comparing(SimulationSegmentEntry::getEntryTime));
 
             for (int i = 0; i < segmentEntries.size(); i++) {
                 for (int j = i + 1; j < segmentEntries.size(); j++) {
                     SimulationSegmentEntry entry1 = segmentEntries.get(i);
                     SimulationSegmentEntry entry2 = segmentEntries.get(j);
 
-                    // Conflito se os intervalos de tempo se sobrepõem
-                    if (checkOverlap(entry1.getEntryTime(), entry1.getExitTime(),
-                            entry2.getEntryTime(), entry2.getExitTime())) {
+                    if (checkOverlap(entry1.getEntryTime(), entry1.getExitTime(), entry2.getEntryTime(), entry2.getExitTime())) {
+
+                        // Determinar o tipo de conflito
+                        boolean isHeadOn = !entry1.getSegmentId().equals(entry2.getSegmentId());
+                        String conflictType = isHeadOn ? "HEAD-ON" : "PURSUIT"; // Head-on se os IDs forem diferentes (viagens opostas)
 
                         // ⚠️ Conflito
-                        conflictReport.add(String.format("⚠️ CONFLICT: Train %s and Train %s overlap on segment %s",
+                        conflictReport.add(String.format("⚠️ CONFLICT [%s]: Train %s and Train %s overlap on physical track %s",
+                                conflictType,
                                 entry1.getTrainId(),
                                 entry2.getTrainId(),
-                                entry1.getSegmentId()));
+                                entry.getKey()));
 
-                        conflictReport.add(String.format("   - T%s: %s – %s",
+                        // Detalhes de tempo
+                        conflictReport.add(String.format("   - T%s (%s): %s – %s",
                                 entry1.getTrainId(),
+                                entry1.getSegmentId(),
                                 entry1.getEntryTime().toLocalTime().format(timeFormatter),
                                 entry1.getExitTime().toLocalTime().format(timeFormatter)));
 
-                        conflictReport.add(String.format("   - T%s: %s – %s",
+                        conflictReport.add(String.format("   - T%s (%s): %s – %s",
                                 entry2.getTrainId(),
+                                entry2.getSegmentId(),
                                 entry2.getEntryTime().toLocalTime().format(timeFormatter),
                                 entry2.getExitTime().toLocalTime().format(timeFormatter)));
 
@@ -190,8 +219,8 @@ public class DispatcherService {
                         String waitingTrainId = entry1.getTrainId();
                         String safePoint = findLastSafePoint(entry1.getSegment());
 
-                        conflictReport.add(String.format("   - RECOMMENDED CROSSING: Train %s should wait at %s for Train %s to clear %s.",
-                                waitingTrainId, safePoint, entry2.getTrainId(), entry1.getSegmentId()));
+                        conflictReport.add(String.format("   - RECOMMENDED CROSSING: Train %s should wait at %s for Train %s to clear physical track %s.",
+                                waitingTrainId, safePoint, entry2.getTrainId(), entry.getKey()));
                     }
                 }
             }
@@ -216,10 +245,5 @@ public class DispatcherService {
      */
     private boolean checkOverlap(LocalDateTime start1, LocalDateTime end1, LocalDateTime start2, LocalDateTime end2) {
         return start1.isBefore(end2) && end1.isAfter(start2);
-    }
-
-    // MOCK: Simula a obtenção do ID (mantido para evitar erros no código que o use, mas não é usado acima)
-    private String getFacilityNameById(int facilityId) {
-        return facilityRepo.findNameById(facilityId).orElse("Facility " + facilityId);
     }
 }
