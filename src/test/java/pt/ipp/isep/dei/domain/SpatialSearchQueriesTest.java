@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SpatialSearchQueriesTest {
 
-    private SpatialSearch spatialSearch;
     private SpatialSearchQueries spatialSearchQueries;
 
     @BeforeEach
@@ -35,7 +35,7 @@ class SpatialSearchQueriesTest {
         }
 
         KDTree kdTree = buildKDTree(stations);
-        spatialSearch = new SpatialSearch(kdTree);
+        SpatialSearch spatialSearch = new SpatialSearch(kdTree);
         spatialSearchQueries = new SpatialSearchQueries(spatialSearch);
     }
 
@@ -47,8 +47,8 @@ class SpatialSearchQueriesTest {
         List<EuropeanStation> stationsByLat = new ArrayList<>(stations);
         List<EuropeanStation> stationsByLon = new ArrayList<>(stations);
 
-        stationsByLat.sort((s1, s2) -> Double.compare(s1.getLatitude(), s2.getLatitude()));
-        stationsByLon.sort((s1, s2) -> Double.compare(s1.getLongitude(), s2.getLongitude()));
+        stationsByLat.sort(Comparator.comparingDouble(EuropeanStation::getLatitude));
+        stationsByLon.sort(Comparator.comparingDouble(EuropeanStation::getLongitude));
 
         KDTree tree = new KDTree();
         tree.buildBalanced(stationsByLat, stationsByLon);

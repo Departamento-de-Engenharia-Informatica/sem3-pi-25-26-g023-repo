@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.DisplayName;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -14,7 +15,6 @@ import static org.junit.jupiter.api.Assertions.*;
  */
 class SpatialSearchTest {
 
-    private KDTree kdTree;
     private SpatialSearch spatialSearch;
     private List<EuropeanStation> testStations;
 
@@ -34,7 +34,7 @@ class SpatialSearchTest {
         }
 
         // Create KD-tree with stations (if any)
-        kdTree = buildKDTree(testStations);
+        KDTree kdTree = buildKDTree(testStations);
         spatialSearch = new SpatialSearch(kdTree);
     }
 
@@ -47,8 +47,8 @@ class SpatialSearchTest {
         List<EuropeanStation> stationsByLat = new ArrayList<>(stations);
         List<EuropeanStation> stationsByLon = new ArrayList<>(stations);
 
-        stationsByLat.sort((s1, s2) -> Double.compare(s1.getLatitude(), s2.getLatitude()));
-        stationsByLon.sort((s1, s2) -> Double.compare(s1.getLongitude(), s2.getLongitude()));
+        stationsByLat.sort(Comparator.comparingDouble(EuropeanStation::getLatitude));
+        stationsByLon.sort(Comparator.comparingDouble(EuropeanStation::getLongitude));
 
         KDTree tree = new KDTree();
         tree.buildBalanced(stationsByLat, stationsByLon);
@@ -170,9 +170,7 @@ class SpatialSearchTest {
     @DisplayName("Validate coordinate boundaries - invalid latitude")
     void testInvalidLatitudeBoundaries() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            spatialSearch.searchByGeographicalArea(-100.0, 42.0, -9.5, -6.0, null, null, null);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> spatialSearch.searchByGeographicalArea(-100.0, 42.0, -9.5, -6.0, null, null, null));
 
         assertTrue(exception.getMessage().contains("Invalid latitude range"));
     }
@@ -181,9 +179,7 @@ class SpatialSearchTest {
     @DisplayName("Validate coordinate boundaries - invalid longitude")
     void testInvalidLongitudeBoundaries() {
         // Act & Assert
-        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> {
-            spatialSearch.searchByGeographicalArea(36.0, 42.0, -200.0, -6.0, null, null, null);
-        });
+        IllegalArgumentException exception = assertThrows(IllegalArgumentException.class, () -> spatialSearch.searchByGeographicalArea(36.0, 42.0, -200.0, -6.0, null, null, null));
 
         assertTrue(exception.getMessage().contains("Invalid longitude range"));
     }
@@ -263,9 +259,7 @@ class SpatialSearchTest {
     @DisplayName("SpatialSearch constructor with null KDTree throws exception")
     void testSpatialSearchConstructorWithNullKDTree() {
         // Act & Assert
-        assertThrows(IllegalArgumentException.class, () -> {
-            new SpatialSearch(null);
-        });
+        assertThrows(IllegalArgumentException.class, () -> new SpatialSearch(null));
     }
 
     @Test
