@@ -6,6 +6,9 @@ import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
 import pt.ipp.isep.dei.repository.SegmentLineRepository;
+import pt.ipp.isep.dei.controller.SchedulerController;
+import pt.ipp.isep.dei.domain.SchedulerService;
+import pt.ipp.isep.dei.repository.WagonRepository;
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -29,9 +32,6 @@ public class Main {
 
     /**
      * Main method that starts the application.
-     * Initializes all components, loads data, and launches the UI.
-     *
-     * @param args command line arguments (not used)
      */
     public static void main(String[] args) {
         try {
@@ -78,7 +78,7 @@ public class Main {
             );
             printLoadStep(String.format("  > Loaded %d orders with lines", manager.getOrdersCount()), true);
 
-            // 6️⃣ Load LAPR3 (Sprint 1)
+            // 6️⃣ Load LAPR3 (Sprint 1) & USLP07 (Scheduler)
             printLoadStep("Loading LAPR3 (Sprint 1) components...");
             StationRepository estacaoRepo = new StationRepository();
             LocomotiveRepository locomotivaRepo = new LocomotiveRepository();
@@ -88,6 +88,19 @@ public class Main {
                     estacaoRepo, locomotivaRepo, networkService, segmentoRepo
             );
             printLoadStep("  > LAPR3 components initialized.", true);
+
+            // 6.1. Inicialização do USLP07 (Scheduler)
+            printLoadStep("Initializing Scheduler components (USLP07)...");
+            WagonRepository wagonRepo = new WagonRepository(); // Novo Repo
+            SchedulerService schedulerService = new SchedulerService(); // Novo Serviço
+            SchedulerController schedulerController = new SchedulerController( // Novo Controller
+                    schedulerService,
+                    segmentoRepo,
+                    locomotivaRepo,
+                    wagonRepo
+            );
+            printLoadStep("  > USLP07 Scheduler components ready.", true);
+
 
             // 7️⃣ Load ESINF (Sprint 2)
             printLoadStep("Loading ESINF (Sprint 2) components...");
@@ -119,11 +132,10 @@ public class Main {
 
 
             printLoadStep("Initializing Radius Search Engine (USEI10)...");
-// A USEI10 usa a mesma KDTree da USEI08, então já está pronta
             printLoadStep("  > USEI10 Radius Search ready! Complexity: O(sqrt(N) + K log K) average case", true);
 
 
-            // 9️⃣ Launch UI
+            // 9️⃣ Launch UI - AGORA COM 10 ARGUMENTOS
             System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);
             Thread.sleep(1000);
 
@@ -132,7 +144,8 @@ public class Main {
                     travelTimeController, estacaoRepo, locomotivaRepo,
                     stationIndexManager,
                     spatialKDTree,
-                    spatialSearchEngine
+                    spatialSearchEngine,
+                    schedulerController // <--- ARGUMENTO NOVO E FINAL
             );
             cargoMenu.run();
 

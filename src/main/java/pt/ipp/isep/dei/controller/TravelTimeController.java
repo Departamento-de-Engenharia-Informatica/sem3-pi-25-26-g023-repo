@@ -123,6 +123,7 @@ public class TravelTimeController {
         }
 
         List<LineSegment> allSegments = segmentoRepo.findAll();
+
         Set<Integer> reachableStationIds = new HashSet<>();
 
         for (LineSegment seg : allSegments) {

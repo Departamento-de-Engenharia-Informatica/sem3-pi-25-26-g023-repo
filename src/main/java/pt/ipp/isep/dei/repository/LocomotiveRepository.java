@@ -2,132 +2,70 @@ package pt.ipp.isep.dei.repository;
 
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.Locomotive;
-
-import java.sql.*;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.sql.*;
 
-/**
- * Repository class responsible for retrieving and managing {@link Locomotive} entities
- * from the database. This repository interacts directly with the ROLLING_STOCK table,
- * fetching only entries representing locomotives (i.e., those with type 'Electric' or 'Diesel').
- * <p>
- * The repository uses JDBC for database communication and maps SQL query results
- * into domain-level {@code Locomotive} objects.
- */
 public class LocomotiveRepository {
 
-    /**
-     * Default constructor.
-     * <p>
-     * Initializes the repository without immediately connecting to the database.
-     * The connection is established only when one of the query methods is invoked.
-     */
-    public LocomotiveRepository() {
-        // System.out.println("LocomotivaRepository: Initialized (will connect to DB on demand).");
+    /** Busca uma Locomotiva pelo seu ID (int). */
+    public Optional<Locomotive> findById(int id) {
+        // ID é int no método, mas string na DB ('stock_id').
+        String idStr = String.valueOf(id);
+
+        String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model " +
+                "FROM LOCOMOTIVE L JOIN ROLLING_STOCK R ON L.stock_id = R.stock_id " +
+                "WHERE R.stock_id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, idStr); // Usar setString para o stock_id VARCHAR2
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    // Mapeamento: rs.getInt("stock_id") funciona se o valor for numérico
+                    return Optional.of(new Locomotive(
+                            rs.getInt("stock_id"),
+                            rs.getString("model"),
+                            rs.getString("locomotive_type"), // <--- CORREÇÃO: Usar o nome correto
+                            rs.getDouble("power_kw")
+                    ));
+                }
+            }
+        } catch (SQLException e) {
+            System.err.println("❌ Error retrieving Locomotive (Rolling Stock) by ID " + id + ": " + e.getMessage());
+        }
+        return Optional.empty();
     }
 
-    /**
-     * Retrieves all locomotives stored in the database.
-     * <p>
-     * This method executes a SQL query to fetch all rows from the ROLLING_STOCK table
-     * where the type is either 'Electric' or 'Diesel'. Each record is mapped into
-     * a {@link Locomotive} object and returned in a list.
-     *
-     * @return a list containing all locomotives found in the database; the list is empty if none are found.
-     */
+    /** Retorna todas as Locomotivas. */
     public List<Locomotive> findAll() {
-        List<Locomotive> locomotivas = new ArrayList<>();
-        // ALTERADO: Adicionado max_speed à query
-        String sql = "SELECT stock_id, model, type, max_speed FROM ROLLING_STOCK WHERE type IN ('Electric', 'Diesel') ORDER BY stock_id";
+        List<Locomotive> locomotives = new ArrayList<>();
+        String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model " +
+                "FROM LOCOMOTIVE L JOIN ROLLING_STOCK R ON L.stock_id = R.stock_id " +
+                "ORDER BY R.stock_id";
 
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                String stockIdStr = rs.getString("stock_id");
-                String model = rs.getString("model");
-                String typeDb = rs.getString("type");
-                double maxSpeed = rs.getDouble("max_speed"); // <-- NOVO: Ler max_speed
-
-                String tipoJava = mapTypeToDomain(typeDb);
-
                 try {
-                    int stockIdInt = Integer.parseInt(stockIdStr);
-                    // ALTERADO: Usar o novo construtor com maxSpeed
-                    locomotivas.add(new Locomotive(stockIdInt, model, tipoJava, maxSpeed));
-                } catch (NumberFormatException e) {
-                    System.err.println("⚠️ Warning: Unable to convert stock_id '" + stockIdStr + "' to int. Locomotive ignored.");
+                    locomotives.add(new Locomotive(
+                            rs.getInt("stock_id"),
+                            rs.getString("model"),
+                            rs.getString("locomotive_type"),
+                            rs.getDouble("power_kw")
+                    ));
+                } catch (SQLException e) {
+                    System.err.println("❌ Data error in Locomotive row: " + e.getMessage());
                 }
             }
-
         } catch (SQLException e) {
-            System.err.println("❌ Error retrieving all Locomotives (Rolling Stock) from the database: " + e.getMessage());
+            System.err.println("❌ Fatal error reading Locomotive data: " + e.getMessage());
         }
-
-        return locomotivas;
-    }
-
-    /**
-     * Retrieves a specific locomotive from the database by its unique identifier.
-     * <p>
-     * Executes a parameterized SQL query to fetch a single record from the ROLLING_STOCK table
-     * that matches the given {@code stock_id} and whose type is either 'Electric' or 'Diesel'.
-     *
-     * @param id the unique identifier of the locomotive (stock_id in the database)
-     * @return an {@link Optional} containing the found {@link Locomotive}, or an empty Optional if no match is found.
-     */
-    public Optional<Locomotive> findById(int id) {
-        String idStr = String.valueOf(id);
-        // ALTERADO: Adicionado max_speed à query
-        String sql = "SELECT stock_id, model, type, max_speed FROM ROLLING_STOCK WHERE type IN ('Electric', 'Diesel') AND stock_id = ?";
-        Locomotive locomotiva = null;
-
-        try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-
-            stmt.setString(1, idStr);
-
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
-                    String stockIdStr = rs.getString("stock_id");
-                    String model = rs.getString("model");
-                    String typeDb = rs.getString("type");
-                    double maxSpeed = rs.getDouble("max_speed"); // <-- NOVO: Ler max_speed
-                    String tipoJava = mapTypeToDomain(typeDb);
-
-                    try {
-                        int stockIdInt = Integer.parseInt(stockIdStr);
-                        // ALTERADO: Usar o novo construtor com maxSpeed
-                        locomotiva = new Locomotive(stockIdInt, model, tipoJava, maxSpeed);
-                    } catch (NumberFormatException e) {
-                        System.err.println("⚠️ Warning: Unable to convert stock_id '" + stockIdStr + "' to int when fetching by ID. Locomotive ignored.");
-                    }
-                }
-            }
-
-        } catch (SQLException e) {
-            System.err.println("❌ Error retrieving Locomotive (Rolling Stock) by ID " + id + ": " + e.getMessage());
-        }
-
-        return Optional.ofNullable(locomotiva);
-    }
-
-    /**
-     * Maps the database-level locomotive type to the corresponding domain-level representation.
-     * <p>
-     * Converts values such as "Electric" and "Diesel" from the database
-     * into their respective Portuguese domain equivalents ("eletrica", "diesel").
-     * Any unknown type defaults to "desconhecido".
-     *
-     * @param dbType the type string retrieved from the database (e.g., "Electric", "Diesel")
-     * @return a domain-level type string (e.g., "eletrica", "diesel", or "desconhecido").
-     */
-    private String mapTypeToDomain(String dbType) {
-        if ("Electric".equalsIgnoreCase(dbType)) return "eletrica";
-        else if ("Diesel".equalsIgnoreCase(dbType)) return "diesel";
-        return "desconhecido";
+        return locomotives;
     }
 }

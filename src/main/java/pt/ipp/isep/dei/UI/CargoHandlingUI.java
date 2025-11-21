@@ -1,25 +1,34 @@
 package pt.ipp.isep.dei.UI;
 
 import pt.ipp.isep.dei.controller.TravelTimeController;
+import pt.ipp.isep.dei.controller.SchedulerController;
+
 import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
+import pt.ipp.isep.dei.repository.TrainRepository; // Necessário para listar comboios
 
+// Correções de Imports
+import pt.ipp.isep.dei.domain.SpatialSearchQueries;
+import pt.ipp.isep.dei.domain.PickingPathService;
+import pt.ipp.isep.dei.domain.HeuristicType;
 import pt.ipp.isep.dei.domain.RadiusSearch;
 import pt.ipp.isep.dei.domain.StationDistance;
 import pt.ipp.isep.dei.domain.DensitySummary;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Scanner;
 
 /**
  * Main User Interface for the Cargo Handling Terminal.
- * Version 2.3 - Added USEI08 Spatial Queries with KD-Tree support
  */
 public class CargoHandlingUI implements Runnable {
 
@@ -44,29 +53,22 @@ public class CargoHandlingUI implements Runnable {
     private final StationIndexManager stationIndexManager;
     private final KDTree spatialKDTree;
     private final SpatialSearch spatialSearchEngine;
+    private final SchedulerController schedulerController;
+    private final TrainRepository trainRepo = new TrainRepository(); // NOVO REPOSITÓRIO TRAIN
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
     private final Scanner scanner;
 
     /**
      * Constructs a new CargoHandlingUI with all required dependencies.
-     * Updated for Sprint 2 with KD-Tree support for spatial queries.
-     *
-     * @param wms the warehouse management system
-     * @param manager the inventory manager
-     * @param wagons list of wagons to manage
-     * @param travelTimeController travel time calculation controller
-     * @param estacaoRepo station repository
-     * @param locomotivaRepo locomotive repository
-     * @param stationIndexManager station index manager for USEI06
-     * @param spatialKDTree KD-Tree for spatial queries (USEI08)
      */
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
                            TravelTimeController travelTimeController, StationRepository estacaoRepo,
                            LocomotiveRepository locomotivaRepo,
                            StationIndexManager stationIndexManager,
                            KDTree spatialKDTree,
-                            SpatialSearch spatialSearchEngine) {
+                           SpatialSearch spatialSearchEngine,
+                           SchedulerController schedulerController) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
@@ -76,12 +78,12 @@ public class CargoHandlingUI implements Runnable {
         this.stationIndexManager = stationIndexManager;
         this.spatialKDTree = spatialKDTree;
         this.spatialSearchEngine = spatialSearchEngine;
+        this.schedulerController = schedulerController;
         this.scanner = new Scanner(System.in);
     }
 
     /**
      * Runs the main menu loop.
-     * Handles user input and delegates to appropriate handlers.
      */
     @Override
     public void run() {
@@ -91,7 +93,7 @@ public class CargoHandlingUI implements Runnable {
             showMenu();
             try {
                 // Read option - updated range for new menu items
-                option = readInt(0, 13, ANSI_BOLD + "Option: " + ANSI_RESET); // Mude de 11 para 13
+                option = readInt(0, 14, ANSI_BOLD + "Option: " + ANSI_RESET); // Máximo 14
 
                 // --- Robustness: Catches errors from handlers ---
                 try {
@@ -124,7 +126,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Displays the main menu with all available options.
-     * Includes USEI08 Spatial Queries as option 9.
      */
     private void showMenu() {
         // "Clear" the screen
@@ -147,17 +148,19 @@ public class CargoHandlingUI implements Runnable {
 
 
         // --- Railway & Station Ops ---
-        System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- Railway & Station Ops (S1 & S2) ---" + ANSI_RESET);
+        System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- Railway & Station Ops (S1, S2 & S3) ---" + ANSI_RESET);
         System.out.println(ANSI_GREEN + " 6. " + ANSI_RESET + "[USLP03] Calculate Train Travel Time (S1)");
         System.out.println(ANSI_GREEN + " 7. " + ANSI_RESET + "[USEI06] Query European Station Index (S2)");
         System.out.println(ANSI_GREEN + " 8. " + ANSI_RESET + "[USEI07] Build & Analyze 2D-Tree (S2)");
         System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)");
         System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "[USEI09] Proximity Search - Nearest N (S2)");
         System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "[USEI10] Radius Search & Density Summary (S2)");
+        System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "[USLP07] Dispatch Train Scheduler (S3)"); // <--- NOVA OPÇÃO
+
         // --- Info ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
-        System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "View Current Inventory"); // Antigo 11
-        System.out.println(ANSI_GREEN + "13. " + ANSI_RESET + "View Warehouse Info");  // Antigo 12
+        System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "View Current Inventory");
+        System.out.println(ANSI_GREEN + "13. " + ANSI_RESET + "View Warehouse Info");
 
         // --- Exit ---
         System.out.println("\n" + ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
@@ -175,9 +178,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Handles the menu option selected by the user.
-     * Routes to appropriate functionality based on user choice.
-     *
-     * @param option the selected menu option (0-11)
      */
     private void handleOption(int option) {
         switch (option) {
@@ -209,16 +209,19 @@ public class CargoHandlingUI implements Runnable {
                 handleSpatialQueries(); // USEI08
                 break;
             case 10:
-                handleNearestNQuery(); // ✅ USEI09
+                handleNearestNQuery(); // USEI09
                 break;
-            case 11: //  USEI10
-                handleRadiusSearch(); // USEI10
+            case 11: // USEI10
+                handleRadiusSearch();
                 break;
-            case 12: // Antigo 11
+            case 12: // View Inventory
                 handleViewInventory();
                 break;
-            case 13: // Antigo 12
+            case 13: // View Warehouse Info
                 handleViewWarehouseInfo();
+                break;
+            case 14: // USLP07 <--- NOVO HANDLER
+                handleDispatchTrains();
                 break;
             case 0:
                 System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET);
@@ -230,13 +233,127 @@ public class CargoHandlingUI implements Runnable {
     }
 
     // ============================================================
-    // === USEI08 SPATIAL QUERIES HANDLERS ===
+    // === USLP07 SCHEDULER HANDLER (NOVO) ===
     // ============================================================
 
     /**
-     * Handles spatial queries using KD-Tree (USEI08).
-     * Provides search by geographical area with filters.
+     * Handles Train Dispatch Scheduling (USLP07) com input interativo.
      */
+    private void handleDispatchTrains() {
+        showInfo("--- [USLP07] Dispatch Train Scheduler ---");
+
+        try {
+            // 1. SELEÇÃO DO COMBOIO (TRAIN)
+            List<Train> availableTrains = trainRepo.findAll();
+            if (availableTrains.isEmpty()) { showError("No scheduled Trains found in database."); return; }
+
+            System.out.println(ANSI_BOLD + "\n--- 1. Choose Scheduled Train Trip ---" + ANSI_RESET);
+            availableTrains.forEach(t -> {
+                String status = String.format("Facility %d -> %d @ %s", t.getStartFacilityId(), t.getEndFacilityId(), t.getDepartureTime().toLocalTime());
+                System.out.printf(ANSI_CYAN + "   [%s] Train ID: %s | Route: %s%n" + ANSI_RESET, t.getTrainId(), t.getTrainId(), status);
+            });
+
+            String trainId = readString(ANSI_BOLD + "➡️  Enter Train ID to schedule: " + ANSI_RESET);
+            Optional<Train> optTrain = trainRepo.findById(trainId);
+            if (optTrain.isEmpty()) { showError("Train ID " + trainId + " not found."); return; }
+            Train selectedTrain = optTrain.get();
+
+            // Variáveis de Composição e Rota
+            List<Locomotive> selectedLocos = new ArrayList<>();
+            List<Wagon> selectedWagons = new ArrayList<>();
+            List<String> facilityIds = new ArrayList<>();
+
+
+            // 2. COMPOSIÇÃO DE POTÊNCIA (Locomotivas)
+            Optional<Locomotive> optLocoPrincipal = locomotivaRepo.findById(Integer.parseInt(selectedTrain.getLocomotiveId()));
+            if (optLocoPrincipal.isEmpty()) { showError("Locomotive principal " + selectedTrain.getLocomotiveId() + " not found."); return; }
+            selectedLocos.add(optLocoPrincipal.get());
+
+            System.out.println(ANSI_BOLD + "\n--- 2. Compose Train (Locos and Wagons) ---" + ANSI_RESET);
+            System.out.printf("Principal Loco: %s | Power: %.0f kW%n", selectedTrain.getLocomotiveId(), optLocoPrincipal.get().getPowerKW());
+
+            // 3. COMPOSIÇÃO DE CARGA (Vagões)
+            List<Wagon> availableWagons = schedulerController.getAllWagons();
+            availableWagons.forEach(w -> System.out.printf(ANSI_CYAN + "   [%s] ID: %s | Model ID: %d %n" + ANSI_RESET, w.getWagonId(), w.getWagonId(), w.getModelId()));
+
+            String wagonIdsStr = readString(ANSI_BOLD + "➡️  Enter Wagon Stock IDs (e.g., 356 3 092) [Comma-separated]: " + ANSI_RESET);
+
+            String[] wIds = wagonIdsStr.split(",");
+            for (String wId : wIds) {
+                Optional<Wagon> optWagon = schedulerController.getWagonRepository().findById(wId.trim());
+                if (optWagon.isPresent()) {
+                    selectedWagons.add(optWagon.get());
+                } else if (!wId.trim().isEmpty()) {
+                    showError("Wagon ID " + wId + " not found. Skipping.");
+                }
+            }
+            if (selectedWagons.isEmpty()) { showError("No valid wagons selected. Cannot dispatch."); return; }
+
+            // 4. FACILITIES (Rota Manual)
+            System.out.println(ANSI_BOLD + "\n--- 3. Define Route (Intermediate Facilities) ---" + ANSI_RESET);
+            System.out.printf(ANSI_ITALIC + "Route base: Facility %d (Start) -> Facility %d (End)%n" + ANSI_RESET,
+                    selectedTrain.getStartFacilityId(), selectedTrain.getEndFacilityId());
+
+            String intermediateIdsStr = readString(ANSI_BOLD + "➡️  Enter INTERMEDIATE Facility IDs (e.g., 13,27,5 - or press Enter): " + ANSI_RESET);
+
+            // Constrói o caminho completo: START + INTERMEDIATE + END
+            facilityIds.add(String.valueOf(selectedTrain.getStartFacilityId()));
+            if (!intermediateIdsStr.trim().isEmpty()) {
+                Arrays.asList(intermediateIdsStr.split(",")).forEach(id -> facilityIds.add(id.trim()));
+            }
+            facilityIds.add(String.valueOf(selectedTrain.getEndFacilityId())); // Adiciona a chegada
+
+            // 5. Despachar
+            System.out.println(ANSI_CYAN + "\n⚙️  Executing Schedule calculation for route: " + String.join(" -> ", facilityIds) + ANSI_RESET);
+
+            SchedulerResult result = schedulerController.dispatchRouteByFacilities(
+                    selectedTrain.getTrainId(), selectedTrain.getDepartureTime(), facilityIds, selectedLocos, selectedWagons
+            );
+
+            showSuccess("Dispatch Scheduling Complete!");
+
+            // --- Exibir Resultados ---
+            System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+            System.out.println(ANSI_BOLD + "           SCHEDULED TRAIN TRIPS (" + result.scheduledTrips.size() + ") " + ANSI_RESET);
+            System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_BLUE);
+
+            for (TrainTrip trip : result.scheduledTrips) {
+                System.out.printf(ANSI_BOLD + "🚆 Trip ID: %s | Departure: %s | Total Time: %.2f hours%n" + ANSI_RESET,
+                        trip.getTripId(), trip.getDepartureTime().toLocalTime(), trip.getTotalTravelTimeHours());
+                System.out.printf("   Composition: %d Locos, %d Wagons | Power: %.0f kW | Weight: %.0f kg%n",
+                        trip.getLocomotives().size(), trip.getWagons().size(), trip.getCombinedPowerKw(), trip.getTotalWeightKg());
+
+                System.out.println(ANSI_CYAN + "   Passage Times (Station ID -> Time):" + ANSI_RESET);
+                trip.getPassageTimes().entrySet().stream()
+                        .sorted(Map.Entry.comparingByValue())
+                        .forEach(entry -> System.out.printf("     - Station %d: %s%n", entry.getKey(), entry.getValue().toLocalTime()));
+
+                System.out.println("-".repeat(50));
+            }
+
+            // --- 2. Exibir Conflitos Resolvidos ---
+            System.out.println("\n" + ANSI_BOLD + ANSI_RED + "--- CONFLICTS RESOLVED (" + result.resolvedConflicts.size() + ") ---" + ANSI_RESET);
+            if (result.resolvedConflicts.isEmpty()) {
+                System.out.println(ANSI_GREEN + "   No single-track conflicts detected." + ANSI_RESET);
+            } else {
+                for (Conflict conflict : result.resolvedConflicts) {
+                    System.out.println("   " + conflict.toString());
+                }
+            }
+
+        } catch (Exception e) {
+            showError("Failed to execute dispatch scheduler (USLP07): " + e.getMessage());
+            System.err.println(ANSI_ITALIC + "Stack trace (for debug):");
+            e.printStackTrace(System.err);
+            System.err.println(ANSI_RESET);
+        }
+    }
+
+
+    // ============================================================
+    // === USEI08 SPATIAL QUERIES HANDLERS (Mantidos) ===
+    // ============================================================
+
     private void handleSpatialQueries() {
         showInfo("--- [USEI08] Spatial Queries - Search by Geographical Area ---");
 
@@ -269,9 +386,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles the Proximity Search (Nearest-N) query using KD-Tree (USEI09).
-     */
     private void handleNearestNQuery() {
         showInfo("--- [USEI09] Proximity Search (Nearest-N with Filters) ---");
 
@@ -322,14 +436,6 @@ public class CargoHandlingUI implements Runnable {
     }
 
 
-    /**
-     * Reads a double input from the user within a specified range.
-     *
-     * @param prompt the prompt to display
-     * @param min the minimum allowed value
-     * @param max the maximum allowed value
-     * @return the validated double input
-     */
     private double readDouble(String prompt, double min, double max) {
         System.out.print(prompt);
         while (true) {
@@ -350,10 +456,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Executes a spatial search with user-defined parameters using SpatialSearchUSEI08.
-     * Allows users to specify geographical boundaries and filters.
-     */
     private void executeSpatialSearch() {
         try {
             System.out.println("\n" + ANSI_BOLD + "--- Search Stations in Geographical Area ---" + ANSI_RESET);
@@ -538,8 +640,8 @@ public class CargoHandlingUI implements Runnable {
         List<Order> orders;
         try {
             orders = manager.loadOrders(
-                    "src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv",
-                    "src/main/java/pt/ipp/isep/dei/FicheirosCSV/order_lines.csv"
+                    "src/main/java/pt/ipp.isep.dei/FicheirosCSV/orders.csv",
+                    "src/main/java/pt.ipp.isep.dei/FicheirosCSV/order_lines.csv"
             );
         } catch (Exception e) {
             showError("Failed to load orders: " + e.getMessage());
@@ -602,9 +704,9 @@ public class CargoHandlingUI implements Runnable {
         }
 
         System.out.println("\n🧠 Available Heuristics:");
-        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "FIRST_FIT - First one that fits (fastest)");
-        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "FIRST_FIT_DECREASING - Largest first (more efficient)");
-        System.out.println(ANSI_GREEN + " 3. " + ANSI_RESET + "BEST_FIT_DECREASING - Best fit (optimizes space)");
+        System.out.println(ANSI_GREEN + " 1. " + ANSI_RESET + "FIRST_FIT (fastest)");
+        System.out.println(ANSI_GREEN + " 2. " + ANSI_RESET + "FIRST_FIT_DECREASING (Largest first, more efficient)");
+        System.out.println(ANSI_GREEN + " 3. " + ANSI_RESET + "BEST_FIT_DECREASING (Best fit, optimizes space)");
         System.out.println(ANSI_YELLOW + " 0. " + ANSI_RESET + "Cancel");
         int heuristicChoice = readInt(0, 3, ANSI_BOLD + "➡️  Choose heuristic (0-3): " + ANSI_RESET);
 
@@ -911,7 +1013,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Handles Radius Search and Density Summary operations (USEI10).
-     * Provides search within radius and statistical analysis.
      */
     private void handleRadiusSearch() {
         showInfo("--- [USEI10] Radius Search & Density Summary ---");
@@ -933,6 +1034,7 @@ public class CargoHandlingUI implements Runnable {
 
             // 4. Execute search with summary
             Object[] results = radiusSearch.radiusSearchWithSummary(targetLat, targetLon, radiusKm);
+            @SuppressWarnings("unchecked")
             BST<StationDistance, StationDistance> stationsTree = (BST<StationDistance, StationDistance>) results[0];
             DensitySummary summary = (DensitySummary) results[1];
 
@@ -1025,6 +1127,7 @@ public class CargoHandlingUI implements Runnable {
             long endTime = System.nanoTime();
 
             DensitySummary summary = (DensitySummary) results[1];
+            @SuppressWarnings("unchecked")
             List<StationDistance> stations = ((BST<StationDistance, StationDistance>) results[0]).inOrderTraversal();
 
             System.out.printf("⏱️  Time: %.2f ms | ", (endTime - startTime) / 1_000_000.0);
@@ -1055,8 +1158,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Displays a success message.
-     *
-     * @param message the success message to display
      */
     private void showSuccess(String message) {
         System.out.println(ANSI_GREEN + ANSI_BOLD + "\n✅ SUCCESS: " + ANSI_RESET + ANSI_GREEN + message + ANSI_RESET);
@@ -1064,8 +1165,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Displays an error message.
-     *
-     * @param message the error message to display
      */
     private void showError(String message) {
         System.out.println(ANSI_RED + ANSI_BOLD + "\n❌ ERROR: " + ANSI_RESET + ANSI_RED + message + ANSI_RESET);
@@ -1073,8 +1172,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Displays an informational message.
-     *
-     * @param message the info message to display
      */
     private void showInfo(String message) {
         System.out.println(ANSI_CYAN + "\nℹ️  " + message + ANSI_RESET);
@@ -1090,9 +1187,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Formats a station for display with icons and coordinates.
-     *
-     * @param station the station to format
-     * @return formatted station string
      */
     private String formatStationDisplay(EuropeanStation station) {
         return station.getStation() +
@@ -1105,9 +1199,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Parses optional boolean input from user.
-     *
-     * @param input the user input string
-     * @return Boolean object (true, false, or null for no filter)
      */
     private Boolean parseOptionalBoolean(String input) {
         if (input == null || input.trim().isEmpty() || input.equalsIgnoreCase("any")) {
@@ -1159,10 +1250,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Helper method to filter a list of stations based on the advanced filters.
-     *
-     * @param stations The base list of stations.
-     * @param filters  A map of filters to apply.
-     * @return A new, filtered list.
      */
     private List<EuropeanStation> applyAdvancedFilters(List<EuropeanStation> stations, Map<String, String> filters) {
         if (filters.isEmpty()) {
@@ -1196,8 +1283,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Displays a list of stations in a user-friendly, paginated view.
-     *
-     * @param results The final, filtered list of stations to display.
      */
     private void showPaginatedResults(List<EuropeanStation> results) {
         int pageSize = 10; // Items per page
@@ -1264,9 +1349,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Reads a string input from the user.
-     *
-     * @param prompt the prompt to display
-     * @return the user input string
      */
     private String readString(String prompt) {
         System.out.print(prompt);
@@ -1275,11 +1357,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Reads an integer input from the user within a specified range.
-     *
-     * @param min the minimum allowed value
-     * @param max the maximum allowed value
-     * @param prompt the prompt to display
-     * @return the validated integer input
      */
     private int readInt(int min, int max, String prompt) {
         System.out.print(prompt);
@@ -1303,11 +1380,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Reads a double input from the user within a specified range.
-     *
-     * @param min the minimum allowed value
-     * @param max the maximum allowed value
-     * @param prompt the prompt to display
-     * @return the validated double input
      */
     private double readDouble(double min, double max, String prompt) {
         System.out.print(prompt);
@@ -1338,9 +1410,6 @@ public class CargoHandlingUI implements Runnable {
 
     /**
      * Checks if the input indicates cancellation.
-     *
-     * @param input the user input to check
-     * @return true if input indicates cancellation
      */
     private boolean isCancel(String input) {
         return input.trim().equals("0") || input.trim().equalsIgnoreCase("c");
