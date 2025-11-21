@@ -96,7 +96,9 @@ public class Main {
             // 6.1. Inicialização do USLP07 (Scheduler)
             printLoadStep("Initializing Scheduler components (USLP07)...");
             WagonRepository wagonRepo = new WagonRepository(); // Novo Repo
-            SchedulerService schedulerService = new SchedulerService(); // Novo Serviço
+
+            // CORREÇÃO CRÍTICA: Passar o estacaoRepo (StationRepository) para SchedulerService
+            SchedulerService schedulerService = new SchedulerService(estacaoRepo);
 
             // FIX 1: Adicionar networkService ao SchedulerController
             SchedulerController schedulerController = new SchedulerController(
@@ -104,7 +106,7 @@ public class Main {
                     segmentoRepo,
                     locomotivaRepo,
                     wagonRepo,
-                    networkService // <--- NOVO ARGUMENTO
+                    networkService
             );
             printLoadStep("  > USLP07 Scheduler controller ready.", true);
 
@@ -112,10 +114,13 @@ public class Main {
             printLoadStep("Initializing Dispatcher Service (USLP07 Simulation)...");
             TrainRepository trainRepo = new TrainRepository(); // Repositório para ler TRAINs da DB
             FacilityRepository facilityRepo = new FacilityRepository(); // Repositório para mapear Facility IDs para nomes
+
+            // CORREÇÃO FINAL: Adicionar locomotivaRepo como 4º argumento ao construtor do DispatcherService
             DispatcherService dispatcherService = new DispatcherService(
                     trainRepo,
-                    networkService, // O dispatcher também usa o NetworkService para rotas (Dijkstra)
-                    facilityRepo
+                    networkService,
+                    facilityRepo,
+                    locomotivaRepo // <--- CORRIGIDO: Argumento em falta
             );
             printLoadStep("  > USLP07 Dispatcher Service ready.", true);
 
@@ -165,8 +170,8 @@ public class Main {
                     spatialKDTree,
                     spatialSearchEngine,
                     schedulerController,
-                    dispatcherService, // <--- NOVO
-                    facilityRepo       // <--- NOVO
+                    dispatcherService,
+                    facilityRepo
             );
             cargoMenu.run();
 

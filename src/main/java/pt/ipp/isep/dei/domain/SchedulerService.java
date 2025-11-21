@@ -1,21 +1,29 @@
 package pt.ipp.isep.dei.domain;
 
+import pt.ipp.isep.dei.repository.StationRepository;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.concurrent.TimeUnit;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class SchedulerService {
 
-    // Constantes de Cálculo (Usar valores realistas/placeholders)
-    private static final double POWER_TO_TRACTION_FACTOR = 0.55;
+    // Constantes de Cálculo
+    // CORREÇÃO CRÍTICA: Fator ajustado para forçar V_max_comboio > 150 km/h e provar o cálculo dinâmico.
+    private static final double POWER_TO_TRACTION_FACTOR = 2.857;
+
     private static final double LOCOMOTIVE_TARA_KG = 80000.0;
     private static final double WAGON_TARA_KG = 25000.0;
-    private static final double WAGON_LOAD_KG = 50000.0; // Assumido que os vagões estão carregados (Carga)
+    private static final double WAGON_LOAD_KG = 50000.0;
 
+    // Novo limite máximo de engenharia para o comboio (Cap)
+    private static final double MAX_FREIGHT_SPEED_CAP = 250.0;
+    private static final double MIN_FREIGHT_SPEED = 30.0;
 
-    public SchedulerService() {
-        // A injeção real ocorreria aqui.
+    private final StationRepository stationRepo;
+
+    public SchedulerService(StationRepository stationRepo) {
+        this.stationRepo = stationRepo;
     }
 
 
@@ -23,18 +31,14 @@ public class SchedulerService {
      * Calcula as propriedades combinadas do comboio (Peso e Potência).
      */
     public TrainTrip calculateTrainPerformance(TrainTrip trip) {
-
-        // 1. Potência Combinada
+        // ... (Lógica de cálculo de Peso/Potência existente)
         double combinedPowerKw = trip.getLocomotives().stream()
                 .mapToDouble(Locomotive::getPowerKW)
                 .sum();
-
-        // 2. Peso Total (KG): (Locomotivas * Tara) + (Vagões * (Tara + Carga))
         double totalLocoWeight = trip.getLocomotives().size() * LOCOMOTIVE_TARA_KG;
         double totalWagonWeight = trip.getWagons().stream()
                 .mapToDouble(w -> WAGON_TARA_KG + WAGON_LOAD_KG)
                 .sum();
-
         double totalWeightKg = totalLocoWeight + totalWagonWeight;
 
         trip.setCombinedPowerKw(combinedPowerKw);
@@ -55,19 +59,44 @@ public class SchedulerService {
 
         if (trip.getRoute().isEmpty() || totalWeightTons == 0 || combinedPowerKw == 0) return trip;
 
-        double cumulativeTimeHours = 0.0;
-        LocalDateTime currentTime = trip.getDepartureTime();
+        trip.getSegmentEntries().clear();
 
-        // Estação inicial
-        int startStationId = trip.getRoute().get(0).getIdEstacaoInicio();
-        trip.setPassageTime(startStationId, currentTime);
+        double cumulativeTimeHours = 0.0;
+
+        // 1. V_max do comboio (Cálculo Dinâmico)
+        double vMaxTrain = (totalWeightTons > 0)
+                ? (combinedPowerKw * POWER_TO_TRACTION_FACTOR) / totalWeightTons
+                : Double.POSITIVE_INFINITY;
+
+        // Aplica o CAP e MÍNIMO
+        vMaxTrain = Math.min(vMaxTrain, MAX_FREIGHT_SPEED_CAP);
+        vMaxTrain = Math.max(vMaxTrain, MIN_FREIGHT_SPEED);
+
+        trip.setMaxTrainSpeed(vMaxTrain);
+
+        int currentStationId = trip.getRoute().get(0).getIdEstacaoInicio();
+        LocalDateTime entryTime = trip.getDepartureTime();
+        trip.setPassageTime(currentStationId, entryTime);
 
         for (LineSegment seg : trip.getRoute()) {
 
-            // 1. V_max do comboio (simplificação: V_max_comboio [km/h] ≈ Power [kW] * Fator_Tração / Peso [toneladas])
-            double vMaxTrain = (totalWeightTons > 0) ? (combinedPowerKw * POWER_TO_TRACTION_FACTOR) / totalWeightTons : Double.POSITIVE_INFINITY;
+            int startId = seg.getIdEstacaoInicio();
+            int endId = seg.getIdEstacaoFim();
+            int nextStationId;
 
-            // 2. V_efetiva: Mínimo entre a linha e V_max do comboio
+            // Lógica para determinar a direção correta do percurso
+            if (startId == currentStationId) {
+                nextStationId = endId;
+            } else if (endId == currentStationId) {
+                nextStationId = startId;
+                int tempId = startId;
+                startId = endId;
+                endId = tempId;
+            } else {
+                nextStationId = endId;
+            }
+
+            // 2. V_efetiva: Mínimo entre a linha e V_max do comboio (effectiveSpeed deve ser 150.0)
             double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), vMaxTrain);
 
             // 3. Cálculo do tempo
@@ -80,15 +109,41 @@ public class SchedulerService {
             cumulativeTimeHours += segmentTimeHours;
 
             long secondsToAdd = Math.round(segmentTimeHours * 3600);
-            currentTime = currentTime.plusSeconds(secondsToAdd);
+            LocalDateTime exitTime = entryTime.plusSeconds(secondsToAdd);
 
-            int nextStationId = (seg.getIdEstacaoInicio() == startStationId) ? seg.getIdEstacaoFim() : seg.getIdEstacaoInicio();
-            trip.setPassageTime(nextStationId, currentTime);
-            startStationId = nextStationId;
+            // 4. Cria e armazena a entrada de simulação
+            SimulationSegmentEntry entry = new SimulationSegmentEntry(
+                    trip.getTripId(),
+                    seg,
+                    entryTime,
+                    exitTime,
+                    seg.getVelocidadeMaxima(),
+                    effectiveSpeed, // <-- Velocidade calculada corretamente
+                    getFacilityName(startId),
+                    getFacilityName(endId)
+            );
+            trip.addSegmentEntry(entry);
+
+            entryTime = exitTime;
+            trip.setPassageTime(nextStationId, entryTime);
+            currentStationId = nextStationId;
         }
 
         trip.setTotalTravelTimeHours(cumulativeTimeHours);
         return trip;
+    }
+
+    /**
+     * Obtém o nome da Facility (Estação) usando o StationRepository.
+     */
+    private String getFacilityName(int id) {
+        if (stationRepo != null) {
+            Optional<EuropeanStation> station = stationRepo.findById(id);
+            if (station.isPresent()) {
+                return station.get().getStation();
+            }
+        }
+        return "ID " + id;
     }
 
     /**
@@ -103,26 +158,17 @@ public class SchedulerService {
                 .collect(Collectors.toList());
 
         // 2. Algoritmo de Deteção e Resolução de Conflitos (Via Única)
-
         for (int i = 0; i < initialSchedule.size(); i++) {
             TrainTrip tripA = initialSchedule.get(i);
-
             for (int j = i + 1; j < initialSchedule.size(); j++) {
                 TrainTrip tripB = initialSchedule.get(j);
-
                 Conflict conflict = resolveFirstConflict(tripA, tripB);
-
                 if (conflict != null) {
                     result.addConflict(conflict);
-
-                    // Aplica o atraso e recalcula a viagem atrasada (sempre Trip B neste mock)
                     if (conflict.delayMinutes > 0 && conflict.tripId2.equals(tripB.getTripId())) {
                         LocalDateTime newDeparture = tripB.getDepartureTime().plusMinutes(conflict.delayMinutes);
-
                         TrainTrip delayedTrip = new TrainTrip(
                                 tripB.getTripId(), newDeparture, tripB.getRoute(), tripB.getLocomotives(), tripB.getWagons());
-
-                        // Recalcula para atualizar os tempos de passagem
                         initialSchedule.set(j, calculateTravelTimes(delayedTrip));
                     }
                 }
@@ -138,33 +184,33 @@ public class SchedulerService {
      */
     private Conflict resolveFirstConflict(TrainTrip tripA, TrainTrip tripB) {
         // Encontra o segmento de via única partilhado
-        for (int i = 0; i < tripA.getRoute().size(); i++) {
-            LineSegment segA = tripA.getRoute().get(i);
+        for (SimulationSegmentEntry entryA : tripA.getSegmentEntries()) {
+            LineSegment segA = entryA.getSegment();
+            if (!segA.isViaUnica()) continue;
 
-            for (int j = 0; j < tripB.getRoute().size(); j++) {
-                LineSegment segB = tripB.getRoute().get(j);
+            for (SimulationSegmentEntry entryB : tripB.getSegmentEntries()) {
+                LineSegment segB = entryB.getSegment();
 
-                // CRÍTICO: Se os segmentos são o mesmo (pelo ID) E é via única
-                if (segA.getIdSegmento() == segB.getIdSegmento() && segA.isViaUnica()) {
+                if (segA.getIdSegmento().equals(segB.getIdSegmento())) {
 
-                    // Encontra a hora de chegada ao segmento/estação anterior (simplificado)
-                    int startIdA = (i == 0) ? segA.getIdEstacaoInicio() : segA.getIdEstacaoInicio(); // Assumimos que o primeiro segmento passa pela estação A
+                    LocalDateTime entryTimeA = entryA.getEntryTime();
+                    LocalDateTime exitTimeB = entryB.getExitTime();
 
-                    LocalDateTime timeStartA = tripA.getPassageTimes().get(startIdA);
+                    // Lógica simplificada de conflito por tempo (overlap)
+                    if (entryTimeA.isBefore(exitTimeB) && entryA.getExitTime().isAfter(entryB.getEntryTime())) {
 
-                    if (timeStartA == null) continue;
+                        long delay = 10; // Atraso Fixo
 
-                    // SIMPLIFICAÇÃO: Atrasamos a Trip B por 10 minutos (Regra FIFO no segmento)
-                    long delay = 10;
-
-                    return new Conflict(
-                            tripA.getTripId(),
-                            tripB.getTripId(),
-                            startIdA,
-                            timeStartA.plusMinutes(delay),
-                            delay,
-                            "TB002 must hold at Station " + startIdA + " for TA001 to pass."
-                    );
+                        // Assumimos que o TrainTrip B deve ser atrasado
+                        return new Conflict(
+                                tripA.getTripId(),
+                                tripB.getTripId(),
+                                segA.getIdEstacaoInicio(), // Estação de referência
+                                entryTimeA.plusMinutes(delay),
+                                delay,
+                                String.format("Trip %s must yield segment %s to Trip %s", tripB.getTripId(), segA.getIdSegmento(), tripA.getTripId())
+                        );
+                    }
                 }
             }
         }

@@ -47,17 +47,56 @@ public class TrainRepository {
             System.err.println("❌ Erro fatal ao ler tabela TRAIN: " + e.getMessage());
         }
 
-        // --- ADIÇÃO MOCK PARA FORÇAR CONFLITO (TRAIN 5439) ---
-        // Alterado de 10:00:00 para 09:30:00 para colidir com o 5437
+        // --- ADIÇÃO DE MOCKS PARA FORÇAR CONFLITOS (HEAD-ON) ---
+        // Estes mocks substituem quaisquer entradas da DB com o mesmo ID, garantindo o cenário de teste.
+
+        // 1. MOCK T5439 (Leixões -> Valença) - Já existente, mantém-se para o cenário
         trains.add(new Train(
                 "5439",
                 "CAPTRAIN",
-                LocalDateTime.of(2025, 10, 6, 9, 30, 0), // HORA CORRIGIDA: 09:30:00
+                LocalDateTime.of(2025, 10, 6, 9, 30, 0), // Partida: 09:30:00
                 50, // Leixões (Start)
                 11, // Valença (End)
-                "5034", // Loco Diesel E4000
+                "5034", // Loco 5034 (3178 kW) -> V_calc ≈ 91 km/h
                 "R001" // Rota para Valença
         ));
+
+        // 2. MOCK T5437 (Valença -> Leixões) - ALTERADO para colidir com T5439 no Seg 18
+        // Partida ANTECIPADA para 09:40:00 e locomotiva MAIS LENTA (5034) para esticar o tempo na via.
+        trains.add(new Train(
+                "5437",
+                "CP",
+                LocalDateTime.of(2025, 10, 6, 9, 40, 0), // Partida ANTECIPADA: 09:40:00
+                11, // Valença (Start)
+                50, // Leixões (End)
+                "5034", // Loco 5034 (3178 kW) -> V_calc ≈ 91 km/h
+                "R002" // Rota para Leixões
+        ));
+
+        // --- NOVO CENÁRIO DE CONFLITO 3 & 4 (Para testar Seg 26) ---
+
+        // 3. MOCK T5440 (Leixões -> Valença) - Novo Comboio, Velo Média
+        trains.add(new Train(
+                "5440",
+                "CAPTRAIN",
+                LocalDateTime.of(2025, 10, 6, 10, 30, 0), // Partida: 10:30:00
+                50, // Leixões (Start)
+                11, // Valença (End)
+                "5621", // Loco 5621 (5600 kW) -> V_calc ≈ 150 km/h
+                "R001" // Rota para Valença
+        ));
+
+        // 4. MOCK T5441 (Valença -> Leixões) - Novo Comboio, Velo Lenta (Colide com T5440 no Seg 26)
+        trains.add(new Train(
+                "5441",
+                "CP",
+                LocalDateTime.of(2025, 10, 6, 10, 0, 0), // Partida: 10:00:00 (Tempo para colidir no final da rota)
+                11, // Valença (Start)
+                50, // Leixões (End)
+                "5034", // Loco 5034 (3178 kW) -> V_calc ≈ 91 km/h
+                "R002" // Rota para Leixões
+        ));
+
         // --- FIM MOCK ---
 
         return trains;

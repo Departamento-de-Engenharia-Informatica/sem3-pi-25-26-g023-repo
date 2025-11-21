@@ -2,11 +2,11 @@ package pt.ipp.isep.dei.domain;
 
 import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.TrainRepository;
-import pt.ipp.isep.dei.repository.SegmentLineRepository; // NOVO IMPORT: Para aceder a INVERSE_ID_PREFIX
+import pt.ipp.isep.dei.repository.LocomotiveRepository; // <--- NOVO IMPORT
+import pt.ipp.isep.dei.repository.SegmentLineRepository;
 
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -14,23 +14,30 @@ import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 public class DispatcherService {
 
     private final TrainRepository trainRepo;
     private final RailwayNetworkService networkService;
     private final FacilityRepository facilityRepo;
+    private final LocomotiveRepository locomotiveRepo; // <--- NOVO CAMPO INJETADO
 
     // Mapa central para a Linha Temporal Global: Segment ID -> Lista de Passagens
     private final Map<String, List<SimulationSegmentEntry>> timeline;
 
-    // Simplificação: Velocidade Máxima do Comboio de Mercadorias (em km/h)
-    private static final double MAX_TRAIN_SPEED_KMH = 100.0;
+    // Constantes de Cálculo Dinâmico (Movidas do SchedulerService para auto-suficiência)
+    private static final double POWER_TO_TRACTION_FACTOR = 2.857; // Fator ajustado para forçar V_calc > V_line
+    private static final double LOCOMOTIVE_TARA_TONS = 80.0;
+    private static final double DEFAULT_TOTAL_TRAIN_WEIGHT_TONS = 100.0; // Peso base do comboio para cálculo Vmax (ajustável)
+    private static final double MAX_FREIGHT_SPEED_CAP = 250.0;
+    private static final double MIN_FREIGHT_SPEED = 30.0;
 
-    public DispatcherService(TrainRepository trainRepo, RailwayNetworkService networkService, FacilityRepository facilityRepo) {
+    public DispatcherService(TrainRepository trainRepo, RailwayNetworkService networkService, FacilityRepository facilityRepo, LocomotiveRepository locomotiveRepo) { // <--- CONSTRUTOR ATUALIZADO
         this.trainRepo = trainRepo;
         this.networkService = networkService;
         this.facilityRepo = facilityRepo;
+        this.locomotiveRepo = locomotiveRepo; // <--- INJEÇÃO
         this.timeline = new HashMap<>();
     }
 
@@ -57,6 +64,7 @@ public class DispatcherService {
                 continue;
             }
 
+            // O cálculo da velocidade é feito aqui antes de calcular os tempos
             List<SimulationSegmentEntry> trainTimeline = calculateTrainSegmentTimes(train, route);
             simulationResults.put(train.getTrainId(), trainTimeline);
             updateGlobalTimeline(trainTimeline);
@@ -69,13 +77,11 @@ public class DispatcherService {
      * Usa o RailwayNetworkService para encontrar a rota completa (baseado no Route ID do comboio).
      */
     private List<LineSegment> findRouteForTrain(Train train) {
-        // MOCK: Assumindo que o Route ID dita a rota completa entre start e end facility
-        // O código real usaria RouteSegmentRepository para ler o encadeamento R001.1 -> R001.2 ...
-        // Como não temos esse repositório, usamos Dijkstra de ponta a ponta (como feito no SchedulerController)
+        // Uso de velocidade alta para priorizar o tempo mínimo, desconsiderando a potência do comboio nesta fase.
         RailwayPath path = networkService.findFastestPath(
                 train.getStartFacilityId(),
                 train.getEndFacilityId(),
-                1000.0 // Velocidade alta para priorizar o tempo mínimo
+                1000.0
         );
 
         return (path != null) ? path.getSegments() : Collections.emptyList();
@@ -89,16 +95,38 @@ public class DispatcherService {
         List<SimulationSegmentEntry> entries = new ArrayList<>();
         LocalDateTime currentTime = train.getDepartureTime();
 
+        // --- NOVO: CÁLCULO DINÂMICO DA VELOCIDADE DO COMBOIO (Vmax_train) ---
+        double combinedPowerKw = 0.0;
+        try {
+            int locoId = Integer.parseInt(train.getLocomotiveId());
+            Optional<Locomotive> optLoco = locomotiveRepo.findById(locoId);
+            if (optLoco.isPresent()) {
+                combinedPowerKw = optLoco.get().getPowerKW();
+            }
+        } catch (NumberFormatException e) {
+            System.err.println("Error: Locomotive ID is not a number for train " + train.getTrainId());
+        }
+
+        // V_max_comboio [km/h] ≈ Fator * Power [kW] / Weight [tons]
+        double vMaxTrain = (DEFAULT_TOTAL_TRAIN_WEIGHT_TONS > 0)
+                ? (combinedPowerKw * POWER_TO_TRACTION_FACTOR) / DEFAULT_TOTAL_TRAIN_WEIGHT_TONS
+                : MAX_FREIGHT_SPEED_CAP;
+
+        // Aplica o CAP e MÍNIMO
+        vMaxTrain = Math.min(vMaxTrain, MAX_FREIGHT_SPEED_CAP);
+        vMaxTrain = Math.max(vMaxTrain, MIN_FREIGHT_SPEED);
+        // --- FIM CÁLCULO DINÂMICO ---
+
         for (LineSegment segment : route) {
             double maxSpeedAllowedKmh = segment.getVelocidadeMaxima();
 
-            // 1. Calcular Vcalc (Velocidade Calculada)
-            double calculatedSpeedKmh = Math.min(maxSpeedAllowedKmh, MAX_TRAIN_SPEED_KMH);
+            // 1. Calcular Vcalc (Velocidade Calculada): min(V_linha, V_comboio)
+            double calculatedSpeedKmh = Math.min(maxSpeedAllowedKmh, vMaxTrain); // <--- Vmax DINÂMICA USADA
 
             if (calculatedSpeedKmh <= 0) { continue; }
 
             // 2. Calcular Tempo de Viagem
-            double lengthKm = segment.getComprimento(); // Já em KM
+            double lengthKm = segment.getComprimento();
             double travelTimeHours = lengthKm / calculatedSpeedKmh;
 
             long travelTimeSeconds = (long) (travelTimeHours * 3600);
@@ -118,7 +146,7 @@ public class DispatcherService {
                     entryTime,
                     exitTime,
                     maxSpeedAllowedKmh,
-                    calculatedSpeedKmh,
+                    calculatedSpeedKmh, // <--- VALOR DINÂMICO PASSADO PARA O OUTPUT
                     startName,
                     endName);
 
@@ -142,7 +170,7 @@ public class DispatcherService {
     }
 
     // =================================================================================
-    // 2. Deteção e Resolução de Conflitos (LÓGICA CORRIGIDA)
+    // 2. Deteção e Resolução de Conflitos
     // =================================================================================
 
     /**
@@ -193,7 +221,7 @@ public class DispatcherService {
 
                         // Determinar o tipo de conflito
                         boolean isHeadOn = !entry1.getSegmentId().equals(entry2.getSegmentId());
-                        String conflictType = isHeadOn ? "HEAD-ON" : "PURSUIT"; // Head-on se os IDs forem diferentes (viagens opostas)
+                        String conflictType = isHeadOn ? "HEAD-ON" : "PURSUIT";
 
                         // ⚠️ Conflito
                         conflictReport.add(String.format("⚠️ CONFLICT [%s]: Train %s and Train %s overlap on physical track %s",

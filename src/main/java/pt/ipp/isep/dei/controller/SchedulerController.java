@@ -41,8 +41,8 @@ public class SchedulerController {
             String tripId,
             LocalDateTime departureTime,
             List<String> facilityIds, // Lista de IDs de Facility (START, INTERMÉDIAS, END)
-            List<Locomotive> locomotives,
-            List<Wagon> wagons)
+            List<Locomotive> locomotives, // Contém o PowerKW
+            List<Wagon> wagons) // Contém o peso (Tara + Carga assumida)
     {
         // 1. Constrói a Rota
         List<LineSegment> route = findRouteSegmentsBetweenFacilities(facilityIds);
@@ -55,6 +55,7 @@ public class SchedulerController {
         TrainTrip trip = new TrainTrip(tripId, departureTime, route, locomotives, wagons);
 
         // 3. Despachar
+        // A chamada a dispatchTrains desencadeará o cálculo da velocidade V_max_comboio no SchedulerService
         return schedulerService.dispatchTrains(Arrays.asList(trip));
     }
 
@@ -62,7 +63,7 @@ public class SchedulerController {
      * Constrói a rota completa encadeando os segmentos entre todas as Facilities fornecidas.
      * Tornamos este método PÚBLICO para ser usado pelo novo DispatcherService.
      */
-    public List<LineSegment> findRouteSegmentsBetweenFacilities(List<String> facilityIds) { // Tornar público
+    public List<LineSegment> findRouteSegmentsBetweenFacilities(List<String> facilityIds) {
         List<LineSegment> fullRoute = new ArrayList<>();
 
         // Usamos um limite de velocidade muito alto (1000 km/h) para que o Dijkstra encontre o caminho
@@ -94,17 +95,6 @@ public class SchedulerController {
         }
         return fullRoute;
     }
-
-    /**
-     * Implementação de busca de caminho em largura (BFS) para encontrar a rota completa.
-     * REMOVIDO: Lógica substituída pela chamada a RailwayNetworkService.findFastestPath (Dijkstra) no método acima.
-     */
-    /*
-    private List<LineSegment> findPathUsingBFS(int startId, int endId) {
-        // ... Lógica removida ...
-    }
-    */
-
 
     // Métodos de Listagem para UI
     public List<Locomotive> getAllLocomotives() { return locoRepo.findAll(); }

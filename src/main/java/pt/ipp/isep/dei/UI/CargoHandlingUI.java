@@ -302,7 +302,8 @@ public class CargoHandlingUI implements Runnable {
             System.out.printf(ANSI_CYAN + "\n⚙️  Executing Schedule calculation for %d selected trains...%n" + ANSI_RESET, trainsToSimulate.size());
 
 
-            // 2. Executa a Simulação (Passando a lista filtrada)
+            // 2. Executa a Simulação
+            // CORREÇÃO: Usar o tipo de retorno REALMENTE FORNECIDO pelo DispatcherService
             Map<String, List<SimulationSegmentEntry>> allSimulationResults = dispatcherService.runSimulation(trainsToSimulate);
 
             if (allSimulationResults.isEmpty()) {
@@ -331,13 +332,7 @@ public class CargoHandlingUI implements Runnable {
     /**
      * Imprime a tabela de tempos de passagem por segmento para todos os comboios simulados.
      */
-    // File: pt.ipp.isep.dei.UI.CargoHandlingUI.java
-// (Apenas o método printSimulationTimetables e a assunção de LocomotiveRepository)
-
-    /**
-     * Imprime a tabela de tempos de passagem por segmento para todos os comboios simulados.
-     */
-    private void printSimulationTimetables(Map<String, List<SimulationSegmentEntry>> allResults) {
+    private void printSimulationTimetables(Map<String, List<SimulationSegmentEntry>> allResults) { // <--- ASSINATURA CORRIGIDA
         System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
         System.out.println(ANSI_BOLD + "                            DETAILED SEGMENT TIMETABLE (SIMULATION OUTPUT) " + ANSI_RESET);
         System.out.println(ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
@@ -353,18 +348,23 @@ public class CargoHandlingUI implements Runnable {
             // Encontra o comboio para obter a hora de partida planeada (do TrainRepository)
             Train train = trainRepo.findById(trainId).orElse(null);
 
-            // Tenta obter info da locomotiva (assumindo que LocomotiveRepository usa IDs como Integers)
+            // Tenta obter info da locomotiva
             Locomotive loco = null;
             String locoInfo = "N/A (0 kW)";
+            double maxCalculatedSpeed = 0.0;
+
+            // CORREÇÃO CRÍTICA: Tenta obter a velocidade calculada do primeiro segmento para o cabeçalho
+            if (!timetable.isEmpty()) {
+                maxCalculatedSpeed = timetable.get(0).getCalculatedSpeedKmh();
+            }
+
             if (train != null && train.getLocomotiveId() != null) {
                 try {
-                    // Assumimos que o Locomotive ID é um número que pode ser convertido (e.g., '5621')
                     loco = locomotivaRepo.findById(Integer.parseInt(train.getLocomotiveId())).orElse(null);
                     if (loco != null) {
                         locoInfo = String.format("%s (%.0f kW)", loco.getLocomotiveId(), loco.getPowerKW());
                     }
                 } catch (NumberFormatException e) {
-                    // ID não é um número (e.g., '335.001'), tratar como string simples
                     locoInfo = train.getLocomotiveId() + " (Power N/A)";
                 }
             }
@@ -373,7 +373,15 @@ public class CargoHandlingUI implements Runnable {
             // --- SUMÁRIO DETALHADO DO COMBOIO ---
             System.out.printf(ANSI_BOLD + "\n🚆 Train %s — Scheduled Departure %s%n" + ANSI_RESET,
                     trainId, train != null ? train.getDepartureTime().toLocalTime().format(timeFormatter) : "N/A");
-            System.out.printf(ANSI_ITALIC + "   Composition: Locomotive %s | Assumed Freight Speed: 100 km/h%n" + ANSI_RESET, locoInfo);
+
+            // CORREÇÃO CRÍTICA: Usar a velocidade calculada real (lida do primeiro segmento)
+            String speedDisplay = (maxCalculatedSpeed > 0 && maxCalculatedSpeed != Double.POSITIVE_INFINITY)
+                    ? String.format("%.0f km/h", maxCalculatedSpeed)
+                    : "N/A (check power/weight)";
+
+            // O cabeçalho agora mostra a velocidade máxima calculada (em vez de 'Assumed Freight Speed: 100 km/h')
+            System.out.printf(ANSI_ITALIC + "   Composition: Locomotive %s | Max Calculated Speed: %s%n" + ANSI_RESET, locoInfo, speedDisplay);
+
 
             // --- CABEÇALHO DA TABELA ---
             System.out.println(ANSI_BOLD + ANSI_CYAN +
@@ -382,7 +390,7 @@ public class CargoHandlingUI implements Runnable {
 
             // --- CONTEÚDO DA TABELA ---
             for (SimulationSegmentEntry segmentEntry : timetable) {
-                // toTableString já usa o novo formato
+                // toTableString já usa o calculatedSpeedKmh para a coluna C/A
                 System.out.println(segmentEntry.toTableString());
             }
             System.out.println("-".repeat(95));
