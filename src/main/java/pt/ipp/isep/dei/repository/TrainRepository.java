@@ -1,3 +1,4 @@
+// File: pt.ipp.isep.dei.repository.TrainRepository.java
 package pt.ipp.isep.dei.repository;
 
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
@@ -15,8 +16,8 @@ public class TrainRepository {
 
     public List<Train> findAll() {
         List<Train> trains = new ArrayList<>();
-        // SQL adaptado às colunas reais: train_id, operator_id, train_date, start_facility_id, end_facility_id, locomotive_id
-        String sql = "SELECT train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id " +
+        // SQL adaptado para incluir route_id
+        String sql = "SELECT train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id " +
                 "FROM TRAIN ORDER BY train_id";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -28,19 +29,19 @@ public class TrainRepository {
                     String trainId = rs.getString("train_id");
                     String operatorId = rs.getString("operator_id");
                     String locoId = rs.getString("locomotive_id");
+                    String routeId = rs.getString("route_id"); // NOVO: Capturar route_id
 
-                    // As Facility IDs são lidas como NUMBER, mas usadas como INT no Java
                     int startFacilityId = rs.getInt("start_facility_id");
                     int endFacilityId = rs.getInt("end_facility_id");
 
-                    // Combina DATE e TIME para LocalDateTime
                     Date date = rs.getDate("train_date");
-                    String timeStr = rs.getString("train_time"); // Lida como string (HH:MM:SS)
+                    String timeStr = rs.getString("train_time");
 
                     LocalTime time = LocalTime.parse(timeStr.substring(0, 8));
                     LocalDateTime departureTime = date.toLocalDate().atTime(time);
 
-                    trains.add(new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId));
+                    // Construtor atualizado para aceitar routeId
+                    trains.add(new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId, routeId));
                 } catch (Exception e) {
                     System.err.println("❌ Erro de tipagem ao ler Train: " + e.getMessage());
                 }
@@ -52,6 +53,7 @@ public class TrainRepository {
     }
 
     public Optional<Train> findById(String id) {
+        // Manter por conveniência, mas é ineficiente.
         return findAll().stream().filter(t -> t.getTrainId().equals(id)).findFirst();
     }
 }

@@ -6,7 +6,8 @@ import pt.ipp.isep.dei.controller.SchedulerController;
 import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
-import pt.ipp.isep.dei.repository.TrainRepository; // Necessário para listar comboios
+import pt.ipp.isep.dei.repository.TrainRepository;
+import pt.ipp.isep.dei.repository.FacilityRepository; // Import necessário
 
 // Correções de Imports
 import pt.ipp.isep.dei.domain.SpatialSearchQueries;
@@ -26,6 +27,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Scanner;
+import java.time.format.DateTimeFormatter; // Para formatação de tempo no output
 
 /**
  * Main User Interface for the Cargo Handling Terminal.
@@ -54,13 +56,20 @@ public class CargoHandlingUI implements Runnable {
     private final KDTree spatialKDTree;
     private final SpatialSearch spatialSearchEngine;
     private final SchedulerController schedulerController;
-    private final TrainRepository trainRepo = new TrainRepository(); // NOVO REPOSITÓRIO TRAIN
+
+    // --- NOVOS FIELDS ---
+    private final DispatcherService dispatcherService;
+    private final FacilityRepository facilityRepo; // Usado nos helpers de output
+    // --- FIM NOVOS FIELDS ---
+
+    private final TrainRepository trainRepo = new TrainRepository();
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
     private final Scanner scanner;
 
     /**
      * Constructs a new CargoHandlingUI with all required dependencies.
+     * ASSINATURA DO CONSTRUTOR ATUALIZADA
      */
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
                            TravelTimeController travelTimeController, StationRepository estacaoRepo,
@@ -68,7 +77,9 @@ public class CargoHandlingUI implements Runnable {
                            StationIndexManager stationIndexManager,
                            KDTree spatialKDTree,
                            SpatialSearch spatialSearchEngine,
-                           SchedulerController schedulerController) {
+                           SchedulerController schedulerController,
+                           DispatcherService dispatcherService, // <--- NOVO
+                           FacilityRepository facilityRepo) {     // <--- NOVO
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
@@ -79,6 +90,12 @@ public class CargoHandlingUI implements Runnable {
         this.spatialKDTree = spatialKDTree;
         this.spatialSearchEngine = spatialSearchEngine;
         this.schedulerController = schedulerController;
+
+        // --- NOVAS ATRIBUIÇÕES ---
+        this.dispatcherService = dispatcherService;
+        this.facilityRepo = facilityRepo;
+        // --- FIM NOVAS ATRIBUIÇÕES ---
+
         this.scanner = new Scanner(System.in);
     }
 
@@ -155,7 +172,7 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)");
         System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "[USEI09] Proximity Search - Nearest N (S2)");
         System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "[USEI10] Radius Search & Density Summary (S2)");
-        System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "[USLP07] Dispatch Train Scheduler (S3)"); // <--- NOVA OPÇÃO
+        System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "[USLP07] Run Full Simulation & Conflicts (S3)"); // <--- NOME ATUALIZADO
 
         // --- Info ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
@@ -220,8 +237,8 @@ public class CargoHandlingUI implements Runnable {
             case 13: // View Warehouse Info
                 handleViewWarehouseInfo();
                 break;
-            case 14: // USLP07 <--- NOVO HANDLER
-                handleDispatchTrains();
+            case 14: // USLP07 <--- NOVO HANDLER (Simulação Completa)
+                handleRunFullSimulation();
                 break;
             case 0:
                 System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET);
@@ -233,121 +250,180 @@ public class CargoHandlingUI implements Runnable {
     }
 
     // ============================================================
-    // === USLP07 SCHEDULER HANDLER (NOVO) ===
+    // === USLP07 FULL SIMULATION HANDLER (ATUALIZADO PARA SELEÇÃO) ===
     // ============================================================
 
     /**
-     * Handles Train Dispatch Scheduling (USLP07) com input interativo.
+     * Executa a simulação completa para os comboios selecionados
+     * e análise de conflitos em via única.
      */
-    private void handleDispatchTrains() {
-        showInfo("--- [USLP07] Dispatch Train Scheduler ---");
+    private void handleRunFullSimulation() {
+        showInfo("--- [USLP07] Full Simulation & Conflict Analysis ---");
 
         try {
-            // 1. SELEÇÃO DO COMBOIO (TRAIN)
-            List<Train> availableTrains = trainRepo.findAll();
-            if (availableTrains.isEmpty()) { showError("No scheduled Trains found in database."); return; }
+            // 1. OBTENÇÃO E SELEÇÃO DOS COMBOIOS
+            List<Train> allTrains = trainRepo.findAll();
+            if (allTrains.isEmpty()) {
+                showError("No scheduled Trains found in the database.");
+                return;
+            }
 
-            System.out.println(ANSI_BOLD + "\n--- 1. Choose Scheduled Train Trip ---" + ANSI_RESET);
-            availableTrains.forEach(t -> {
-                String status = String.format("Facility %d -> %d @ %s", t.getStartFacilityId(), t.getEndFacilityId(), t.getDepartureTime().toLocalTime());
-                System.out.printf(ANSI_CYAN + "   [%s] Train ID: %s | Route: %s%n" + ANSI_RESET, t.getTrainId(), t.getTrainId(), status);
+            System.out.println(ANSI_BOLD + "\n--- 1. Select Trains for Simulation ---" + ANSI_RESET);
+            allTrains.forEach(t -> {
+                String startName = facilityRepo.findNameById(t.getStartFacilityId()).orElse("F" + t.getStartFacilityId());
+                String endName = facilityRepo.findNameById(t.getEndFacilityId()).orElse("F" + t.getEndFacilityId());
+
+                // Incluir todas as informações relevantes do comboio na listagem
+                String status = String.format("Route: %s -> %s | Departure: %s | Loco: %s",
+                        startName, endName, t.getDepartureTime().toLocalTime(), t.getLocomotiveId());
+                System.out.printf(ANSI_CYAN + "   [%s] %s%n" + ANSI_RESET, t.getTrainId(), status);
             });
 
-            String trainId = readString(ANSI_BOLD + "➡️  Enter Train ID to schedule: " + ANSI_RESET);
-            Optional<Train> optTrain = trainRepo.findById(trainId);
-            if (optTrain.isEmpty()) { showError("Train ID " + trainId + " not found."); return; }
-            Train selectedTrain = optTrain.get();
-
-            // Variáveis de Composição e Rota
-            List<Locomotive> selectedLocos = new ArrayList<>();
-            List<Wagon> selectedWagons = new ArrayList<>();
-            List<String> facilityIds = new ArrayList<>();
-
-
-            // 2. COMPOSIÇÃO DE POTÊNCIA (Locomotivas)
-            Optional<Locomotive> optLocoPrincipal = locomotivaRepo.findById(Integer.parseInt(selectedTrain.getLocomotiveId()));
-            if (optLocoPrincipal.isEmpty()) { showError("Locomotive principal " + selectedTrain.getLocomotiveId() + " not found."); return; }
-            selectedLocos.add(optLocoPrincipal.get());
-
-            System.out.println(ANSI_BOLD + "\n--- 2. Compose Train (Locos and Wagons) ---" + ANSI_RESET);
-            System.out.printf("Principal Loco: %s | Power: %.0f kW%n", selectedTrain.getLocomotiveId(), optLocoPrincipal.get().getPowerKW());
-
-            // 3. COMPOSIÇÃO DE CARGA (Vagões)
-            List<Wagon> availableWagons = schedulerController.getAllWagons();
-            availableWagons.forEach(w -> System.out.printf(ANSI_CYAN + "   [%s] ID: %s | Model ID: %d %n" + ANSI_RESET, w.getWagonId(), w.getWagonId(), w.getModelId()));
-
-            String wagonIdsStr = readString(ANSI_BOLD + "➡️  Enter Wagon Stock IDs (e.g., 356 3 092) [Comma-separated]: " + ANSI_RESET);
-
-            String[] wIds = wagonIdsStr.split(",");
-            for (String wId : wIds) {
-                Optional<Wagon> optWagon = schedulerController.getWagonRepository().findById(wId.trim());
-                if (optWagon.isPresent()) {
-                    selectedWagons.add(optWagon.get());
-                } else if (!wId.trim().isEmpty()) {
-                    showError("Wagon ID " + wId + " not found. Skipping.");
-                }
-            }
-            if (selectedWagons.isEmpty()) { showError("No valid wagons selected. Cannot dispatch."); return; }
-
-            // 4. FACILITIES (Rota Manual)
-            System.out.println(ANSI_BOLD + "\n--- 3. Define Route (Intermediate Facilities) ---" + ANSI_RESET);
-            System.out.printf(ANSI_ITALIC + "Route base: Facility %d (Start) -> Facility %d (End)%n" + ANSI_RESET,
-                    selectedTrain.getStartFacilityId(), selectedTrain.getEndFacilityId());
-
-            String intermediateIdsStr = readString(ANSI_BOLD + "➡️  Enter INTERMEDIATE Facility IDs (e.g., 13,27,5 - or press Enter): " + ANSI_RESET);
-
-            // Constrói o caminho completo: START + INTERMEDIATE + END
-            facilityIds.add(String.valueOf(selectedTrain.getStartFacilityId()));
-            if (!intermediateIdsStr.trim().isEmpty()) {
-                Arrays.asList(intermediateIdsStr.split(",")).forEach(id -> facilityIds.add(id.trim()));
-            }
-            facilityIds.add(String.valueOf(selectedTrain.getEndFacilityId())); // Adiciona a chegada
-
-            // 5. Despachar
-            System.out.println(ANSI_CYAN + "\n⚙️  Executing Schedule calculation for route: " + String.join(" -> ", facilityIds) + ANSI_RESET);
-
-            SchedulerResult result = schedulerController.dispatchRouteByFacilities(
-                    selectedTrain.getTrainId(), selectedTrain.getDepartureTime(), facilityIds, selectedLocos, selectedWagons
-            );
-
-            showSuccess("Dispatch Scheduling Complete!");
-
-            // --- Exibir Resultados ---
-            System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
-            System.out.println(ANSI_BOLD + "           SCHEDULED TRAIN TRIPS (" + result.scheduledTrips.size() + ") " + ANSI_RESET);
-            System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_BLUE);
-
-            for (TrainTrip trip : result.scheduledTrips) {
-                System.out.printf(ANSI_BOLD + "🚆 Trip ID: %s | Departure: %s | Total Time: %.2f hours%n" + ANSI_RESET,
-                        trip.getTripId(), trip.getDepartureTime().toLocalTime(), trip.getTotalTravelTimeHours());
-                System.out.printf("   Composition: %d Locos, %d Wagons | Power: %.0f kW | Weight: %.0f kg%n",
-                        trip.getLocomotives().size(), trip.getWagons().size(), trip.getCombinedPowerKw(), trip.getTotalWeightKg());
-
-                System.out.println(ANSI_CYAN + "   Passage Times (Station ID -> Time):" + ANSI_RESET);
-                trip.getPassageTimes().entrySet().stream()
-                        .sorted(Map.Entry.comparingByValue())
-                        .forEach(entry -> System.out.printf("     - Station %d: %s%n", entry.getKey(), entry.getValue().toLocalTime()));
-
-                System.out.println("-".repeat(50));
+            String trainIdsStr = readString(ANSI_BOLD + "➡️  Enter Train IDs to simulate (e.g., 5421,5437) [c=Cancel]: " + ANSI_RESET);
+            if (isCancel(trainIdsStr)) {
+                showInfo("Simulation cancelled by user.");
+                return;
             }
 
-            // --- 2. Exibir Conflitos Resolvidos ---
-            System.out.println("\n" + ANSI_BOLD + ANSI_RED + "--- CONFLICTS RESOLVED (" + result.resolvedConflicts.size() + ") ---" + ANSI_RESET);
-            if (result.resolvedConflicts.isEmpty()) {
-                System.out.println(ANSI_GREEN + "   No single-track conflicts detected." + ANSI_RESET);
-            } else {
-                for (Conflict conflict : result.resolvedConflicts) {
-                    System.out.println("   " + conflict.toString());
-                }
+            // Filtrar os comboios selecionados
+            List<String> selectedIds = Arrays.stream(trainIdsStr.split(","))
+                    .map(String::trim)
+                    .toList();
+
+            List<Train> trainsToSimulate = allTrains.stream()
+                    .filter(t -> selectedIds.contains(t.getTrainId()))
+                    .toList();
+
+            if (trainsToSimulate.isEmpty()) {
+                showError("No valid Train IDs selected. Cannot run simulation.");
+                return;
             }
+
+            System.out.printf(ANSI_CYAN + "\n⚙️  Executing Schedule calculation for %d selected trains...%n" + ANSI_RESET, trainsToSimulate.size());
+
+
+            // 2. Executa a Simulação (Passando a lista filtrada)
+            Map<String, List<SimulationSegmentEntry>> allSimulationResults = dispatcherService.runSimulation(trainsToSimulate);
+
+            if (allSimulationResults.isEmpty()) {
+                showError("No valid scheduled trips could be simulated for the selected trains (check routes).");
+                return;
+            }
+
+            showSuccess("Full simulation completed successfully for " + allSimulationResults.size() + " trains!");
+
+            // 3. Imprime a Linha Temporal Segmento a Segmento
+            printSimulationTimetables(allSimulationResults);
+
+            // 4. Verifica e Reporta Conflitos / Cruzamentos
+            List<String> conflictReport = dispatcherService.checkConflictsAndSuggestCrossings();
+            printConflictReport(conflictReport);
+
 
         } catch (Exception e) {
-            showError("Failed to execute dispatch scheduler (USLP07): " + e.getMessage());
+            showError("Failed to execute full simulation (USLP07): " + e.getMessage());
             System.err.println(ANSI_ITALIC + "Stack trace (for debug):");
             e.printStackTrace(System.err);
             System.err.println(ANSI_RESET);
         }
     }
+
+    /**
+     * Imprime a tabela de tempos de passagem por segmento para todos os comboios simulados.
+     */
+    // File: pt.ipp.isep.dei.UI.CargoHandlingUI.java
+// (Apenas o método printSimulationTimetables e a assunção de LocomotiveRepository)
+
+    /**
+     * Imprime a tabela de tempos de passagem por segmento para todos os comboios simulados.
+     */
+    private void printSimulationTimetables(Map<String, List<SimulationSegmentEntry>> allResults) {
+        System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
+        System.out.println(ANSI_BOLD + "                            DETAILED SEGMENT TIMETABLE (SIMULATION OUTPUT) " + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
+
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+        for (Map.Entry<String, List<SimulationSegmentEntry>> entry : allResults.entrySet()) {
+            String trainId = entry.getKey();
+            List<SimulationSegmentEntry> timetable = entry.getValue();
+
+            if (timetable.isEmpty()) continue;
+
+            // Encontra o comboio para obter a hora de partida planeada (do TrainRepository)
+            Train train = trainRepo.findById(trainId).orElse(null);
+
+            // Tenta obter info da locomotiva (assumindo que LocomotiveRepository usa IDs como Integers)
+            Locomotive loco = null;
+            String locoInfo = "N/A (0 kW)";
+            if (train != null && train.getLocomotiveId() != null) {
+                try {
+                    // Assumimos que o Locomotive ID é um número que pode ser convertido (e.g., '5621')
+                    loco = locomotivaRepo.findById(Integer.parseInt(train.getLocomotiveId())).orElse(null);
+                    if (loco != null) {
+                        locoInfo = String.format("%s (%.0f kW)", loco.getLocomotiveId(), loco.getPowerKW());
+                    }
+                } catch (NumberFormatException e) {
+                    // ID não é um número (e.g., '335.001'), tratar como string simples
+                    locoInfo = train.getLocomotiveId() + " (Power N/A)";
+                }
+            }
+
+
+            // --- SUMÁRIO DETALHADO DO COMBOIO ---
+            System.out.printf(ANSI_BOLD + "\n🚆 Train %s — Scheduled Departure %s%n" + ANSI_RESET,
+                    trainId, train != null ? train.getDepartureTime().toLocalTime().format(timeFormatter) : "N/A");
+            System.out.printf(ANSI_ITALIC + "   Composition: Locomotive %s | Assumed Freight Speed: 100 km/h%n" + ANSI_RESET, locoInfo);
+
+            // --- CABEÇALHO DA TABELA ---
+            System.out.println(ANSI_BOLD + ANSI_CYAN +
+                    "ID\tFROM FACILITY\t\tTO FACILITY\t\tTYPE\tLENGTH\t\tENTRY\t\tEXIT\t\tSPEED (C/A)" + ANSI_RESET);
+            System.out.println("-".repeat(95));
+
+            // --- CONTEÚDO DA TABELA ---
+            for (SimulationSegmentEntry segmentEntry : timetable) {
+                // toTableString já usa o novo formato
+                System.out.println(segmentEntry.toTableString());
+            }
+            System.out.println("-".repeat(95));
+        }
+    }
+
+    /**
+     * Imprime o relatório de conflitos e sugestões de cruzamento.
+     */
+    private void printConflictReport(List<String> conflictReport) {
+        System.out.println("\n" + ANSI_BOLD + ANSI_RED + "==========================================================" + ANSI_RESET);
+        System.out.println(ANSI_BOLD + "           🚦 CONFLICT & CROSSING ANALYSIS 🚦 " + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_RED + "==========================================================" + ANSI_RESET);
+
+        if (conflictReport.isEmpty()) {
+            System.out.println(ANSI_GREEN + "✅ No single-track conflicts detected in the current schedule." + ANSI_RESET);
+        } else {
+            // Conta o número de conflitos assumindo que as linhas de conflito começam com "⚠️"
+            int numConflicts = (int) conflictReport.stream().filter(line -> line.startsWith("⚠️")).count();
+            System.out.printf(ANSI_RED + "⚠️ Found %d conflict event(s):%n" + ANSI_RESET, numConflicts);
+
+            for (String reportLine : conflictReport) {
+                if (reportLine.startsWith("⚠️")) {
+                    System.out.println(ANSI_RED + reportLine + ANSI_RESET);
+                } else if (reportLine.contains("- RECOMMENDED CROSSING:")) {
+                    System.out.println(ANSI_YELLOW + reportLine + ANSI_RESET);
+                } else {
+                    System.out.println(reportLine); // Para detalhes de tempo (TXX: HH:mm - HH:mm)
+                }
+            }
+        }
+    }
+
+    // ============================================================
+    // === USLP07 SCHEDULER HANDLER (REMOVIDO / SUBSTITUÍDO) ===
+    // ============================================================
+
+    /*
+     * O método handleDispatchTrains original foi substituído por handleRunFullSimulation().
+     * O código anterior foi removido para evitar erros de compilação com a lógica obsoleta.
+     */
 
 
     // ============================================================
@@ -641,7 +717,7 @@ public class CargoHandlingUI implements Runnable {
         try {
             orders = manager.loadOrders(
                     "src/main/java/pt/ipp.isep.dei/FicheirosCSV/orders.csv",
-                    "src/main/java/pt.ipp.isep.dei/FicheirosCSV/order_lines.csv"
+                    "src/main/java/pt/ipp.isep.dei/FicheirosCSV/order_lines.csv"
             );
         } catch (Exception e) {
             showError("Failed to load orders: " + e.getMessage());

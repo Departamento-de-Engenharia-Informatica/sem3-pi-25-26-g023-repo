@@ -1,3 +1,4 @@
+// File: pt.ipp.isep.dei.controller.SchedulerController.java
 package pt.ipp.isep.dei.controller;
 
 import pt.ipp.isep.dei.domain.*;
@@ -9,15 +10,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.LinkedList;
 import java.util.List;
-import java.util.Map;
 import java.util.Optional;
-import java.util.Queue;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 public class SchedulerController {
 
@@ -25,15 +19,19 @@ public class SchedulerController {
     private final SegmentLineRepository segmentRepo;
     private final LocomotiveRepository locoRepo;
     private final WagonRepository wagonRepo;
+    private final RailwayNetworkService networkService; // NOVO: Serviço de Rede Ferroviária
 
+    // Construtor atualizado para injeção de dependência
     public SchedulerController(SchedulerService schedulerService,
                                SegmentLineRepository segmentRepo,
                                LocomotiveRepository locoRepo,
-                               WagonRepository wagonRepo) {
+                               WagonRepository wagonRepo,
+                               RailwayNetworkService networkService) {
         this.schedulerService = schedulerService;
         this.segmentRepo = segmentRepo;
         this.locoRepo = locoRepo;
         this.wagonRepo = wagonRepo;
+        this.networkService = networkService;
     }
 
     /**
@@ -46,10 +44,10 @@ public class SchedulerController {
             List<Locomotive> locomotives,
             List<Wagon> wagons)
     {
+        // 1. Constrói a Rota
         List<LineSegment> route = findRouteSegmentsBetweenFacilities(facilityIds);
 
         if (route.isEmpty()) {
-            // A exceção é lançada dentro do findRouteSegmentsBetweenFacilities
             throw new RuntimeException("A rota construída não contém segmentos válidos.");
         }
 
@@ -62,24 +60,16 @@ public class SchedulerController {
 
     /**
      * Constrói a rota completa encadeando os segmentos entre todas as Facilities fornecidas.
+     * Tornamos este método PÚBLICO para ser usado pelo novo DispatcherService.
      */
-    private List<LineSegment> findRouteSegmentsBetweenFacilities(List<String> facilityIds) {
+    public List<LineSegment> findRouteSegmentsBetweenFacilities(List<String> facilityIds) { // Tornar público
         List<LineSegment> fullRoute = new ArrayList<>();
 
-        // Se o utilizador só fornecer START e END, tentamos encontrar o caminho mais rápido/curto.
-        if (facilityIds.size() == 2) {
-            try {
-                int startId = Integer.parseInt(facilityIds.get(0).trim());
-                int endId = Integer.parseInt(facilityIds.get(1).trim());
+        // Usamos um limite de velocidade muito alto (1000 km/h) para que o Dijkstra encontre o caminho
+        // mais rápido de acordo com as velocidades MÁXIMAS dos segmentos (Vseg), não por um limite externo.
+        final double MAX_SPEED_FOR_CALC = 1000.0;
 
-                // CRÍTICO: Usa BFS para encontrar a rota A -> B, pois o findDirectSegment falha se a rota for multi-segmento
-                return findPathUsingBFS(startId, endId);
-            } catch (NumberFormatException e) {
-                throw new RuntimeException("IDs de Facility devem ser números inteiros válidos.");
-            }
-        }
-
-        // Se o utilizador fornecer Facilities intermédias (Rota Manual), encadeamos:
+        // Itera sobre todos os pares de Facilities
         for (int i = 0; i < facilityIds.size() - 1; i++) {
             try {
                 int startId = Integer.parseInt(facilityIds.get(i).trim());
@@ -91,7 +81,12 @@ public class SchedulerController {
                 if (directSegment.isPresent()) {
                     fullRoute.add(directSegment.get());
                 } else {
-                    throw new RuntimeException("Rota inválida: Não foi encontrado segmento direto entre Facility " + startId + " e Facility " + endId);
+                    // Se não houver segmento direto (rota longa ou multi-segmento), usa Dijkstra
+                    RailwayPath path = networkService.findFastestPath(startId, endId, MAX_SPEED_FOR_CALC);
+                    if (path == null || path.getSegments().isEmpty()) {
+                        throw new RuntimeException("Rota inválida: Não foi encontrado caminho (Dijkstra) entre Facility " + startId + " e Facility " + endId);
+                    }
+                    fullRoute.addAll(path.getSegments());
                 }
             } catch (NumberFormatException e) {
                 throw new RuntimeException("IDs de Facility devem ser números inteiros válidos.");
@@ -102,47 +97,13 @@ public class SchedulerController {
 
     /**
      * Implementação de busca de caminho em largura (BFS) para encontrar a rota completa.
+     * REMOVIDO: Lógica substituída pela chamada a RailwayNetworkService.findFastestPath (Dijkstra) no método acima.
      */
+    /*
     private List<LineSegment> findPathUsingBFS(int startId, int endId) {
-        // Grafo não é mais necessário aqui, findDirectSegment é o método que usa a cache do repositório
-        Map<Integer, List<LineSegment>> graph = segmentRepo.findAll().stream()
-                .collect(Collectors.groupingBy(LineSegment::getIdEstacaoInicio));
-
-        Map<Integer, LineSegment> edgeTo = new HashMap<>();
-        Queue<Integer> queue = new LinkedList<>();
-        Set<Integer> visited = new HashSet<>();
-
-        queue.add(startId);
-        visited.add(startId);
-
-        while (!queue.isEmpty()) {
-            int currentId = queue.poll();
-
-            if (currentId == endId) {
-                // Reconstruir o caminho
-                List<LineSegment> path = new ArrayList<>();
-                int curr = endId;
-                while (edgeTo.containsKey(curr)) {
-                    LineSegment seg = edgeTo.get(curr);
-                    path.add(seg);
-                    curr = (seg.getIdEstacaoFim() == curr) ? seg.getIdEstacaoInicio() : seg.getIdEstacaoFim();
-                }
-                Collections.reverse(path);
-                return path;
-            }
-
-            for (LineSegment segment : graph.getOrDefault(currentId, Collections.emptyList())) {
-                int neighborId = segment.getIdEstacaoFim();
-
-                if (!visited.contains(neighborId)) {
-                    visited.add(neighborId);
-                    edgeTo.put(neighborId, segment);
-                    queue.add(neighborId);
-                }
-            }
-        }
-        return Collections.emptyList(); // Caminho não encontrado
+        // ... Lógica removida ...
     }
+    */
 
 
     // Métodos de Listagem para UI

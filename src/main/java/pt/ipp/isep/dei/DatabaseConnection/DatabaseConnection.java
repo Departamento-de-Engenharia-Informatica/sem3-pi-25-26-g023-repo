@@ -50,7 +50,7 @@ public class DatabaseConnection {
             }
 
             // =========================================================================
-            // 2. STATION & FACILITY (Pontos Geográficos)
+            // 2. STATION (Pontos Geográficos)
             // =========================================================================
             printSectionTitle("STATION (Pontos Geográficos)");
             String sql2 = "SELECT station_id, name, latitude, longitude FROM STATION ORDER BY station_id";
@@ -64,6 +64,24 @@ public class DatabaseConnection {
                 }
                 if (count == 0) System.out.println("   -> STATION table is empty.");
             }
+
+            // =========================================================================
+            // 2.1 FACILITY (Pontos de Carga/Descarga) <--- NOVO
+            // =========================================================================
+            printSectionTitle("FACILITY (Pontos de Carga/Descarga)");
+            String sql2_1 = "SELECT F.facility_id, F.name AS facility_name, S.name AS station_name " +
+                    "FROM FACILITY F JOIN STATION S ON F.station_id = S.station_id " +
+                    "ORDER BY F.facility_id";
+            try (PreparedStatement stmt = conn.prepareStatement(sql2_1);
+                 ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
+                while (rs.next()) {
+                    System.out.printf("   -> ID: %d | Name: %s | Station: %s\n", rs.getInt(1), rs.getString(2), rs.getString(3));
+                    count++;
+                }
+                if (count == 0) System.out.println("   -> FACILITY table is empty.");
+            }
+
 
             // =========================================================================
             // 3. RAILWAY_LINE (Com proprietário)
@@ -93,8 +111,17 @@ public class DatabaseConnection {
                  ResultSet rs = stmt.executeQuery()) {
                 int count = 0;
                 while (rs.next()) {
-                    System.out.printf("   -> SegID: %s | Line: %s | Order: %d | Electr: %s | MaxWeight: %.0f kg/m | Length: %.1f m | Tracks: %d | Siding: %d (%.0f m)\n",
-                            rs.getString(1), rs.getString(2), rs.getInt(3), rs.getString(4), rs.getDouble(5), rs.getDouble(6), rs.getInt(7), rs.getInt(8), rs.getDouble(9));
+                    // Melhoria na leitura de campos nullable (siding_position e siding_length)
+                    String sidingInfo;
+                    rs.getInt(8);
+                    if (rs.wasNull()) {
+                        sidingInfo = "N/A";
+                    } else {
+                        sidingInfo = String.format("%d (%.0f m)", rs.getInt(8), rs.getDouble(9));
+                    }
+
+                    System.out.printf("   -> SegID: %s | Line: %s | Order: %d | Electr: %s | MaxWeight: %.0f kg/m | Length: %.1f m | Tracks: %d | Siding: %s\n",
+                            rs.getString(1), rs.getString(2), rs.getInt(3), rs.getString(4), rs.getDouble(5), rs.getDouble(6), rs.getInt(7), sidingInfo);
                     count++;
                 }
                 if (count == 0) System.out.println("   -> LINE_SEGMENT table is empty.");
@@ -121,16 +148,18 @@ public class DatabaseConnection {
             }
 
             // =========================================================================
-            // 6. WAGON_MODEL (Modelos de Vagões)
+            // 6. WAGON_MODEL (Definições) <--- CORRIGIDO
             // =========================================================================
             printSectionTitle("WAGON_MODEL (Definições)");
-            String sql6 = "SELECT model_id, model_name, wagon_type, weight_t, payload_t, volume_m3 FROM WAGON_MODEL ORDER BY model_id";
+            // A consulta foi alterada para refletir as colunas inseridas pelo seu script DML:
+            // (model_id, model_name, maker, wagon_type, gauge_mm)
+            String sql6 = "SELECT model_id, model_name, maker, wagon_type, gauge_mm FROM WAGON_MODEL ORDER BY model_id";
             try (PreparedStatement stmt = conn.prepareStatement(sql6);
                  ResultSet rs = stmt.executeQuery()) {
                 int count = 0;
                 while (rs.next()) {
-                    System.out.printf("   -> ID: %d | Name: %s (%s) | Tara: %.1f t | Payload: %.1f t | Volume: %.1f m3\n",
-                            rs.getInt(1), rs.getString(2), rs.getString(3), rs.getDouble(4), rs.getDouble(5), rs.getDouble(6));
+                    System.out.printf("   -> ID: %d | Name: %s | Maker: %s | Type: %s | Gauge: %.0f mm\n",
+                            rs.getInt(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getDouble(5));
                     count++;
                 }
                 if (count == 0) System.out.println("   -> WAGON_MODEL table is empty.");
