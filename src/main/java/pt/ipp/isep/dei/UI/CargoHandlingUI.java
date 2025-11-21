@@ -17,7 +17,6 @@ import pt.ipp.isep.dei.domain.RadiusSearch;
 import pt.ipp.isep.dei.domain.StationDistance;
 import pt.ipp.isep.dei.domain.DensitySummary;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -25,7 +24,6 @@ import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Scanner;
 import java.time.format.DateTimeFormatter; // Para formatação de tempo no output
 
@@ -648,7 +646,7 @@ public class CargoHandlingUI implements Runnable {
     private void showKDTreeStats() {
         System.out.println("\n" + ANSI_BOLD + "--- KD-Tree & USEI08 Statistics ---" + ANSI_RESET);
 
-        KDTree tree = spatialSearchEngine.getKdTree();
+        KDTree tree = spatialSearchEngine.kdTree();
 
         System.out.println("KD-Tree Properties:");
         System.out.println("  • Size: " + ANSI_CYAN + tree.size() + ANSI_RESET + " nodes");
