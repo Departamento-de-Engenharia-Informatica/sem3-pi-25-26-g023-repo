@@ -1,6 +1,7 @@
 #ifndef ASM_H
 #define ASM_H
 
-int sort_array(int* vec, int length, char order);
+int move_n_to_array(int* buffer, int length, int *nelem,
+                    int *tail, int *head, int n, int* array);
 
 #endif
