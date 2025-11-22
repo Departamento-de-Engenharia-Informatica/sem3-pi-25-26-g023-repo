@@ -8,10 +8,16 @@ import java.util.Set;
 import java.util.HashSet;
 import java.util.stream.Collectors;
 
+/**
+ * Implements a balanced K-Dimensional Tree (KD-Tree) specifically for 2D spatial indexing
+ * of European Stations based on Latitude and Longitude (USEI07).
+ * The tree uses a bulk-build approach with median partitioning to ensure balance and
+ * utilizes a bucket system to handle multiple stations with identical coordinates.
+ */
 public class KDTree {
 
     /**
-     * Represents a node in the KD-Tree containing stations with identical coordinates (a bucket).
+     * Represents a node in the KD-Tree, acting as a bucket for stations with identical coordinates.
      */
     public static class Node {
         private final List<EuropeanStation> stations;
@@ -22,17 +28,18 @@ public class KDTree {
         private final int depth;
 
         /**
-         * Constructs a new KD-Tree node.
+         * Constructs a new KD-Tree node (bucket).
          *
-         * @param stationsInNode list of stations with identical coordinates to be stored in this node
-         * @param depth current depth in the tree
+         * @param stationsInNode list of stations with identical coordinates to be stored in this node.
+         * @param depth current depth in the tree, determining the splitting dimension.
          */
         public Node(List<EuropeanStation> stationsInNode, int depth) {
             if (stationsInNode.isEmpty()) {
                 throw new IllegalArgumentException("Cannot create a tree node with an empty station list.");
             }
 
-            stationsInNode.sort(null); // Ordena por nome (compareTo em EuropeanStation)
+            // Secondary ordering by name (using EuropeanStation's compareTo)
+            stationsInNode.sort(null);
             this.stations = stationsInNode;
 
             this.latitude = stationsInNode.get(0).getLatitude();
@@ -42,7 +49,7 @@ public class KDTree {
             this.depth = depth;
         }
 
-        // Getters para a lógica de construção e busca
+        // Getters for construction and search logic
         public List<EuropeanStation> getStations() { return stations; }
         public Node getLeft() { return left; }
         public Node getRight() { return right; }
@@ -51,17 +58,19 @@ public class KDTree {
 
         /**
          * Returns the coordinate value for the specified dimension (0: latitude, 1: longitude).
+         * @param dim The dimension index (0 for Latitude, 1 for Longitude).
          */
         public double getCoordinate(int dim) { return (dim == 0) ? latitude : longitude; }
 
         /**
          * Returns the current depth in the tree.
+         * @return The depth.
          */
         public int getDepth() { return depth; }
     }
 
     private Node root;
-    private int size;
+    private int size; // Total number of EuropeanStation objects stored in the tree
 
     /**
      * Constructs an empty KD-Tree.
@@ -72,8 +81,8 @@ public class KDTree {
     }
 
     /**
-     * **MÉTODO ESSENCIAL** para a classe SpatialSearch.
-     * Retorna o nó raiz da KD-Tree.
+     * Returns the root node of the KD-Tree.
+     * @return The root node.
      */
     public Node getRoot() {
         return this.root;
@@ -82,27 +91,37 @@ public class KDTree {
 
     /**
      * Builds a balanced KD-Tree from pre-sorted lists of stations by latitude and longitude.
-     * Complexidade: O(N log N) - N elementos x log N níveis de recursão
+     * This is the core implementation for USEI07.
+     * Time Complexity: O(N log N) - N elements x log N recursion levels (assuming lists are already sorted).
+     *
+     * @param stationsByLat List of stations sorted by latitude.
+     * @param stationsByLon List of stations sorted by longitude.
      */
     public void buildBalanced(List<EuropeanStation> stationsByLat, List<EuropeanStation> stationsByLon) {
         if (stationsByLat == null || stationsByLat.isEmpty()) return;
 
+        // Reset size and copy lists to allow modifications within recursive calls
+        this.size = 0;
         List<EuropeanStation> stationsLat = new ArrayList<>(stationsByLat);
         List<EuropeanStation> stationsLon = new ArrayList<>(stationsByLon);
         this.root = buildBalancedRecursive(stationsLat, stationsLon, 0);
     }
 
     /**
-     * Recursively builds a balanced KD-Tree node using median partitioning.
-     * Complexidade: O(N log N) no total (dominado pela ordenação inicial). O split em si é O(N).
+     * Recursively builds a balanced KD-Tree node using median partitioning (k-d partitioning).
+     * Time Complexity: O(N) per level (dominated by list splitting) resulting in O(N log N) total complexity.
+     *
+     * @param stationsByLat List of stations sorted by latitude.
+     * @param stationsByLon List of stations sorted by longitude.
+     * @param depth Current depth in the tree.
+     * @return The constructed node.
      */
     private Node buildBalancedRecursive(List<EuropeanStation> stationsByLat, List<EuropeanStation> stationsByLon, int depth) {
         if (stationsByLat.isEmpty()) {
             return null;
         }
 
-        this.size++;
-        int dim = depth % 2; // 0 for latitude (X), 1 for longitude (Y)
+        int dim = depth % 2; // 0 for latitude (X-axis split), 1 for longitude (Y-axis split)
 
         List<EuropeanStation> mainList = (dim == 0) ? stationsByLat : stationsByLon;
         int medianIndex = (mainList.size() - 1) / 2;
@@ -111,18 +130,21 @@ public class KDTree {
         double medianLat = medianStation.getLatitude();
         double medianLon = medianStation.getLongitude();
 
-        // 1. Coleta o bucket de estações com coordenadas idênticas à mediana
+        // 1. Collect the bucket of stations with identical coordinates to the median station
         List<EuropeanStation> nodeStations = mainList.stream()
                 .filter(s -> Double.compare(s.getLatitude(), medianLat) == 0 &&
                         Double.compare(s.getLongitude(), medianLon) == 0)
                 .collect(Collectors.toList());
 
+        // CORRECTION (FIX for the size error): Increment the total size by the number of STATIONS in this bucket.
+        this.size += nodeStations.size();
+
         Node node = new Node(nodeStations, depth);
 
-        // Utiliza um Set para checagem O(1) de pertencimento no passo de partição.
+        // Uses a Set for O(1) membership check during the partition step.
         Set<EuropeanStation> nodeStationsSet = new HashSet<>(nodeStations);
 
-        // 2. Lógica de Partição Otimizada
+        // 2. Optimized Partition Logic
         List<EuropeanStation> leftLat = new ArrayList<>();
         List<EuropeanStation> rightLat = new ArrayList<>();
         List<EuropeanStation> leftLon = new ArrayList<>();
@@ -130,12 +152,14 @@ public class KDTree {
 
         double cutCoordinate = (dim == 0) ? medianLat : medianLon;
 
-        // Partição da lista ordenada por Latitude (stationsByLat) - Custo O(N)
+        // Partition the list sorted by Latitude (stationsByLat) - O(N) cost
         for (EuropeanStation station : stationsByLat) {
+            // Skip stations already assigned to the node's bucket
             if (nodeStationsSet.contains(station)) continue;
 
             double coordToCompare = (dim == 0) ? station.getLatitude() : station.getLongitude();
 
+            // The 'median' station is implicitly the cut, so we partition based on the cut coordinate.
             if (coordToCompare < cutCoordinate) {
                 leftLat.add(station);
             } else {
@@ -143,8 +167,9 @@ public class KDTree {
             }
         }
 
-        // Partição da lista ordenada por Longitude (stationsByLon) - Custo O(N)
+        // Partition the list sorted by Longitude (stationsByLon) - O(N) cost
         for (EuropeanStation station : stationsByLon) {
+            // Skip stations already assigned to the node's bucket
             if (nodeStationsSet.contains(station)) continue;
 
             double coordToCompare = (dim == 0) ? station.getLatitude() : station.getLongitude();
@@ -156,25 +181,27 @@ public class KDTree {
             }
         }
 
-        // 3. Chamadas recursivas
+        // 3. Recursive calls
         node.left = buildBalancedRecursive(leftLat, leftLon, depth + 1);
         node.right = buildBalancedRecursive(rightLat, rightLon, depth + 1);
 
         return node;
     }
 
-    // --- Métodos de Acesso e Análise ---
+    // --- Access and Analysis Methods (USEI07) ---
 
     /**
-     * Returns the number of nodes in the KD-Tree.
+     * Returns the total number of EuropeanStation objects stored across all nodes (buckets) in the KD-Tree.
+     * @return The total station count.
      */
     public int size() {
         return this.size;
     }
 
     /**
-     * Calculates the height of the KD-Tree (max depth).
-     * Complexidade: O(N) no pior caso (se precisar percorrer todos os nós)
+     * Calculates the height of the KD-Tree (maximum depth from root).
+     * Time Complexity: O(N) in the worst case (needs to traverse all nodes).
+     * @return The height of the tree.
      */
     public int height() {
         return heightRecursive(root);
@@ -188,7 +215,8 @@ public class KDTree {
     }
 
     /**
-     * Analyzes the distribution of bucket sizes in the KD-Tree.
+     * Analyzes the distribution of bucket sizes (stations per node) in the KD-Tree.
+     * @return A map where the key is the bucket size (number of stations) and the value is the count of nodes with that size.
      */
     public Map<Integer, Integer> getBucketSizes() {
         Map<Integer, Integer> bucketSizes = new HashMap<>();
@@ -206,11 +234,11 @@ public class KDTree {
         getBucketSizesRecursive(node.right, bucketSizes);
     }
 
-    // --- US USEI09: Proximity Search (Nearest-N) (Omitem-se os métodos completos) ---
+    // --- Search Methods (USEI08, USEI10) ---
 
     /**
      * Finds the N nearest stations to a target coordinate, optionally applying a time zone filter.
-     * (Requer a classe NearestNFinder que o utilizador tem)
+     * (Requires the NearestNFinder class for implementation, as seen in the original code structure).
      */
     public List<EuropeanStation> findNearestN(
             double targetLat, double targetLon, int N, String timeZoneFilter) {
@@ -219,7 +247,7 @@ public class KDTree {
             return new ArrayList<>();
         }
 
-        // Delega a lógica de busca à classe NearestNFinder
+        // Delegates search logic to the NearestNFinder class
         NearestNFinder finder = new NearestNFinder(N, timeZoneFilter, targetLat, targetLon);
 
         finder.search(this.root);
@@ -228,13 +256,13 @@ public class KDTree {
     }
 
     /**
-     * Finds all stations within a specified radius of a target coordinate (Range Search).
-     * Complexidade: O(sqrt(N) + K) no caso médio para árvore 2D balanceada.
+     * Finds all stations within a specified radius of a target coordinate (Radius Search).
+     * Time Complexity: O(sqrt(N) + K) on average for a balanced 2D tree (where K is the number of results).
      *
-     * @param targetLat Latitude do ponto alvo
-     * @param targetLon Longitude do ponto alvo
-     * @param radiusKm Raio de busca em quilômetros
-     * @return Lista de estações dentro do raio especificado
+     * @param targetLat Target point Latitude.
+     * @param targetLon Target point Longitude.
+     * @param radiusKm Search radius in kilometers.
+     * @return List of stations within the specified radius.
      */
     public List<EuropeanStation> radiusSearch(double targetLat, double targetLon, double radiusKm) {
         List<EuropeanStation> results = new ArrayList<>();
@@ -243,8 +271,7 @@ public class KDTree {
     }
 
     /**
-     * Recursive method to search for stations within the specified radius.
-     * Utiliza a técnica de PODA (pruning) baseada na distância mínima entre o ponto alvo e o plano de divisão do nó.
+     * Recursive method to search for stations within the specified radius, using pruning (PODA).
      */
     private void radiusSearchRecursive(Node node, double targetLat, double targetLon,
                                        double radiusKm, List<EuropeanStation> results, int depth) {
@@ -252,21 +279,21 @@ public class KDTree {
             return;
         }
 
-        // 1. Checa e adiciona o nó atual (Bucket)
+        // 1. Check and add the current node (Bucket)
         double distanceToNode = GeoDistance.haversine(targetLat, targetLon,
                 node.getLatitude(), node.getLongitude());
 
-        // Se o nó está dentro do raio, adiciona todas as suas estações
+        // If the node is within the radius, add all its stations
         if (distanceToNode <= radiusKm) {
             results.addAll(node.getStations());
         }
 
-        // 2. Determinação de Subárvores e Poda
+        // 2. Determine Subtrees and Pruning
         int dim = depth % 2;
         double targetCoord = (dim == 0) ? targetLat : targetLon;
         double nodeCoord = node.getCoordinate(dim);
 
-        // Determina qual subárvore explorar primeiro (mais próxima)
+        // Determine which subtree to explore first (closer)
         Node closerSubtree, fartherSubtree;
         if (targetCoord < nodeCoord) {
             closerSubtree = node.getLeft();
@@ -276,15 +303,17 @@ public class KDTree {
             fartherSubtree = node.getLeft();
         }
 
-        // A. Sempre explora a subárvore mais próxima
+        // A. Always explore the closer subtree
         radiusSearchRecursive(closerSubtree, targetLat, targetLon, radiusKm, results, depth + 1);
 
-        // B. Condição de Poda (Pruning): Se o plano de divisão interseta o círculo de busca (raio),
-        // deve-se explorar a subárvore mais distante.
+        // B. Pruning condition: If the splitting plane intersects the search circle (radius),
+        // the farther subtree must also be explored.
+
+        // Calculate the minimum distance from the target point to the splitting plane
         double minDistanceToFartherPlane = Math.abs(targetCoord - nodeCoord);
 
-        // Se a distância mínima do ponto ao plano de corte for menor ou igual ao raio,
-        // (i.e., a fronteira interseta a região de busca) explora-se a subárvore distante.
+        // If the distance to the splitting plane is less than or equal to the radius,
+        // explore the farther subtree.
         if (minDistanceToFartherPlane <= radiusKm) {
             radiusSearchRecursive(fartherSubtree, targetLat, targetLon, radiusKm, results, depth + 1);
         }
