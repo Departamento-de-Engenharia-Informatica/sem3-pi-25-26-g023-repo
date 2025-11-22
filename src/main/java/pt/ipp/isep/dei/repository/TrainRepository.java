@@ -10,6 +10,7 @@ import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class TrainRepository {
 
@@ -170,5 +171,26 @@ public class TrainRepository {
      */
     public Optional<Train> findById(String id) {
         return findAll().stream().filter(t -> t.getTrainId().equals(id)).findFirst();
+    }
+
+    /**
+     * Retorna todos os IDs de operadores distintos dos comboios carregados.
+     */
+    public List<String> findAllOperators() {
+        return findAll().stream()
+                .map(Train::getOperatorId)
+                .distinct()
+                .collect(Collectors.toList());
+    }
+
+    /**
+     * Retorna todos os IDs de rota distintos dos comboios carregados.
+     */
+    public List<String> findAllRouteIds() {
+        return findAll().stream()
+                .map(Train::getRouteId)
+                .filter(id -> id != null && !id.isEmpty())
+                .distinct()
+                .collect(Collectors.toList());
     }
 }

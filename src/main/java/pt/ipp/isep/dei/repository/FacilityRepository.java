@@ -1,4 +1,3 @@
-// File: pt.ipp.isep.dei.repository.FacilityRepository.java
 package pt.ipp.isep.dei.repository;
 
 import java.util.HashMap;
@@ -45,5 +44,12 @@ public class FacilityRepository {
 
     public Optional<String> findNameById(int id) {
         return Optional.ofNullable(facilityCache.get(id));
+    }
+
+    /**
+     * Retorna o cache completo de facilities (ID -> Nome) para ser usado em ComboBoxes.
+     */
+    public Map<Integer, String> findAllFacilityNames() {
+        return facilityCache;
     }
 }

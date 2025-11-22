@@ -25,17 +25,28 @@ public class BDDADMainController {
             mainController.loadOperatorCrudView();
         }
     }
-    // ✅ NOVO MÉTODO PARA LOCOMOTIVE
+
+    // ✅ MÉTODO PARA LOCOMOTIVE
     @FXML
     void handleShowLocomotiveCRUD(ActionEvent event) {
         if (mainController != null) {
             mainController.loadLocomotiveCrudView(); // Chama o método de carregamento no MainController
         }
     }
+
+    // ✅ NOVO MÉTODO PARA TRAIN
+    @FXML
+    void handleShowTrainCRUD(ActionEvent event) {
+        if (mainController != null) {
+            mainController.loadTrainCrudView(); // Chama o método de carregamento no MainController
+        }
+    }
+
     @FXML
     void handleShowWagonCRUD(ActionEvent event) {
         if (mainController != null) {
             mainController.loadWagonCrudView();
         }
     }
+
 }

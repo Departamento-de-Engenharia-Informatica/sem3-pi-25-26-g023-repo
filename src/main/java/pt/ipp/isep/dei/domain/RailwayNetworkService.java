@@ -1,5 +1,3 @@
-// File: pt.ipp.isep.dei.domain.RailwayNetworkService.java
-
 package pt.ipp.isep.dei.domain;
 
 import pt.ipp.isep.dei.repository.StationRepository;
@@ -37,7 +35,7 @@ public class RailwayNetworkService {
 
         List<LineSegment> allSegments = segmentoRepo.findAll();
 
-        // --- NOVO: CONSTRUÇÃO DO GRAFO DE ADJACÊNCIAS ---
+        // --- CONSTRUÇÃO DO GRAFO DE ADJACÊNCIAS ---
         Map<Integer, List<LineSegment>> adj = new HashMap<>();
         Set<Integer> allFacilityIds = new HashSet<>();
 
@@ -62,7 +60,6 @@ public class RailwayNetworkService {
         }
 
         if (!timeTo.containsKey(idPartida) || !timeTo.containsKey(idChegada)) {
-            // Esta verificação impede quebra se as Facilities não estiverem no repositório.
             return null;
         }
 
@@ -73,17 +70,17 @@ public class RailwayNetworkService {
             int u = pq.poll().getKey();
 
             if (u == idChegada) {
-                break; // Encontrámos o destino
+                break;
             }
 
-            // Relaxar SOMENTE as arestas (segmentos) que saem de 'u' (USANDO AGORA O MAPA ADJ)
+            // Relaxar SOMENTE as arestas (segmentos) que saem de 'u'
             for (LineSegment seg : adj.getOrDefault(u, Collections.emptyList())) {
 
-                int v = seg.getIdEstacaoFim(); // O vizinho é o ponto final do segmento
+                int v = seg.getIdEstacaoFim();
 
                 // Calcula o tempo de viagem
                 double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), maxSpeedLimit);
-                double lengthKm = seg.getComprimento(); // Já em KM
+                double lengthKm = seg.getComprimento();
 
                 double travelTime;
                 if (effectiveSpeed <= 0 || lengthKm <= 0) {
@@ -102,7 +99,6 @@ public class RailwayNetworkService {
                     edgeTo.put(v, seg);
                     predecessorNode.put(v, u);
 
-                    // Atualiza prioridade na Fila (A remoção antes de adicionar é crucial para a PriorityQueue funcionar como um relaxamento eficiente)
                     Map.Entry<Integer, Double> oldEntry = new AbstractMap.SimpleEntry<>(v, timeTo.get(v));
                     pq.remove(oldEntry);
                     pq.add(new AbstractMap.SimpleEntry<>(v, newTime));
@@ -110,7 +106,6 @@ public class RailwayNetworkService {
             }
         }
 
-        // Se não houver caminho
         if (!timeTo.containsKey(idChegada) || timeTo.get(idChegada) == Double.POSITIVE_INFINITY) {
             return null;
         }
@@ -121,7 +116,6 @@ public class RailwayNetworkService {
         int curr = idChegada;
         while (curr != idPartida) {
             if (!predecessorNode.containsKey(curr)) {
-                // Erro de continuidade: Se chegámos aqui, o caminho não se reconstrói (deve ser impossível se Dijkstra funcionar)
                 return null;
             }
             LineSegment seg = edgeTo.get(curr);
@@ -131,17 +125,55 @@ public class RailwayNetworkService {
             path.add(seg);
             totalDistance += seg.getComprimento();
 
-            // Move-se para o nó anterior (o nó de início do segmento)
             curr = seg.getIdEstacaoInicio();
 
-            // VERIFICAÇÃO CRÍTICA DE CONTINUIDADE
             if (curr == seg.getIdEstacaoFim()) {
-                // Ciclo: Se o predecessor for o próprio destino (improvável com as alterações), parar
                 return null;
             }
         }
         Collections.reverse(path);
 
         return new RailwayPath(path, totalDistance, timeTo.get(idChegada));
+    }
+
+    /**
+     * Encontra todos os IDs de facilities alcançáveis (reachable) a partir de um ponto de partida.
+     * Implementa uma busca em largura (BFS) no grafo ferroviário.
+     * @param startFacilityId ID da facility de partida.
+     * @return Lista de IDs de facilities alcançáveis.
+     */
+    public List<Integer> findAllReachableFacilities(int startFacilityId) {
+        Set<Integer> reachable = new HashSet<>();
+        Queue<Integer> queue = new LinkedList<>();
+
+        // 1. Constrói a Lista de Adjacência bidirecional
+        Map<Integer, List<LineSegment>> adj = new HashMap<>();
+        for (LineSegment seg : segmentoRepo.findAll()) {
+            // Adiciona as duas direções para garantir a conectividade
+            adj.computeIfAbsent(seg.getIdEstacaoInicio(), k -> new ArrayList<>()).add(seg);
+            adj.computeIfAbsent(seg.getIdEstacaoFim(), k -> new ArrayList<>()).add(seg);
+        }
+
+        // 2. Inicializa a busca em largura (BFS)
+        queue.add(startFacilityId);
+        reachable.add(startFacilityId);
+
+        while (!queue.isEmpty()) {
+            int current = queue.poll();
+
+            for (LineSegment seg : adj.getOrDefault(current, Collections.emptyList())) {
+                // Determina o vizinho
+                int neighbor = (seg.getIdEstacaoInicio() == current) ? seg.getIdEstacaoFim() : seg.getIdEstacaoInicio();
+
+                if (!reachable.contains(neighbor)) {
+                    reachable.add(neighbor);
+                    queue.add(neighbor);
+                }
+            }
+        }
+
+        // 3. Retorna a lista de IDs alcançáveis (excluindo o próprio ponto de partida)
+        reachable.remove(startFacilityId);
+        return new ArrayList<>(reachable);
     }
 }

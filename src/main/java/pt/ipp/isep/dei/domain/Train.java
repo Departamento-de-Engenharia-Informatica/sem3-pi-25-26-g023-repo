@@ -29,4 +29,8 @@ public class Train {
     public int getEndFacilityId() { return endFacilityId; }
     public String getLocomotiveId() { return locomotiveId; }
     public String getRouteId() { return routeId; } // NOVO GETTER
+    // EM pt.ipp.isep.dei.domain.Train.java
+    public String getOperatorId() {
+        return operatorId;
+    }
 }
