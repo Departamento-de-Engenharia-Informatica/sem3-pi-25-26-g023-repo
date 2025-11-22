@@ -7,15 +7,12 @@ import java.util.List;
  * USEI08 - Search by Geographical Area
  * Implements range search in KD-Tree for European railway stations
  */
-public class SpatialSearch {
+public record SpatialSearch(KDTree kdTree) {
 
-    private final KDTree kdTree;
-
-    public SpatialSearch(KDTree kdTree) {
+    public SpatialSearch {
         if (kdTree == null) {
             throw new IllegalArgumentException("KD-Tree cannot be null");
         }
-        this.kdTree = kdTree;
     }
 
     /**
@@ -76,11 +73,11 @@ public class SpatialSearch {
             if (latMax >= currentLat) {
                 searchInRangeRecursive(node.getRight(), latMin, latMax, lonMin, lonMax, countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
             }
-        }   else {
-                // Current dimension: Longitude
-                if (lonMin <= currentLon) {
-                    searchInRangeRecursive(node.getLeft(), latMin, latMax, lonMin, lonMax, countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
-                }
+        } else {
+            // Current dimension: Longitude
+            if (lonMin <= currentLon) {
+                searchInRangeRecursive(node.getLeft(), latMin, latMax, lonMin, lonMax, countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
+            }
             if (lonMax >= currentLon) {
                 searchInRangeRecursive(node.getRight(), latMin, latMax, lonMin, lonMax, countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
             }
@@ -115,27 +112,23 @@ public class SpatialSearch {
 
     public String getComplexityAnalysis() {
         return String.format("""
-                        USEI08 Complexity Analysis:
-                        KD-Tree Properties:
-                        - Height: %d
-                        - Nodes: %d
-                        - Balance: %s
-                                        
-                        Time Complexity:
-                        - Best case: O(log n)
-                        - Average case: o(√n)
-                        - Worst case: 0(n)
-                                        
-                        Space Complexity:
-                        - Auxiliary: O(1)
-                        - Recursion stack: O(log n)
-                        """,
+                         USEI08 Complexity Analysis:
+                         KD-Tree Properties:
+                         - Height: %d
+                         - Nodes: %d
+                         - Balance: %s
+                                        \s
+                         Time Complexity:
+                         - Best case: O(log n)
+                         - Average case: o(√n)
+                         - Worst case: 0(n)
+                                        \s
+                         Space Complexity:
+                         - Auxiliary: O(1)
+                         - Recursion stack: O(log n)
+                        \s""",
                 kdTree.height(),
                 kdTree.size(),
                 kdTree.height() <= 2 * Math.log(kdTree.size()) / Math.log(2) ? "Good" : "Could be improved");
-    }
-
-    public KDTree getKdTree() {
-        return kdTree;
     }
 }

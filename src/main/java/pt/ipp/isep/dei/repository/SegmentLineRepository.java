@@ -9,87 +9,120 @@ import java.util.stream.Collectors;
 
 /**
  * Repository class responsible for loading and managing {@link LineSegment} entities.
- * CRITICAL: Usa HARDCODED MOCK DATA (Dataset Line.csv e Segment.csv) para construir o grafo,
- * ignorando a DB Oracle vazia/inconsistente.
  */
 public class SegmentLineRepository {
 
-    private static final double DEFAULT_MAX_SPEED = 150.0;
-    private static final int INVERSE_ID_OFFSET = 10000;
+    // Constante para prefixar IDs do segmento inverso (CRÍTICO PARA CONFLITOS)
+    public static final String INVERSE_ID_PREFIX = "INV_";
+    private static final double GENERIC_MAX_SPEED_KMH = 150.0;
 
-    /** Cache interna para facilitar a pesquisa por ID (String). */
     private final Map<String, LineSegment> segmentCache = new HashMap<>();
 
-    // 🚨 MAPA DE TRADUÇÃO BASEADO EM Dataset_Sprint_1_v0.xlsx - Line.csv 🚨
-    private final Map<Integer, Integer[]> facilityMap = new HashMap<>();
-
-    // 🚨 MOCK DATA DO SEGMENT.CSV 🚨
-    private final Map<Integer, int[]> segmentData = new HashMap<>();
+    // 🚨 MOCK TEMPORÁRIO PARA LIGAÇÃO FACILITY <-> SEGMENTO 🚨
+    private final Map<Integer, Integer[]> segmentFacilityMapping = new HashMap<>();
 
 
     public SegmentLineRepository() {
-        System.out.println("SegmentLineRepository: Initialized (will connect to DB on demand).");
-        populateMapsFromDataset();
+        System.out.println("SegmentLineRepository: Initialized (Loading data from DB).");
+        loadSegmentsFromDatabase();
     }
 
-    private void populateMapsFromDataset() {
-        // --- Popula Facilities (Line.csv) ---
-        facilityMap.put(1, new Integer[]{7, 5});     // Line 1: São Bento (7) -> Campanhã (5)
-        facilityMap.put(2, new Integer[]{5, 20});    // Line 2: Campanhã (5) -> Nine (20)
-        facilityMap.put(3, new Integer[]{20, 8});    // Line 3: Nine (20) -> Barcelos (8)
+    private void populateFacilityMapping() {
+        // Mapeamento mantido para a consistência do grafo
+        segmentFacilityMapping.put(1, new Integer[]{7, 5});
+        segmentFacilityMapping.put(3, new Integer[]{5, 13});
+        segmentFacilityMapping.put(30, new Integer[]{13, 43});
+        segmentFacilityMapping.put(31, new Integer[]{43, 45});
+        segmentFacilityMapping.put(33, new Integer[]{45, 48});
+        segmentFacilityMapping.put(35, new Integer[]{48, 50});
+        segmentFacilityMapping.put(10, new Integer[]{13, 20});
+        segmentFacilityMapping.put(15, new Integer[]{20, 8});
+        segmentFacilityMapping.put(14, new Integer[]{8, 12});
+        segmentFacilityMapping.put(20, new Integer[]{12, 17});
+        segmentFacilityMapping.put(18, new Integer[]{17, 21});
+        segmentFacilityMapping.put(25, new Integer[]{21, 16});
+        segmentFacilityMapping.put(26, new Integer[]{16, 11});
+        segmentFacilityMapping.put(11, new Integer[]{20, 18});
+        segmentFacilityMapping.put(16, new Integer[]{18, 8});
+        segmentFacilityMapping.put(12, new Integer[]{12, 17});
+        segmentFacilityMapping.put(13, new Integer[]{17, 12});
+        segmentFacilityMapping.put(21, new Integer[]{21, 16});
+        segmentFacilityMapping.put(22, new Integer[]{16, 11});
+    }
 
-        // 🚨 LIGAÇÕES CRÍTICAS PARA O COMBOIO AGENDADO (3 -> 4) 🚨
-        facilityMap.put(99, new Integer[]{3, 13});   // MOCK: Senhora das Dores (3) -> Contumil (13)
-        facilityMap.put(100, new Integer[]{13, 4});  // MOCK: Contumil (13) -> Lousado (4)
+
+    private void loadSegmentsFromDatabase() {
+
+        populateFacilityMapping();
+
+        String sql = "SELECT segment_id, length_m, number_tracks, siding_position, siding_length " +
+                "FROM LINE_SEGMENT ORDER BY segment_id";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            int segmentsCount = 0;
+
+            while (rs.next()) {
+                int segmentIdInt = rs.getInt("segment_id");
+                String segmentId = String.valueOf(segmentIdInt);
+                double lengthM = rs.getDouble("length_m");
+                int numberTracks = rs.getInt("number_tracks");
+
+                Integer sidingPosition = rs.getInt("siding_position");
+                if (rs.wasNull()) sidingPosition = null;
+                Double sidingLength = rs.getDouble("siding_length");
+                if (rs.wasNull()) sidingLength = null;
+
+                Integer[] facilities = segmentFacilityMapping.get(segmentIdInt);
+
+                if (facilities == null || facilities.length < 2) {
+                    continue;
+                }
+
+                int startFacilityId = facilities[0];
+                int endFacilityId = facilities[1];
+                double lengthKm = lengthM / 1000.0;
+
+                // Segmento 1: A -> B (ID original)
+                LineSegment segAB = new LineSegment(
+                        segmentId,
+                        startFacilityId,
+                        endFacilityId,
+                        lengthKm,
+                        GENERIC_MAX_SPEED_KMH,
+                        numberTracks,
+                        sidingPosition,
+                        sidingLength);
+                segmentCache.put(segmentId, segAB);
+                segmentsCount++;
+
+                // Segmento 2: B -> A (Inverso)
+                String inverseId = INVERSE_ID_PREFIX + segmentId;
+                LineSegment segBA = new LineSegment(
+                        inverseId,
+                        endFacilityId,
+                        startFacilityId,
+                        lengthKm,
+                        GENERIC_MAX_SPEED_KMH,
+                        numberTracks,
+                        sidingPosition,
+                        sidingLength);
+                segmentCache.put(inverseId, segBA);
+                segmentsCount++;
+            }
+
+            System.out.println("SegmentLineRepository: Successfully loaded " + segmentsCount + " segments (including inverses) from DB/Mapping.");
 
 
-        // --- Popula Segmentos (Segment.csv) ---
-        segmentData.put(1, new int[]{1, 2618, 4});    // Line 1: 7 -> 5
-        segmentData.put(10, new int[]{2, 29003, 2});  // Line 2: 5 -> 20
-        segmentData.put(15, new int[]{3, 5286, 2}); // Line 3: 20 -> 8
-
-        // 🚨 SEGMENTOS DE CONEXÃO MOCKADOS PARA O TRAIN 5421 (3 -> 4) 🚨
-        segmentData.put(100, new int[]{99, 5000, 2}); // S100: Conecta Facility 3 -> 13
-        segmentData.put(101, new int[]{100, 15000, 2}); // S101: Conecta Facility 13 -> 4
-
-
-        List<LineSegment> segments = new ArrayList<>();
-
-        for (Map.Entry<Integer, int[]> entry : segmentData.entrySet()) {
-            int segmentId = entry.getKey();
-            int[] data = entry.getValue();
-            int lineId = data[0];
-            int lengthMeters = data[1];
-            int numberTracks = data[2];
-
-            Integer[] facilities = facilityMap.get(lineId);
-
-            if (facilities == null || facilities.length < 2) continue;
-
-            int startFacilityId = facilities[0];
-            int endFacilityId = facilities[1];
-            double lengthKm = lengthMeters / 1000.0;
-
-            // 1. Segmento na direção A -> B
-            LineSegment segAB = new LineSegment(segmentId, startFacilityId, endFacilityId, lengthKm, DEFAULT_MAX_SPEED, numberTracks);
-            segments.add(segAB);
-
-            // 2. Segmento inverso B -> A
-            LineSegment segBA = new LineSegment(segmentId + INVERSE_ID_OFFSET, endFacilityId, startFacilityId, lengthKm, DEFAULT_MAX_SPEED, numberTracks);
-            segments.add(segBA);
-
-            // Popula a cache
-            segmentCache.put(String.valueOf(segmentId), segAB);
-            segmentCache.put(String.valueOf(segmentId + INVERSE_ID_OFFSET), segBA);
+        } catch (SQLException e) {
+            System.err.println("SegmentLineRepository: ❌ FATAL ERROR loading segments from DB. Check DDL or connection: " + e.getMessage());
         }
-
-        System.out.println("SegmentLineRepository: Generated " + segments.size() + " segments (MOCK DATA) from CSV mapping.");
     }
 
 
     public List<LineSegment> findByIds(List<String> segmentIds) {
-        if (segmentCache.isEmpty()) populateMapsFromDataset();
-
         return segmentIds.stream()
                 .filter(segmentCache::containsKey)
                 .map(segmentCache::get)
@@ -97,24 +130,16 @@ public class SegmentLineRepository {
     }
 
     public Optional<LineSegment> findById(String id) {
-        if (segmentCache.isEmpty()) populateMapsFromDataset();
         return Optional.ofNullable(segmentCache.get(id));
     }
 
-
-    /**
-     * Finds a direct line segment connecting two facilities na cache.
-     */
     public Optional<LineSegment> findDirectSegment(int stationAId, int stationBId) {
-        if (segmentCache.isEmpty()) populateMapsFromDataset();
-
-        // Procura na cache por QUALQUER segmento que ligue A -> B (o primeiro encontrado é o caminho direto)
         return segmentCache.values().stream()
                 .filter(s -> (s.getIdEstacaoInicio() == stationAId && s.getIdEstacaoFim() == stationBId))
                 .findFirst();
     }
 
-    public List<LineSegment> findAll() { if (segmentCache.isEmpty()) populateMapsFromDataset(); return new ArrayList<>(segmentCache.values()); }
+    public List<LineSegment> findAll() { return new ArrayList<>(segmentCache.values()); }
 
     private Map<Integer, Double> calculateAllLineLengthsKm() {
         return new HashMap<>();

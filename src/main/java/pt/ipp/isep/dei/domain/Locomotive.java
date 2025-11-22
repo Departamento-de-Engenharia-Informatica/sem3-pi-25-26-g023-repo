@@ -37,7 +37,7 @@ public class Locomotive {
         this.idLocomotiva = idLocomotiva;
         this.modelo = modelo;
         this.tipo = tipo;
-        this.powerKW = powerKW; // <--- ATRIBUIÇÃO CORRIGIDA
+        this.powerKW = powerKW;
     }
 
     /**

@@ -758,3 +758,148 @@
     -fx-fill: #EAEAEA;
     -fx-background-color: #4C5052;
 }
+/* --- Melhorias na Tabela (Resolve 'Tabela Horrível') --- */
+
+/* Cabeçalho da Tabela */
+.table-view .column-header-background {
+    -fx-background-color: #34495e; /* Azul escuro */
+}
+.table-view .column-header {
+    -fx-background-color: transparent;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+}
+/* Alinhamento e espaçamento das células */
+.table-view .table-cell {
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0.5em 0.5em 0.5em 0.5em;
+}
+/* Cor de fundo para linhas alternadas (opcional) */
+.table-row-cell:odd {
+    -fx-background-color: #f4f6f7; /* Cinzento claro */
+}
+
+
+/* --- Botão Verde Bonito (Resolve 'Botão Deve ser Verde') --- */
+
+.run-button {
+    -fx-background-color: #2ecc71; /* Verde esmeralda brilhante */
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 8px 16px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+/* Efeito hover */
+.run-button:hover {
+    -fx-background-color: #27ae60; /* Verde escuro no hover */
+}
+
+
+/* --- TextArea para Output de Simulação (Melhora a leitura da tabela de output) --- */
+
+.result-text-area {
+    -fx-font-family: "Monospaced", "Courier New", monospace; /* Usa fonte mono-espaçada para alinhamento de colunas */
+    -fx-font-size: 11px;
+    -fx-text-fill: #1c2833; /* Texto preto/cinzento escuro */
+}
+/* No seu ficheiro src/main/resources/style.css */
+
+/* --- CORREÇÃO DA TABELA (Legibilidade) --- */
+.table-view .table-cell {
+    /* Força o texto para uma cor escura para contraste contra o fundo claro da linha */
+    -fx-text-fill: #1c2833;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0.5em 0.5em 0.5em 0.5em;
+}
+
+/* --- Botão Selecionar Todos (Visibilidade Melhorada) --- */
+/* (Se a cor anterior era cinza ou branca, esta cor azul vai resolver o problema) */
+.select-all-button {
+    -fx-background-color: #3498db; /* Azul Brilhante */
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 8px 16px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+.select-all-button:hover {
+    -fx-background-color: #2980b9;
+}
+/* --- Regras Finais de Legibilidade na Tabela --- */
+
+/* Resolve o problema de "letra cinza no quadro cinza" forçando o texto a ser preto */
+.table-view .table-cell {
+    -fx-text-fill: #1c2833; /* Força o texto para preto/cinzento escuro */
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0.5em 0.5em 0.5em 0.5em;
+}
+
+/* Regra para o botão de Selecionar Todos (para visibilidade) */
+.select-all-button {
+    -fx-background-color: #3498db; /* Azul Brilhante */
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-font-size: 14px;
+    -fx-padding: 8px 16px;
+    -fx-background-radius: 5px;
+    -fx-cursor: hand;
+}
+.select-all-button:hover {
+    -fx-background-color: #2980b9;
+}
+/* No seu ficheiro src/main/resources/style.css */
+
+/* --- AJUSTES FINAIS DE COR E SELEÇÃO --- */
+
+/* 1. CORREÇÃO DA COR DO TEXTO NA TABELA (Garante o preto em todos os estados) */
+.table-view .table-cell {
+    /* Força o texto para ser preto em células normais */
+    -fx-text-fill: #000000;
+    -fx-font-weight: normal;
+    -fx-alignment: CENTER-LEFT;
+    -fx-padding: 0.5em 0.5em 0.5em 0.5em;
+}
+
+/* 2. FORÇA O TEXTO A SER PRETO NAS CÉLULAS SELECIONADAS (Ignora a cor padrão do sistema) */
+.table-view .table-row-cell:selected .table-cell {
+    -fx-text-fill: #000000;
+}
+
+/* 3. ALTERA A COR DE FUNDO DA LINHA SELECIONADA PARA UM AZUL CLARO (Melhor contraste) */
+.table-view .table-row-cell:selected {
+    -fx-background-color: #ADD8E6;
+}
+
+/* 4. TAREFA (RESULTADO DA SIMULAÇÃO): Garante a fonte monoespaçada e texto escuro */
+.result-text-area {
+    -fx-font-family: "Monospaced", "Courier New", monospace;
+    -fx-font-size: 12px; /* Ligeiramente maior para leitura */
+    -fx-text-fill: #000000;
+}
+/* Aumenta a especificidade para garantir o fundo (Resolve problema de cinza no cinza na TextArea) */
+.result-text-area .content {
+    -fx-control-inner-background: #ffffff;
+    -fx-text-fill: #000000;
+}
+
+/* ... (Mantenha as regras para run-button e select-all-button para manter as cores) ... */
+
+/* TextArea para alinhamento (Monospaced Font) */
+.result-text-area {
+    -fx-font-family: "Monospaced", "Courier New", monospace;
+    -fx-font-size: 11px;
+    -fx-text-fill: #1c2833;
+}
+/* Estilo para os botões de execução das queries BDDAD */
+.query-button {
+    -fx-background-color: #3498db; /* Azul */
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 5px;
+}
+.query-button:hover {
+    -fx-background-color: #2980b9;
+}

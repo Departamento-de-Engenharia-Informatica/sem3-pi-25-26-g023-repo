@@ -5,7 +5,6 @@ import java.util.List;
 
 /**
  * USEI08 - Spatial Search Queries
- *
  * Provides 5 predefined spatial queries for demonstration as required.
  * This class works with SpatialSearch to showcase practical applications
  * of KD-Tree spatial searches for European railway stations.
@@ -259,12 +258,5 @@ public class SpatialSearchQueries {
         }
 
         return samples.toString();
-    }
-
-    /**
-     * Gets the underlying spatial search engine
-     */
-    public SpatialSearch getSpatialSearch() {
-        return spatialSearch;
     }
 }

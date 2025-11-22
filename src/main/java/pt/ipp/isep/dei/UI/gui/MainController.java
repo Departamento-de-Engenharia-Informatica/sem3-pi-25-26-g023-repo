@@ -9,11 +9,18 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import pt.ipp.isep.dei.UI.gui.views.*;
+import pt.ipp.isep.dei.UI.gui.views.TrainCRUDController;
 import pt.ipp.isep.dei.controller.TravelTimeController;
 import pt.ipp.isep.dei.domain.*;
 import javafx.animation.FadeTransition;
 import javafx.animation.PauseTransition;
 import javafx.util.Duration;
+import pt.ipp.isep.dei.repository.FacilityRepository;
+import pt.ipp.isep.dei.repository.LocomotiveRepository;
+import pt.ipp.isep.dei.repository.TrainRepository;
+// --- NOVOS IMPORTS NECESSÁRIOS ---
+import pt.ipp.isep.dei.repository.StationRepository;
+import pt.ipp.isep.dei.repository.SegmentLineRepository;
 
 import java.io.IOException;
 import java.net.URL;
@@ -38,6 +45,40 @@ public class MainController {
     private TravelTimeController travelTimeController;
     private StationIndexManager stationIndexManager;
     private KDTree spatialKDTree;
+
+    // -------------------------------------------------------------
+    // --- CORREÇÃO DE INICIALIZAÇÃO DE DEPENDÊNCIAS COMPLEXAS ---
+    // 1. Inicializar os repositórios de base
+    private TrainRepository trainRepository = new TrainRepository();
+    private FacilityRepository facilityRepository = new FacilityRepository();
+    private LocomotiveRepository locomotiveRepository = new LocomotiveRepository();
+    private StationRepository stationRepository = new StationRepository(); // <-- NOVO!
+    private SegmentLineRepository segmentLineRepository = new SegmentLineRepository(); // <-- NOVO!
+
+    // 2. Inicializar serviços que dependem dos repositórios
+
+    // SchedulerService exige 2 argumentos: StationRepository e FacilityRepository
+    private SchedulerService schedulerService = new SchedulerService(
+            this.stationRepository,
+            this.facilityRepository
+    );
+
+    // RailwayNetworkService exige 2 argumentos: StationRepository e SegmentLineRepository
+    private RailwayNetworkService networkService = new RailwayNetworkService(
+            this.stationRepository,
+            this.segmentLineRepository
+    );
+
+    // 3. Inicializar o DispatcherService com 5 argumentos (Repos e Serviços)
+    private DispatcherService dispatcherService = new DispatcherService(
+            this.trainRepository,
+            this.networkService,
+            this.facilityRepository,
+            this.locomotiveRepository,
+            this.schedulerService
+    );
+    // -------------------------------------------------------------
+
 
     // --- Global Status Flags ---
     private boolean isAllocationsRun = false;
@@ -186,6 +227,7 @@ public class MainController {
             statusLabel.setText("Error loading screen.");
         }
     }
+
 
     // --- MÉTODOS PÚBLICOS PARA ATUALIZAR O STATUS ---
 
@@ -346,12 +388,128 @@ public class MainController {
         AnchorPane.setTopAnchor(t, 25.0);
         AnchorPane.setLeftAnchor(t, 25.0);
     }
+    @FXML
+    public void handleShowSimulation(ActionEvent event) throws IOException {
+        if (this.statusLabel != null) {
+            this.statusLabel.setText("USLP07 - Simulação Completa e Conflitos");
+        }
+
+        FXMLLoader loader = new FXMLLoader(getClass().getResource("/lapr3-simulation-view.fxml"));
+        TrainSimulationController controller = new TrainSimulationController();
+
+        // Injetar dependências (Mantido da correção anterior)
+        controller.setDependencies(
+                this,
+                this.facilityRepository,
+                this.dispatcherService,
+                this.locomotiveRepository
+        );
+
+        loader.setController(controller);
+        Parent root = loader.load();
+
+        // Inicializar controller (carregar comboios)
+        controller.initController();
+
+        // Associar ação do botão manualmente (opcional)
+        controller.runButton.setOnAction(e -> controller.runSimulation());
+
+        // <<<<<<<<<<<<<<<<< CORREÇÃO CRÍTICA DE NAVEGAÇÃO >>>>>>>>>>>>>>>>>>>
+        // 1. Limpar o conteúdo anterior do AnchorPane central
+        //    Isto garante que a vista USLP07 substitui qualquer outra vista.
+        this.centerContentPane.getChildren().clear();
+
+        // 2. Adicionar a nova vista ao AnchorPane central
+        this.centerContentPane.getChildren().add(root);
+
+        // 3. Ancorar o root para preencher o centerContentPane (como o loadView faz)
+        AnchorPane.setTopAnchor(root, 0.0);
+        AnchorPane.setBottomAnchor(root, 0.0);
+        AnchorPane.setLeftAnchor(root, 0.0);
+        AnchorPane.setRightAnchor(root, 0.0);
+
+        // O 'mainPane.setCenter()' é AGORA removido.
+    }
+
+    public void loadTrainCrudView() {
+        statusLabel.setText("BDDAD Features: Train CRUD");
+        centerContentPane.getChildren().clear();
+
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/train-crud-view.fxml"));
+
+            // 1. CARREGA O FXML. O FXMLLoader INSTANCIA AGORA O CONTROLLER (Devido ao fx:controller no FXML).
+            Parent root = loader.load();
+
+            // 2. RECUPERA A INSTÂNCIA QUE FOI CRIADA
+            TrainCRUDController controller = loader.getController();
+
+            // 3. INJETA DEPENDÊNCIAS (CORRIGIDO: PASSANDO OS 5 ARGUMENTOS)
+            if (controller != null) {
+                controller.setDependencies(
+                        this,
+                        this.trainRepository,
+                        this.facilityRepository, // <--- ARGUMENTO EM FALTA
+                        this.locomotiveRepository, // <--- ARGUMENTO EM FALTA
+                        this.networkService // <--- ARGUMENTO EM FALTA
+                );
+                // 4. Inicializa o carregamento dos dados
+                controller.initController();
+            } else {
+                // Isto não deve acontecer se o fx:controller estiver no FXML
+                throw new IllegalStateException("FXMLLoader failed to get the controller instance.");
+            }
+
+            // 5. Adicionar e ancorar a nova vista
+            centerContentPane.getChildren().add(root);
+            AnchorPane.setTopAnchor(root, 0.0);
+            AnchorPane.setLeftAnchor(root, 0.0);
+            AnchorPane.setRightAnchor(root, 0.0);
+            AnchorPane.setBottomAnchor(root, 0.0);
+
+        } catch (Exception e) {
+            statusLabel.setText("❌ Error loading Train CRUD view.");
+            System.err.println("Error loading FXML for Train CRUD: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
 
     @FXML
-    public void handleShowLAPR3(ActionEvent event) {
-        statusLabel.setText("LAPR3 Features");
-        loadView("lapr3-travel-time-view.fxml", this.travelTimeController);
+    public void handleShowBDADQueries(ActionEvent event) {
+        statusLabel.setText("BDDAD Queries - User Stories");
+
+        try {
+            URL fxmlUrl = getClass().getClassLoader().getResource("usbd-queries-view.fxml");
+            if (fxmlUrl == null) {
+                this.showNotification("Error: Could not find FXML for BDDAD Queries.", "error");
+                return;
+            }
+
+            FXMLLoader loader = new FXMLLoader(fxmlUrl);
+
+            // 1. Instanciar o controller
+            BDADQueriesController controller = new BDADQueriesController();
+            controller.setMainController(this); // Injetar dependência
+
+            loader.setController(controller);
+            Parent root = loader.load();
+
+            // 2. Substituir o conteúdo central (usando o padrão corrigido)
+            this.centerContentPane.getChildren().clear();
+            this.centerContentPane.getChildren().add(root);
+
+            // 3. Ancorar o root
+            AnchorPane.setTopAnchor(root, 0.0);
+            AnchorPane.setBottomAnchor(root, 0.0);
+            AnchorPane.setLeftAnchor(root, 0.0);
+            AnchorPane.setRightAnchor(root, 0.0);
+
+        } catch (IOException e) {
+            this.showNotification("Failed to load BDDAD Queries view: " + e.getMessage(), "error");
+            e.printStackTrace();
+        }
     }
+
 
     /**
      * Tratador do menu principal BDDAD. Carrega o menu de escolha de entidades.
@@ -442,8 +600,10 @@ public class MainController {
         // 2. Definir o estilo (success ou error)
         if ("success".equals(type)) {
             notificationLabel.getStyleClass().add("notification-success");
-        } else {
+        } else if ("error".equals(type)) {
             notificationLabel.getStyleClass().add("notification-error");
+        } else {
+            notificationLabel.getStyleClass().add("notification-info");
         }
 
         // 3. Adicionar animação de Fade-In (aparecer suavemente)
@@ -452,7 +612,6 @@ public class MainController {
         fadeIn.setToValue(1.0);
 
         // 4. Criar a pausa (quanto tempo fica no ecrã)
-        // Podes mudar este valor (ex: Duration.seconds(3) para 3 segundos)
         PauseTransition delay = new PauseTransition(Duration.seconds(4));
 
         // 5. Criar animação de Fade-Out (desaparecer suavemente)
@@ -464,14 +623,10 @@ public class MainController {
         fadeOut.setOnFinished(e -> notificationPane.getChildren().remove(notificationLabel));
 
         // 7. Ligar tudo:
-        // Quando o fade-in acabar...
         fadeIn.setOnFinished(e -> {
-            // ...começa a contar o tempo de pausa.
             delay.play();
         });
-        // Quando a pausa acabar...
         delay.setOnFinished(e -> {
-            // ...começa o fade-out.
             fadeOut.play();
         });
 

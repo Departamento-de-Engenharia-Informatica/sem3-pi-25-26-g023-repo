@@ -9,6 +9,10 @@ import pt.ipp.isep.dei.repository.SegmentLineRepository;
 import pt.ipp.isep.dei.controller.SchedulerController;
 import pt.ipp.isep.dei.domain.SchedulerService;
 import pt.ipp.isep.dei.repository.WagonRepository;
+// NOVOS IMPORTS NECESSÁRIOS
+import pt.ipp.isep.dei.repository.TrainRepository;
+import pt.ipp.isep.dei.repository.FacilityRepository;
+
 
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -89,17 +93,42 @@ public class Main {
             );
             printLoadStep("  > LAPR3 components initialized.", true);
 
-            // 6.1. Inicialização do USLP07 (Scheduler)
+            // 6.1. Inicialização de Repositórios de Alto Nível
+            printLoadStep("Initializing Dispatcher dependencies...");
+            WagonRepository wagonRepo = new WagonRepository();
+            TrainRepository trainRepo = new TrainRepository(); // Repositório para ler TRAINs da DB
+            // MOVIDO PARA AQUI: FacilityRepository precisa ser inicializado ANTES do SchedulerService
+            FacilityRepository facilityRepo = new FacilityRepository(); // Repositório para mapear Facility IDs para nomes
+
+
+            // 6.2. Inicialização do Scheduler e Controller
             printLoadStep("Initializing Scheduler components (USLP07)...");
-            WagonRepository wagonRepo = new WagonRepository(); // Novo Repo
-            SchedulerService schedulerService = new SchedulerService(); // Novo Serviço
-            SchedulerController schedulerController = new SchedulerController( // Novo Controller
+
+            // CORREÇÃO CRÍTICA: Passar o estacaoRepo (StationRepository) e facilityRepo para SchedulerService
+            SchedulerService schedulerService = new SchedulerService(estacaoRepo, facilityRepo); // <-- CORRIGIDO AQUI
+
+            // Adicionar networkService ao SchedulerController
+            SchedulerController schedulerController = new SchedulerController(
                     schedulerService,
                     segmentoRepo,
                     locomotivaRepo,
-                    wagonRepo
+                    wagonRepo,
+                    networkService
             );
-            printLoadStep("  > USLP07 Scheduler components ready.", true);
+            printLoadStep("  > USLP07 Scheduler controller ready.", true);
+
+            // 6.3. Inicialização dos novos serviços de Simulação
+            printLoadStep("Initializing Dispatcher Service (USLP07 Simulation)...");
+
+            // CORREÇÃO FINAL: Adicionar o novo schedulerService ao construtor
+            DispatcherService dispatcherService = new DispatcherService(
+                    trainRepo,
+                    networkService,
+                    facilityRepo,
+                    locomotivaRepo,
+                    schedulerService
+            );
+            printLoadStep("  > USLP07 Dispatcher Service ready.", true);
 
 
             // 7️⃣ Load ESINF (Sprint 2)
@@ -135,17 +164,20 @@ public class Main {
             printLoadStep("  > USEI10 Radius Search ready! Complexity: O(sqrt(N) + K log K) average case", true);
 
 
-            // 9️⃣ Launch UI - AGORA COM 10 ARGUMENTOS
+            // 9️⃣ Launch UI - AGORA COM TODOS OS ARGUMENTOS CORRETOS
             System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);
             Thread.sleep(1000);
 
+            // Adicionar DispatcherService e FacilityRepository ao construtor
             CargoHandlingUI cargoMenu = new CargoHandlingUI(
                     wms, manager, wagons,
                     travelTimeController, estacaoRepo, locomotivaRepo,
                     stationIndexManager,
                     spatialKDTree,
                     spatialSearchEngine,
-                    schedulerController // <--- ARGUMENTO NOVO E FINAL
+                    schedulerController,
+                    dispatcherService,
+                    facilityRepo // Passado corretamente
             );
             cargoMenu.run();
 

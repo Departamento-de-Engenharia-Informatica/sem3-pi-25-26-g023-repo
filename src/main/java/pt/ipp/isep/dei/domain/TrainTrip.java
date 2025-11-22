@@ -1,6 +1,8 @@
+// File: pt.ipp.isep.dei.domain.TrainTrip.java
 package pt.ipp.isep.dei.domain;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList; // <--- NOVO IMPORT
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -17,8 +19,10 @@ public class TrainTrip {
     // Resultados do Scheduler
     private double totalWeightKg = 0;
     private double combinedPowerKw = 0;
+    private double maxTrainSpeed = 0.0; // <--- NOVO: Velocidade Máxima Calculada do Comboio
     private double totalTravelTimeHours = 0;
     private final Map<Integer, LocalDateTime> passageTimes = new HashMap<>(); // Estação ID -> Hora de passagem
+    private final List<SimulationSegmentEntry> segmentEntries; // <--- NOVO: Lista de resultados detalhados
 
     public TrainTrip(String tripId, LocalDateTime departureTime, List<LineSegment> route, List<Locomotive> locomotives, List<Wagon> wagons) {
         this.tripId = tripId;
@@ -26,6 +30,7 @@ public class TrainTrip {
         this.route = route != null ? route : Collections.emptyList();
         this.locomotives = locomotives != null ? locomotives : Collections.emptyList();
         this.wagons = wagons != null ? wagons : Collections.emptyList();
+        this.segmentEntries = new ArrayList<>(); // <--- INICIALIZAÇÃO
     }
 
     // Getters
@@ -41,9 +46,15 @@ public class TrainTrip {
     public void setTotalTravelTimeHours(double totalTravelTimeHours) { this.totalTravelTimeHours = totalTravelTimeHours; }
     public double getTotalTravelTimeHours() { return totalTravelTimeHours; }
 
+    public List<SimulationSegmentEntry> getSegmentEntries() { return segmentEntries; } // <--- NOVO GETTER
+    public void addSegmentEntry(SimulationSegmentEntry entry) { this.segmentEntries.add(entry); } // <--- NOVO MÉTODO
+
     // Propriedades calculadas
     public void setTotalWeightKg(double totalWeightKg) { this.totalWeightKg = totalWeightKg; }
     public double getTotalWeightKg() { return totalWeightKg; }
     public void setCombinedPowerKw(double combinedPowerKw) { this.combinedPowerKw = combinedPowerKw; }
     public double getCombinedPowerKw() { return combinedPowerKw; }
+
+    public double getMaxTrainSpeed() { return maxTrainSpeed; } // <--- NOVO GETTER
+    public void setMaxTrainSpeed(double maxTrainSpeed) { this.maxTrainSpeed = maxTrainSpeed; } // <--- NOVO SETTER
 }

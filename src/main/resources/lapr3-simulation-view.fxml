@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.geometry.Insets?>
+<?import java.lang.String?>
+
+<VBox alignment="TOP_CENTER" spacing="20.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1">
+    <padding>
+        <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
+    </padding>
+
+    <Label styleClass="header-label" text="USLP07 - Full Simulation and Conflict Analysis" />
+
+    <GridPane hgap="10.0" vgap="10.0" VBox.vgrow="SOMETIMES">
+        <columnConstraints>
+            <ColumnConstraints hgrow="ALWAYS" minWidth="450.0" percentWidth="70.0" />
+            <ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" percentWidth="30.0" />
+        </columnConstraints>
+        <rowConstraints>
+            <RowConstraints minHeight="10.0" prefHeight="30.0" vgrow="SOMETIMES" />
+            <RowConstraints minHeight="10.0" vgrow="ALWAYS" />
+        </rowConstraints>
+
+        <Label text="Scheduled Trains (Select one or more):" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+        <Label text="Simulation Options:" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+
+        <TableView fx:id="trainTable" GridPane.rowIndex="1" GridPane.columnIndex="0" prefHeight="250.0">
+            <columns>
+                <TableColumn text="ID" fx:id="idColumn" minWidth="50.0" />
+                <TableColumn text="Departure" fx:id="departureColumn" minWidth="80.0" />
+                <TableColumn text="Route" fx:id="routeColumn" minWidth="250.0" />
+            </columns>
+            <placeholder>
+                <Label text="Loading trains..." />
+            </placeholder>
+        </TableView>
+
+        <VBox spacing="10.0" GridPane.rowIndex="1" GridPane.columnIndex="1">
+
+            <Button fx:id="selectAllButton" text="✅ Select All" onAction="#selectAllTrains" maxWidth="Infinity" styleClass="select-all-button" />
+
+            <Button fx:id="runButton" text="▶️ Run Simulation (USLP07)" onAction="#runSimulation" maxWidth="Infinity" />
+            <Label text="Note: Scheduling considers real railway time and resolves single-track conflicts." wrapText="true" style="-fx-font-style: italic;" />
+            <ProgressIndicator fx:id="progressIndicator" visible="false" />
+        </VBox>
+    </GridPane>
+
+    <Label text="Simulation Results and Conflict Report:" />
+    <TextArea fx:id="resultTextArea" editable="false" wrapText="true" VBox.vgrow="ALWAYS" prefHeight="400.0" />
+
+</VBox>

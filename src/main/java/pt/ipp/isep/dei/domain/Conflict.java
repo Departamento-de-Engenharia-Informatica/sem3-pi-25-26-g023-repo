@@ -1,36 +1,35 @@
+// File: pt.ipp.isep.dei.domain.Conflict.java (Exemplo)
 package pt.ipp.isep.dei.domain;
 
 import java.time.LocalDateTime;
 
-/** Representa um conflito de cruzamento resolvido. */
 public class Conflict {
-    public final String tripId1;
-    public final String tripId2;
-    public final int locationStationId;
+
+    public final String tripId1; // Trip Prioritário
+    public final String tripId2; // Trip Atrasado
+    private final int safeWaitFacilityId; // <--- CAMPO PRIVADO/FINAL
     public final LocalDateTime scheduledMeetTime;
     public final long delayMinutes;
-    public final String resolution;
+    public final String description;
 
-    public Conflict(String tripId1, String tripId2, int locationStationId, LocalDateTime scheduledMeetTime, long delayMinutes, String resolution) {
+    public Conflict(String tripId1, String tripId2, int safeWaitFacilityId, LocalDateTime scheduledMeetTime, long delayMinutes, String description) {
         this.tripId1 = tripId1;
         this.tripId2 = tripId2;
-        this.locationStationId = locationStationId;
+        this.safeWaitFacilityId = safeWaitFacilityId;
         this.scheduledMeetTime = scheduledMeetTime;
         this.delayMinutes = delayMinutes;
-        this.resolution = resolution;
+        this.description = description;
     }
 
+    // --- GETTER NECESSÁRIO ---
+    public int getSafeWaitFacilityId() {
+        return safeWaitFacilityId;
+    }
+
+    // ... (Método toString() que o SchedulerController usa para o log) ...
     @Override
     public String toString() {
-        return String.format(
-                "%sTrip ID %s held at Station %d (Meet Time: %s). Delay imposed: %d min. Resolution: %s%s",
-                "\u001B[31m", // ANSI_RED
-                tripId2.equals(tripId1) ? tripId1 : tripId2, // Simplificando qual viagem foi atrasada
-                locationStationId,
-                scheduledMeetTime.toLocalTime(),
-                delayMinutes,
-                resolution,
-                "\u001B[0m" // ANSI_RESET
-        );
+        return String.format("Trip ID %s delayed (Waiting at Station ID %d, Safe Entry: %s). Delay applied: %d min. Resolution: %s",
+                tripId2, safeWaitFacilityId, scheduledMeetTime.toLocalTime(), delayMinutes, description);
     }
 }

@@ -6,17 +6,18 @@ import pt.ipp.isep.dei.controller.SchedulerController;
 import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
-import pt.ipp.isep.dei.repository.TrainRepository; // Necessário para listar comboios
+import pt.ipp.isep.dei.repository.TrainRepository;
+import pt.ipp.isep.dei.repository.FacilityRepository;
 
-// Correções de Imports
 import pt.ipp.isep.dei.domain.SpatialSearchQueries;
 import pt.ipp.isep.dei.domain.PickingPathService;
 import pt.ipp.isep.dei.domain.HeuristicType;
 import pt.ipp.isep.dei.domain.RadiusSearch;
 import pt.ipp.isep.dei.domain.StationDistance;
 import pt.ipp.isep.dei.domain.DensitySummary;
+import pt.ipp.isep.dei.domain.SchedulerResult;
+import pt.ipp.isep.dei.domain.TrainTrip;
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -24,8 +25,12 @@ import java.util.HashMap;
 import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.Scanner;
+import java.time.Duration;
+import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.util.stream.Collectors;
+
 
 /**
  * Main User Interface for the Cargo Handling Terminal.
@@ -54,13 +59,20 @@ public class CargoHandlingUI implements Runnable {
     private final KDTree spatialKDTree;
     private final SpatialSearch spatialSearchEngine;
     private final SchedulerController schedulerController;
-    private final TrainRepository trainRepo = new TrainRepository(); // NOVO REPOSITÓRIO TRAIN
+
+    // --- NOVOS FIELDS ---
+    private final DispatcherService dispatcherService;
+    private final FacilityRepository facilityRepo; // Usado nos helpers de output
+    // --- FIM NOVOS FIELDS ---
+
+    private final TrainRepository trainRepo = new TrainRepository();
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
     private final Scanner scanner;
 
     /**
      * Constructs a new CargoHandlingUI with all required dependencies.
+     * ASSINATURA DO CONSTRUTOR ATUALIZADA
      */
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
                            TravelTimeController travelTimeController, StationRepository estacaoRepo,
@@ -68,7 +80,9 @@ public class CargoHandlingUI implements Runnable {
                            StationIndexManager stationIndexManager,
                            KDTree spatialKDTree,
                            SpatialSearch spatialSearchEngine,
-                           SchedulerController schedulerController) {
+                           SchedulerController schedulerController,
+                           DispatcherService dispatcherService,
+                           FacilityRepository facilityRepo) {
         this.wms = wms;
         this.manager = manager;
         this.wagons = wagons;
@@ -79,6 +93,12 @@ public class CargoHandlingUI implements Runnable {
         this.spatialKDTree = spatialKDTree;
         this.spatialSearchEngine = spatialSearchEngine;
         this.schedulerController = schedulerController;
+
+        // --- NOVAS ATRIBUIÇÕES ---
+        this.dispatcherService = dispatcherService;
+        this.facilityRepo = facilityRepo;
+        // --- FIM NOVAS ATRIBUIÇÕES ---
+
         this.scanner = new Scanner(System.in);
     }
 
@@ -155,7 +175,7 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)");
         System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "[USEI09] Proximity Search - Nearest N (S2)");
         System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "[USEI10] Radius Search & Density Summary (S2)");
-        System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "[USLP07] Dispatch Train Scheduler (S3)"); // <--- NOVA OPÇÃO
+        System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "[USLP07] Run Full Simulation & Conflicts (S3)"); // <--- NOME ATUALIZADO
 
         // --- Info ---
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
@@ -220,8 +240,8 @@ public class CargoHandlingUI implements Runnable {
             case 13: // View Warehouse Info
                 handleViewWarehouseInfo();
                 break;
-            case 14: // USLP07 <--- NOVO HANDLER
-                handleDispatchTrains();
+            case 14: // USLP07 <--- NOVO HANDLER (Simulação Completa)
+                handleRunFullSimulation();
                 break;
             case 0:
                 System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET);
@@ -233,122 +253,273 @@ public class CargoHandlingUI implements Runnable {
     }
 
     // ============================================================
-    // === USLP07 SCHEDULER HANDLER (NOVO) ===
+    // === USLP07 FULL SIMULATION HANDLER (ATUALIZADO PARA SELEÇÃO E DELAY LINE) ===
     // ============================================================
 
     /**
-     * Handles Train Dispatch Scheduling (USLP07) com input interativo.
+     * Executa a simulação completa para os comboios selecionados
+     * e análise de conflitos em via única.
      */
-    private void handleDispatchTrains() {
-        showInfo("--- [USLP07] Dispatch Train Scheduler ---");
+    private void handleRunFullSimulation() {
+        showInfo("--- [USLP07] Full Simulation & Conflict Analysis ---");
 
         try {
-            // 1. SELEÇÃO DO COMBOIO (TRAIN)
-            List<Train> availableTrains = trainRepo.findAll();
-            if (availableTrains.isEmpty()) { showError("No scheduled Trains found in database."); return; }
+            // 1. OBTENÇÃO E SELEÇÃO DOS COMBOIOS
+            List<Train> allTrains = trainRepo.findAll();
+            if (allTrains.isEmpty()) {
+                showError("No scheduled Trains found in the database.");
+                return;
+            }
 
-            System.out.println(ANSI_BOLD + "\n--- 1. Choose Scheduled Train Trip ---" + ANSI_RESET);
-            availableTrains.forEach(t -> {
-                String status = String.format("Facility %d -> %d @ %s", t.getStartFacilityId(), t.getEndFacilityId(), t.getDepartureTime().toLocalTime());
-                System.out.printf(ANSI_CYAN + "   [%s] Train ID: %s | Route: %s%n" + ANSI_RESET, t.getTrainId(), t.getTrainId(), status);
+            System.out.println(ANSI_BOLD + "\n--- 1. Select Trains for Simulation ---" + ANSI_RESET);
+            allTrains.forEach(t -> {
+                String startName = facilityRepo.findNameById(t.getStartFacilityId()).orElse("F" + t.getStartFacilityId());
+                String endName = facilityRepo.findNameById(t.getEndFacilityId()).orElse("F" + t.getEndFacilityId());
+
+                // Incluir todas as informações relevantes do comboio na listagem
+                String status = String.format("Route: %s -> %s | Departure: %s | Loco: %s",
+                        startName, endName, t.getDepartureTime().toLocalTime(), t.getLocomotiveId());
+                System.out.printf(ANSI_CYAN + "   [%s] %s%n" + ANSI_RESET, t.getTrainId(), status);
             });
 
-            String trainId = readString(ANSI_BOLD + "➡️  Enter Train ID to schedule: " + ANSI_RESET);
-            Optional<Train> optTrain = trainRepo.findById(trainId);
-            if (optTrain.isEmpty()) { showError("Train ID " + trainId + " not found."); return; }
-            Train selectedTrain = optTrain.get();
-
-            // Variáveis de Composição e Rota
-            List<Locomotive> selectedLocos = new ArrayList<>();
-            List<Wagon> selectedWagons = new ArrayList<>();
-            List<String> facilityIds = new ArrayList<>();
-
-
-            // 2. COMPOSIÇÃO DE POTÊNCIA (Locomotivas)
-            Optional<Locomotive> optLocoPrincipal = locomotivaRepo.findById(Integer.parseInt(selectedTrain.getLocomotiveId()));
-            if (optLocoPrincipal.isEmpty()) { showError("Locomotive principal " + selectedTrain.getLocomotiveId() + " not found."); return; }
-            selectedLocos.add(optLocoPrincipal.get());
-
-            System.out.println(ANSI_BOLD + "\n--- 2. Compose Train (Locos and Wagons) ---" + ANSI_RESET);
-            System.out.printf("Principal Loco: %s | Power: %.0f kW%n", selectedTrain.getLocomotiveId(), optLocoPrincipal.get().getPowerKW());
-
-            // 3. COMPOSIÇÃO DE CARGA (Vagões)
-            List<Wagon> availableWagons = schedulerController.getAllWagons();
-            availableWagons.forEach(w -> System.out.printf(ANSI_CYAN + "   [%s] ID: %s | Model ID: %d %n" + ANSI_RESET, w.getWagonId(), w.getWagonId(), w.getModelId()));
-
-            String wagonIdsStr = readString(ANSI_BOLD + "➡️  Enter Wagon Stock IDs (e.g., 356 3 092) [Comma-separated]: " + ANSI_RESET);
-
-            String[] wIds = wagonIdsStr.split(",");
-            for (String wId : wIds) {
-                Optional<Wagon> optWagon = schedulerController.getWagonRepository().findById(wId.trim());
-                if (optWagon.isPresent()) {
-                    selectedWagons.add(optWagon.get());
-                } else if (!wId.trim().isEmpty()) {
-                    showError("Wagon ID " + wId + " not found. Skipping.");
-                }
-            }
-            if (selectedWagons.isEmpty()) { showError("No valid wagons selected. Cannot dispatch."); return; }
-
-            // 4. FACILITIES (Rota Manual)
-            System.out.println(ANSI_BOLD + "\n--- 3. Define Route (Intermediate Facilities) ---" + ANSI_RESET);
-            System.out.printf(ANSI_ITALIC + "Route base: Facility %d (Start) -> Facility %d (End)%n" + ANSI_RESET,
-                    selectedTrain.getStartFacilityId(), selectedTrain.getEndFacilityId());
-
-            String intermediateIdsStr = readString(ANSI_BOLD + "➡️  Enter INTERMEDIATE Facility IDs (e.g., 13,27,5 - or press Enter): " + ANSI_RESET);
-
-            // Constrói o caminho completo: START + INTERMEDIATE + END
-            facilityIds.add(String.valueOf(selectedTrain.getStartFacilityId()));
-            if (!intermediateIdsStr.trim().isEmpty()) {
-                Arrays.asList(intermediateIdsStr.split(",")).forEach(id -> facilityIds.add(id.trim()));
-            }
-            facilityIds.add(String.valueOf(selectedTrain.getEndFacilityId())); // Adiciona a chegada
-
-            // 5. Despachar
-            System.out.println(ANSI_CYAN + "\n⚙️  Executing Schedule calculation for route: " + String.join(" -> ", facilityIds) + ANSI_RESET);
-
-            SchedulerResult result = schedulerController.dispatchRouteByFacilities(
-                    selectedTrain.getTrainId(), selectedTrain.getDepartureTime(), facilityIds, selectedLocos, selectedWagons
-            );
-
-            showSuccess("Dispatch Scheduling Complete!");
-
-            // --- Exibir Resultados ---
-            System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
-            System.out.println(ANSI_BOLD + "           SCHEDULED TRAIN TRIPS (" + result.scheduledTrips.size() + ") " + ANSI_RESET);
-            System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_BLUE);
-
-            for (TrainTrip trip : result.scheduledTrips) {
-                System.out.printf(ANSI_BOLD + "🚆 Trip ID: %s | Departure: %s | Total Time: %.2f hours%n" + ANSI_RESET,
-                        trip.getTripId(), trip.getDepartureTime().toLocalTime(), trip.getTotalTravelTimeHours());
-                System.out.printf("   Composition: %d Locos, %d Wagons | Power: %.0f kW | Weight: %.0f kg%n",
-                        trip.getLocomotives().size(), trip.getWagons().size(), trip.getCombinedPowerKw(), trip.getTotalWeightKg());
-
-                System.out.println(ANSI_CYAN + "   Passage Times (Station ID -> Time):" + ANSI_RESET);
-                trip.getPassageTimes().entrySet().stream()
-                        .sorted(Map.Entry.comparingByValue())
-                        .forEach(entry -> System.out.printf("     - Station %d: %s%n", entry.getKey(), entry.getValue().toLocalTime()));
-
-                System.out.println("-".repeat(50));
+            String trainIdsStr = readString(ANSI_BOLD + "➡️  Enter Train IDs to simulate (e.g., 5421,5437) [c=Cancel]: " + ANSI_RESET);
+            if (isCancel(trainIdsStr)) {
+                showInfo("Simulation cancelled by user.");
+                return;
             }
 
-            // --- 2. Exibir Conflitos Resolvidos ---
-            System.out.println("\n" + ANSI_BOLD + ANSI_RED + "--- CONFLICTS RESOLVED (" + result.resolvedConflicts.size() + ") ---" + ANSI_RESET);
-            if (result.resolvedConflicts.isEmpty()) {
-                System.out.println(ANSI_GREEN + "   No single-track conflicts detected." + ANSI_RESET);
-            } else {
-                for (Conflict conflict : result.resolvedConflicts) {
-                    System.out.println("   " + conflict.toString());
-                }
+            // Filtrar os comboios selecionados
+            List<String> selectedIds = Arrays.stream(trainIdsStr.split(","))
+                    .map(String::trim)
+                    .toList();
+
+            List<Train> trainsToSimulate = allTrains.stream()
+                    .filter(t -> selectedIds.contains(t.getTrainId()))
+                    .toList();
+
+            if (trainsToSimulate.isEmpty()) {
+                showError("No valid Train IDs selected. Cannot run simulation.");
+                return;
             }
+
+            System.out.printf(ANSI_CYAN + "\n⚙️  Executing Schedule calculation for %d selected trains...%n" + ANSI_RESET, trainsToSimulate.size());
+
+
+            // 2. Executa a Simulação
+            // Chama o método no DispatcherService que agora retorna SchedulerResult
+            SchedulerResult schedulerResult = dispatcherService.scheduleTrains(trainsToSimulate);
+
+            // Usa o campo público 'scheduledTrips' (da SchedulerResult)
+            Map<String, TrainTrip> scheduledTripsMap = schedulerResult.scheduledTrips.stream()
+                    .collect(Collectors.toMap(
+                            TrainTrip::getTripId,
+                            trip -> trip,
+                            (existing, replacement) -> existing
+                    ));
+
+
+            if (scheduledTripsMap.isEmpty()) {
+                showError("No valid scheduled trips could be simulated for the selected trains (check routes).");
+                return;
+            }
+
+            showSuccess("Full simulation completed successfully for " + scheduledTripsMap.size() + " trains!");
+
+            // 3. Imprime a Linha Temporal Segmento a Segmento
+            printSimulationTimetables(scheduledTripsMap, schedulerResult.resolvedConflicts);
+
+            // 4. Verifica e Reporta Conflitos / Cruzamentos
+            // Usa o campo público 'resolvedConflicts' (da SchedulerResult)
+            List<String> conflictReport = schedulerResult.resolvedConflicts.stream()
+                    .map(c -> c.toString())
+                    .collect(Collectors.toList());
+
+            printConflictReport(conflictReport);
+
 
         } catch (Exception e) {
-            showError("Failed to execute dispatch scheduler (USLP07): " + e.getMessage());
+            showError("Failed to execute full simulation (USLP07): " + e.getMessage());
             System.err.println(ANSI_ITALIC + "Stack trace (for debug):");
             e.printStackTrace(System.err);
             System.err.println(ANSI_RESET);
         }
     }
 
+    /**
+     * Imprime a tabela de tempos de passagem por segmento para todos os comboios simulados.
+     * VERSÃO CORRIGIDA: Usa o log de conflitos para injetar DELAYs nos pontos de espera logísticos (siding points).
+     * @param scheduledTripsMap O mapa de viagens agendadas.
+     * @param conflicts Lista de conflitos resolvidos.
+     */
+    private void printSimulationTimetables(Map<String, TrainTrip> scheduledTripsMap, List<Conflict> conflicts) {
+        System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
+        System.out.println(ANSI_BOLD + "                            DETAILED SEGMENT TIMETABLE (SIMULATION OUTPUT) " + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
+
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+        // 1. Mapear Atrasos a Injetar por Comboio/Estação
+        // Key: TripID, Value: Map<FacilityID_PontoDeEspera, TotalDelayMinutesAcumulados>
+        Map<String, Map<Integer, Long>> delayPoints = new HashMap<>();
+
+        // Distribui os atrasos para os pontos de espera reportados no log de conflitos
+        for (Conflict c : conflicts) {
+            String delayedTripId = c.tripId2;
+            int waitFacilityId = c.getSafeWaitFacilityId();
+            long delay = c.delayMinutes;
+
+            // Acumula os delays na estação de espera reportada no log de conflitos
+            delayPoints.computeIfAbsent(delayedTripId, k -> new HashMap<>())
+                    .merge(waitFacilityId, delay, Long::sum);
+        }
+
+
+        // Iterar sobre todos os comboios agendados
+        for (Map.Entry<String, TrainTrip> entry : scheduledTripsMap.entrySet()) {
+            TrainTrip trip = entry.getValue();
+            String trainId = trip.getTripId();
+            List<SimulationSegmentEntry> timetable = trip.getSegmentEntries();
+
+            if (timetable.isEmpty()) continue;
+
+            Train originalTrain = trainRepo.findById(trainId).orElse(null);
+            if (originalTrain == null) continue;
+
+            // Variáveis de tempo originais e recalculadas
+            LocalDateTime initialDeparture = originalTrain.getDepartureTime();
+            LocalDateTime actualDeparture = trip.getDepartureTime();
+            Duration totalDelayDuration = Duration.between(initialDeparture, actualDeparture);
+            long totalDelayMinutes = totalDelayDuration.toMinutes();
+
+            // HORA BASE: Usamos a HORA DE PARTIDA ORIGINAL como ponto de partida visual
+            LocalDateTime currentTime = initialDeparture;
+
+
+            // 4. Tenta obter info da locomotiva e velocidade
+            Locomotive loco = null;
+            String locoInfo = "N/A (0 kW)";
+            double maxCalculatedSpeed = 0.0;
+
+            maxCalculatedSpeed = trip.getMaxTrainSpeed();
+
+            if (originalTrain.getLocomotiveId() != null) {
+                try {
+                    loco = locomotivaRepo.findById(Integer.parseInt(originalTrain.getLocomotiveId())).orElse(null);
+                    if (loco != null) {
+                        locoInfo = String.format("%s (%.0f kW)", loco.getLocomotiveId(), loco.getPowerKW());
+                    }
+                } catch (NumberFormatException e) {
+                    locoInfo = originalTrain.getLocomotiveId() + " (Power N/A)";
+                }
+            }
+
+
+            // 5. Formatação do Título
+            String originalDepartureStr = initialDeparture.toLocalTime().format(timeFormatter);
+            String departureDisplay = originalDepartureStr; // Visualmente parte na hora original (o DELAY será injetado)
+
+            // --- SUMÁRIO DETALHADO DO COMBOIO ---
+            System.out.printf(ANSI_BOLD + "\n🚆 Train %s — Final Departure %s%n" + ANSI_RESET,
+                    trainId, departureDisplay);
+
+            String speedDisplay = (maxCalculatedSpeed > 0 && maxCalculatedSpeed != Double.POSITIVE_INFINITY)
+                    ? String.format("%.0f km/h", maxCalculatedSpeed)
+                    : "N/A";
+
+            System.out.printf(ANSI_ITALIC + "   Composition: Locomotive %s | Max Calculated Speed: %s%n" + ANSI_RESET, locoInfo, speedDisplay);
+
+
+            // --- CABEÇALHO DA TABELA ---
+            System.out.println(ANSI_BOLD + ANSI_CYAN +
+                    "ID\tFROM FACILITY\t\tTO FACILITY\t\tTYPE\tLENGTH\t\tENTRY\t\tEXIT\t\tSPEED (C/A)" + ANSI_RESET);
+            System.out.println("-".repeat(95));
+
+
+            // --- 6. CONTEÚDO DA TABELA (Segmentos e Injeção de Delays Logísticos) ---
+            for (int i = 0; i < timetable.size(); i++) {
+                SimulationSegmentEntry segment = timetable.get(i);
+
+                int startFacilityId = segment.getSegment().getIdEstacaoInicio();
+                Map<Integer, Long> tripDelays = delayPoints.getOrDefault(trainId, Map.of());
+                long accumulatedDelayAtThisFacility = tripDelays.getOrDefault(startFacilityId, 0L);
+
+                // Passo A: INJETAR DELAY no ponto de espera (se a estação de INÍCIO for um ponto de atraso)
+                if (accumulatedDelayAtThisFacility > 0) {
+
+                    String facilityName = segment.getStartFacilityName();
+
+                    LocalDateTime delayStart = currentTime;
+                    currentTime = currentTime.plusMinutes(accumulatedDelayAtThisFacility);
+                    LocalDateTime delayEnd = currentTime;
+
+                    System.out.printf(ANSI_YELLOW +
+                                    ANSI_BOLD + "DELAY\t%-20s\t%-20s\t%-5s\t%s%4d min\t%s\t%s\t%s%n" + ANSI_RESET,
+                            facilityName.substring(0, Math.min(facilityName.length(), 16)),
+                            facilityName.substring(0, Math.min(facilityName.length(), 16)),
+                            "WAIT",
+                            "",
+                            accumulatedDelayAtThisFacility,
+                            delayStart.toLocalTime().format(timeFormatter),
+                            delayEnd.toLocalTime().format(timeFormatter),
+                            "0/0"
+                    );
+
+                    // Nota: O agendador do seu código acumula o atraso na partida, mas
+                    // esta lógica mostra a espera no ponto logístico correto (e.g., Caminha).
+                    delayPoints.get(trainId).remove(startFacilityId);
+                }
+
+                // Passo B: Calcular e Imprimir Segmento
+                double segmentTimeHours = segment.getSegment().getComprimento() / segment.getCalculatedSpeedKmh();
+                long secondsToAdd = Math.round(segmentTimeHours * 3600);
+
+                LocalDateTime entryVisual = currentTime;
+                LocalDateTime exitVisual = currentTime.plusSeconds(secondsToAdd);
+
+                // Imprime o segmento com o novo tempo visualmente correto
+                System.out.printf("%-7s\t%-20s\t%-20s\t%-6s\t%7.1f km\t%8s\t%8s\t%10.0f/%-3.0f%n",
+                        segment.getSegmentId(),
+                        segment.getStartFacilityName().substring(0, Math.min(segment.getStartFacilityName().length(), 16)),
+                        segment.getEndFacilityName().substring(0, Math.min(segment.getEndFacilityName().length(), 16)),
+                        segment.getSegment().getNumberTracks() > 1 ? "Double" : "Single",
+                        segment.getSegment().getComprimento(),
+                        entryVisual.toLocalTime().format(timeFormatter),
+                        exitVisual.toLocalTime().format(timeFormatter),
+                        segment.getCalculatedSpeedKmh(),
+                        segment.getSegment().getVelocidadeMaxima()
+                );
+
+                // Atualiza o tempo para o início do próximo segmento
+                currentTime = exitVisual;
+            }
+            System.out.println("-".repeat(95));
+        }
+    }
+
+
+    /**
+     * Imprime o relatório de conflitos e sugestões de cruzamento.
+     */
+    private void printConflictReport(List<String> conflictReport) {
+        System.out.println("\n" + ANSI_BOLD + ANSI_RED + "==========================================================" + ANSI_RESET);
+        System.out.println(ANSI_BOLD + "           🚦 CONFLICT & CROSSING ANALYSIS 🚦 " + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_RED + "==========================================================" + ANSI_RESET);
+
+        if (conflictReport.isEmpty()) {
+            System.out.println(ANSI_GREEN + "✅ No single-track conflicts detected in the current schedule." + ANSI_RESET);
+        } else {
+            // Conta os conflitos (cada linha deve ser uma ocorrência de conflito resolvido)
+            int numConflicts = conflictReport.size();
+
+            // Mensagem atualizada para refletir que os conflitos foram resolvidos e não apenas detetados.
+            System.out.printf(ANSI_RED + "⚠️ Found %d conflict event(s) (All conflicts were resolved by delay):%n" + ANSI_RESET, numConflicts);
+
+            for (String reportLine : conflictReport) {
+                // Imprime a string diretamente (já deve conter a formatação de cor do Conflict.toString())
+                System.out.println(reportLine);
+            }
+        }
+    }
 
     // ============================================================
     // === USEI08 SPATIAL QUERIES HANDLERS (Mantidos) ===
@@ -564,7 +735,7 @@ public class CargoHandlingUI implements Runnable {
     private void showKDTreeStats() {
         System.out.println("\n" + ANSI_BOLD + "--- KD-Tree & USEI08 Statistics ---" + ANSI_RESET);
 
-        KDTree tree = spatialSearchEngine.getKdTree();
+        KDTree tree = spatialSearchEngine.kdTree();
 
         System.out.println("KD-Tree Properties:");
         System.out.println("  • Size: " + ANSI_CYAN + tree.size() + ANSI_RESET + " nodes");
@@ -641,7 +812,7 @@ public class CargoHandlingUI implements Runnable {
         try {
             orders = manager.loadOrders(
                     "src/main/java/pt/ipp.isep.dei/FicheirosCSV/orders.csv",
-                    "src/main/java/pt.ipp.isep.dei/FicheirosCSV/order_lines.csv"
+                    "src/main/java/pt/ipp.isep.dei/FicheirosCSV/order_lines.csv"
             );
         } catch (Exception e) {
             showError("Failed to load orders: " + e.getMessage());
@@ -923,10 +1094,10 @@ public class CargoHandlingUI implements Runnable {
             System.out.printf(ANSI_BOLD + "Height: %s%d%n" + ANSI_RESET,
                     ANSI_CYAN, stats.get("height"));
 
-            System.out.println(ANSI_BOLD + "  Node Capacity (Stations per Node):" + ANSI_RESET);
-
             @SuppressWarnings("unchecked")
             Map<Integer, Integer> buckets = (Map<Integer, Integer>) stats.get("bucketSizes");
+
+            System.out.println(ANSI_BOLD + "  Node Capacity (Stations per Node):" + ANSI_RESET);
 
             buckets.entrySet().stream()
                     .sorted(Map.Entry.comparingByKey())
