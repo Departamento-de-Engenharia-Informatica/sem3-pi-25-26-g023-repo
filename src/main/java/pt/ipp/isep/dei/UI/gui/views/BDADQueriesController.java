@@ -25,6 +25,8 @@ public class BDADQueriesController {
 
     private MainController mainController;
     private static final DateTimeFormatter DB_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    // Se o seu colega criou as funções num schema específico (e.g., RAILWAY_USER) e a app usa esse, o prefixo deve ser "".
+    // Se ele criou noutro schema e deu EXECUTE PERMISSION, o prefixo deve ser "OUTRO_SCHEMA."
     private static final String SCHEMA_PREFIX = "";
 
     public void setMainController(MainController mainController) {
@@ -37,55 +39,20 @@ public class BDADQueriesController {
         progressIndicator.setVisible(false);
         resultsTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
 
-        System.out.println("[DEBUG] Creating database functions...");
-        createDatabaseFunctions();
+        // REMOÇÃO DA RECRIAÇÃO DE FUNÇÕES.
+        // As funções DEVE SER criadas e geridas pelo DBA/Colega no servidor.
+        // System.out.println("[DEBUG] Creating database functions...");
+        // createDatabaseFunctions();
+
         System.out.println("[DEBUG] Initialization complete.");
     }
 
+    // O MÉTODO createDatabaseFunctions FOI REMOVIDO DAQUI
+    /*
     private void createDatabaseFunctions() {
-        try (Connection conn = DatabaseConnection.getConnection();
-             Statement stmt = conn.createStatement()) {
-
-            // USBD26
-            stmt.execute(
-                    "CREATE OR REPLACE FUNCTION GETUNUSEDWAGONSINPERIOD(start_date VARCHAR2, end_date VARCHAR2) " +
-                            "RETURN SYS_REFCURSOR AS c SYS_REFCURSOR " +
-                            "BEGIN " +
-                            "  OPEN c FOR SELECT 'NOT_IMPLEMENTED' AS RESULT FROM DUAL; " +
-                            "  RETURN c; " +
-                            "END;"
-            );
-            System.out.println("[DEBUG] Function GETUNUSEDWAGONSINPERIOD created/updated.");
-
-            // USBD27
-            stmt.execute(
-                    "CREATE OR REPLACE FUNCTION GETUNIVERSALGRAINWAGONS " +
-                            "RETURN SYS_REFCURSOR AS c SYS_REFCURSOR " +
-                            "BEGIN " +
-                            "  OPEN c FOR SELECT 'NOT_IMPLEMENTED' AS RESULT FROM DUAL; " +
-                            "  RETURN c; " +
-                            "END;"
-            );
-            System.out.println("[DEBUG] Function GETUNIVERSALGRAINWAGONS created/updated.");
-
-            // USBD28
-            stmt.execute(
-                    "CREATE OR REPLACE FUNCTION GETMULTIGAUGELOCOMOTIVES(operator_id VARCHAR2) " +
-                            "RETURN SYS_REFCURSOR AS c SYS_REFCURSOR " +
-                            "BEGIN " +
-                            "  OPEN c FOR SELECT 'NOT_IMPLEMENTED' AS RESULT FROM DUAL; " +
-                            "  RETURN c; " +
-                            "END;"
-            );
-            System.out.println("[DEBUG] Function GETMULTIGAUGELOCOMOTIVES created/updated.");
-
-            System.out.println("[DEBUG] All BDAD functions created/updated successfully.");
-
-        } catch (SQLException e) {
-            System.err.println("[ERROR] Creating PL/SQL functions: " + e.getMessage());
-            e.printStackTrace();
-        }
+        // ... CÓDIGO REMOVIDO PARA EVITAR SOBRESCREVER FUNÇÕES CORRETAS ...
     }
+    */
 
     // ============================= USBD26 =============================
     @FXML
@@ -143,6 +110,7 @@ public class BDADQueriesController {
         });
     }
 
+    // ... (executeCallableQuery e métodos de suporte permanecem os mesmos)
     // ============================= CORE LOGIC =============================
     private void executeCallableQuery(String sql, String title, CallableStatementSetter setter) {
         System.out.println("[DEBUG] Executing query: " + title);
@@ -212,7 +180,7 @@ public class BDADQueriesController {
                         String columnName = metaData.getColumnLabel(i);
                         Object value = rs.getObject(i);
                         row.put(columnName, value);
-                        System.out.println("[DEBUG] Row value: " + columnName + "=" + value);
+                        // [DEBUG] Removido para otimizar o output da consola: System.out.println("[DEBUG] Row value: " + columnName + "=" + value);
                     }
                     results.add(row);
                 }
