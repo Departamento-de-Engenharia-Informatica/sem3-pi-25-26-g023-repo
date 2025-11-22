@@ -17,11 +17,13 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.time.Duration; // Import necessário
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional; // Import necessário
 import java.util.stream.Collectors;
 
 public class TrainSimulationController {
@@ -33,7 +35,7 @@ public class TrainSimulationController {
     @FXML public Button runButton;
     @FXML private TextArea resultTextArea;
     @FXML private ProgressIndicator progressIndicator;
-    @FXML private Button selectAllButton; // Referência ao novo botão
+    @FXML private Button selectAllButton;
 
     // Dependências
     private FacilityRepository facilityRepository;
@@ -105,6 +107,7 @@ public class TrainSimulationController {
             mainController.showNotification("Loading trains... Please wait.", "info");
         }
 
+        // FIX 1: Tipo de retorno do Task e do call() deve ser List<TrainWrapper>
         Task<List<TrainWrapper>> loadTask = new Task<>() {
             @Override
             protected List<TrainWrapper> call() throws Exception {
@@ -133,7 +136,9 @@ public class TrainSimulationController {
                             LocalDateTime departureTime = null;
 
                             if (date != null && timeStr != null && !timeStr.isEmpty()) {
-                                LocalTime time = LocalTime.parse(timeStr.substring(0, 8));
+                                // FIX 2: CORREÇÃO DE LEITURA DA HORA
+                                String timePart = timeStr.length() >= 8 ? timeStr.substring(0, 8) : timeStr;
+                                LocalTime time = LocalTime.parse(timePart);
                                 departureTime = date.toLocalDate().atTime(time);
                             }
 
@@ -147,42 +152,7 @@ public class TrainSimulationController {
                     throw e;
                 }
 
-                // --- INJEÇÃO DE DADOS MOCK (Mantida) ---
-                List<String> mockIds = new ArrayList<>();
-                for (int k = 60; k < 80; k++) {
-                    mockIds.add("54" + k);
-                }
-                trains.removeIf(t -> mockIds.contains(t.getTrainId()));
-
-                LocalDateTime baseDate = LocalDateTime.of(2025, 10, 6, 0, 0, 0);
-
-                int facilityLeixoes = 50;
-                int facilityValenca = 11;
-                String locoFast = "5621";
-                String locoSlow = "5034";
-                String routeLV = "R001";
-                String routeVL = "R002";
-
-                trains.add(new Train("5460", "MEDWAY", baseDate.with(LocalTime.of(8, 0, 0)), facilityLeixoes, facilityValenca, locoSlow, routeLV));
-                trains.add(new Train("5461", "CAPTRAIN", baseDate.with(LocalTime.of(8, 20, 0)), facilityValenca, facilityLeixoes, locoFast, routeVL));
-                trains.add(new Train("5462", "MEDWAY", baseDate.with(LocalTime.of(8, 15, 0)), facilityLeixoes, facilityValenca, locoSlow, routeLV));
-                trains.add(new Train("5463", "CAPTRAIN", baseDate.with(LocalTime.of(8, 40, 0)), facilityValenca, facilityLeixoes, locoFast, routeVL));
-                trains.add(new Train("5464", "MEDWAY", baseDate.with(LocalTime.of(8, 45, 0)), facilityLeixoes, facilityValenca, locoFast, routeLV));
-                trains.add(new Train("5465", "CAPTRAIN", baseDate.with(LocalTime.of(8, 50, 0)), facilityValenca, facilityLeixoes, locoSlow, routeVL));
-                trains.add(new Train("5466", "MEDWAY", baseDate.with(LocalTime.of(9, 0, 0)), facilityLeixoes, facilityValenca, locoSlow, routeLV));
-                trains.add(new Train("5467", "CAPTRAIN", baseDate.with(LocalTime.of(9, 10, 0)), facilityValenca, facilityLeixoes, locoFast, routeVL));
-                trains.add(new Train("5468", "MEDWAY", baseDate.with(LocalTime.of(9, 30, 0)), facilityLeixoes, facilityValenca, locoFast, routeLV));
-                trains.add(new Train("5469", "CAPTRAIN", baseDate.with(LocalTime.of(9, 35, 0)), facilityValenca, facilityLeixoes, locoSlow, routeVL));
-                trains.add(new Train("5470", "MEDWAY", baseDate.with(LocalTime.of(10, 0, 0)), facilityLeixoes, facilityValenca, locoSlow, routeLV));
-                trains.add(new Train("5471", "CAPTRAIN", baseDate.with(LocalTime.of(10, 10, 0)), facilityValenca, facilityLeixoes, locoSlow, routeVL));
-                trains.add(new Train("5472", "MEDWAY", baseDate.with(LocalTime.of(10, 5, 0)), facilityLeixoes, facilityValenca, locoFast, routeLV));
-                trains.add(new Train("5473", "CAPTRAIN", baseDate.with(LocalTime.of(10, 30, 0)), facilityValenca, facilityLeixoes, locoFast, routeVL));
-                trains.add(new Train("5474", "MEDWAY", baseDate.with(LocalTime.of(10, 45, 0)), facilityLeixoes, facilityValenca, locoSlow, routeLV));
-                trains.add(new Train("5475", "CAPTRAIN", baseDate.with(LocalTime.of(10, 50, 0)), facilityValenca, facilityLeixoes, locoSlow, routeVL));
-                trains.add(new Train("5476", "MEDWAY", baseDate.with(LocalTime.of(11, 0, 0)), facilityLeixoes, facilityValenca, locoFast, routeLV));
-                trains.add(new Train("5477", "CAPTRAIN", baseDate.with(LocalTime.of(11, 15, 0)), facilityValenca, facilityLeixoes, locoSlow, routeVL));
-                trains.add(new Train("5478", "MEDWAY", baseDate.with(LocalTime.of(11, 20, 0)), facilityLeixoes, facilityValenca, locoSlow, routeLV));
-                trains.add(new Train("5479", "CAPTRAIN", baseDate.with(LocalTime.of(11, 30, 0)), facilityValenca, facilityLeixoes, locoFast, routeVL));
+                // --- DADOS MOCK REMOVIDOS ---
 
                 if (facilityRepository == null) {
                     throw new IllegalStateException("facilityRepository is null. Injection failed in MainController.");
@@ -287,6 +257,7 @@ public class TrainSimulationController {
 
     /**
      * Converte o resultado da simulação para um formato legível (semelhante ao output da consola).
+     * Corrigido para aplicar o atraso de conflito sequencialmente, refletindo o agendamento final.
      */
     private String formatSimulationOutput(SchedulerResult result) {
         if (result.scheduledTrips.isEmpty()) {
@@ -296,7 +267,7 @@ public class TrainSimulationController {
         StringBuilder output = new StringBuilder();
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        // 1. Relatório de Conflitos
+        // 1. Relatório de Conflitos (Formato da consola)
         output.append("=================================================================\n");
         output.append("             🚦 CONFLICT AND DELAY REPORT 🚦\n");
         output.append("=================================================================\n");
@@ -306,7 +277,7 @@ public class TrainSimulationController {
         } else {
             output.append("⚠️ ").append(result.resolvedConflicts.size()).append(" Conflicts resolved (delays injected):\n");
             for (Conflict c : result.resolvedConflicts) {
-                // Formato: [Trip B] Delay: 5 min in (Facility X) due to [Trip A]
+                // Assumindo que tripId2, delayMinutes e tripId1 são campos public
                 output.append(String.format("   • [Trip %s] Delay: %2d min in %s due to [Trip %s]\n",
                         c.tripId2, c.delayMinutes, getFacilityName(c.getSafeWaitFacilityId()), c.tripId1));
             }
@@ -319,6 +290,25 @@ public class TrainSimulationController {
         output.append("=========================================================================================\n\n");
 
         for (TrainTrip trip : result.scheduledTrips) {
+
+            // --- LÓGICA DE RECALCULO DE TEMPO SEQUENCIAL (PARA REPLICAR O OUTPUT DA CONSOLA) ---
+            int delayMinutes = 0;
+            String waitFacilityName = null;
+
+            Optional<Conflict> conflictOpt = result.resolvedConflicts.stream()
+                    .filter(c -> c.tripId2.equals(trip.getTripId()))
+                    .findFirst();
+
+            if (conflictOpt.isPresent()) {
+                delayMinutes = (int) conflictOpt.get().delayMinutes;
+                // Usa getFacilityName para garantir consistência com o nome na tabela
+                waitFacilityName = getFacilityName(conflictOpt.get().getSafeWaitFacilityId());
+            }
+
+            // O tempo de saída do último segmento/partida agendado.
+            LocalDateTime currentSimulatedTime = trip.getDepartureTime();
+            // -------------------------------------------------------------------------
+
             String rotaStart = trip.getRoute().isEmpty() ? "N/A" : getFacilityName(trip.getRoute().get(0).getIdEstacaoInicio());
             String rotaEnd = trip.getRoute().isEmpty() ? "N/A" : getFacilityName(trip.getRoute().get(trip.getRoute().size() - 1).getIdEstacaoFim());
 
@@ -333,8 +323,56 @@ public class TrainSimulationController {
             output.append("-".repeat(85)).append("\n");
 
             for (SimulationSegmentEntry entry : trip.getSegmentEntries()) {
+
+                // Calcula a duração do segmento (usando a diferença dos horários não ajustados)
+                Duration segmentDuration = Duration.between(entry.getEntryTime(), entry.getExitTime());
+
+                // O tempo de entrada do segmento é o tempo simulado atual.
+                LocalDateTime finalEntryTime = currentSimulatedTime;
+
+                // Calcula o tempo de chegada (Arrival time)
+                LocalDateTime finalArrivalTime = finalEntryTime.plus(segmentDuration);
+                LocalDateTime finalExitTime = finalArrivalTime; // Valor padrão
+
+                // ----------------------------------------------------------------
+                // LÓGICA DE APLICAÇÃO E INSERÇÃO DA LINHA DELAY
+                // ----------------------------------------------------------------
+                // 1. Verifica se este segmento termina na estação de espera e se ainda há atraso para aplicar
+                if (delayMinutes > 0 && entry.getEndFacilityName().equals(waitFacilityName)) {
+
+                    // O tempo real de partida após a espera
+                    LocalDateTime delayDepartureTime = finalArrivalTime.plusMinutes(delayMinutes);
+
+                    // --- INSERÇÃO DA LINHA DELAY (para replicar o output do console) ---
+                    // O nome da estação no console é cortado a 15, aqui usaremos o nome completo e o short para o alinhamento
+                    String waitFacilityShort = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), 15));
+
+                    // Saída do segmento atual (Ex: INV_21) é a chegada (finalArrivalTime)
+                    finalExitTime = finalArrivalTime;
+
+                    // A linha DELAY é inserida AGORA (após o segmento INV_21 e antes do INV_18)
+                    output.append(String.format("%-8s | %-16s | %-16s | %-8s | %-8s | %-6s\n",
+                            "DELAY",
+                            waitFacilityShort,
+                            waitFacilityShort,
+                            finalArrivalTime.toLocalTime().format(timeFormatter), // ENTRY = Chegada (Ex: 10:03)
+                            delayDepartureTime.toLocalTime().format(timeFormatter), // EXIT = Partida ajustada (Ex: 10:22)
+                            "0/0"
+                    ));
+
+                    // Atualiza o currentSimulatedTime para o tempo de partida ajustado
+                    currentSimulatedTime = delayDepartureTime;
+
+                    // Marca o atraso como aplicado para não repetir a lógica
+                    delayMinutes = 0;
+
+                } else {
+                    // Sem atraso extra neste ponto, ou o atraso já foi aplicado.
+                    finalExitTime = finalArrivalTime;
+                    currentSimulatedTime = finalExitTime;
+                }
+
                 String segmentId = entry.getSegmentId().length() > 6 ? entry.getSegmentId().substring(0, 6) : entry.getSegmentId();
-                // Limitar nomes para manter o alinhamento monoespaçado
                 String startName = entry.getStartFacilityName().substring(0, Math.min(entry.getStartFacilityName().length(), 15));
                 String endName = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), 15));
 
@@ -342,8 +380,8 @@ public class TrainSimulationController {
                         segmentId,
                         startName,
                         endName,
-                        entry.getEntryTime().toLocalTime().format(timeFormatter),
-                        entry.getExitTime().toLocalTime().format(timeFormatter),
+                        finalEntryTime.toLocalTime().format(timeFormatter),
+                        finalExitTime.toLocalTime().format(timeFormatter),
                         String.format("%.0f/%.0f", entry.getCalculatedSpeedKmh(), entry.getSegment().getVelocidadeMaxima())
                 ));
             }
