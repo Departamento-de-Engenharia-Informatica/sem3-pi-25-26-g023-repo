@@ -1,130 +1,92 @@
 .section .text
-.global sort_array
+.global move_n_to_array
 
-# Register Convention (ABI):
-# a0: int* vec (base address of the array)
-# a1: int length
-# a2: char order (1 = ascending, 0 = descending)
-# a0: int (return value, 1 for success, 0 for fail)
-#
-# Callee-saved registers used:
-# s0: int* vec (base address)
-# s1: int length
-# s2: char order
-# s3: int i (outer loop counter)
-# s4: int j (inner loop counter)
-# s5: int n_minus_1 (outer loop limit)
-# s6: int inner_limit (n-1-i)
-#
-# Temporary registers used:
-# t0: address of vec[j]
-# t1: value of vec[j]
-# t2: value of vec[j+1]
-# t3: address of vec[j+1]
+# Arguments (based on callfunc mapping from main.c):
+# a0 = buffer
+# a1 = length
+# a2 = nelem* (pointer to valid elements)
+# a3 = head* (pointer to read index) <-- CÓDIGO CORRIGIDO PARA USAR a3 AQUI
+# a4 = tail* (pointer to write index - unused for dequeue)
+# a5 = n      (number of elements to move)
+# a6 = array  (destination array)
 
-sort_array:
-    # --- Prologue ---
-    # Save all callee-saved registers we will modify
-    addi sp, sp, -64
-    sw   ra, 56(sp)
-    sw   s0, 48(sp)
-    sw   s1, 40(sp)
-    sw   s2, 32(sp)
-    sw   s3, 24(sp)
-    sw   s4, 16(sp)
-    sw   s5, 8(sp)
-    sw   s6, 0(sp)
+move_n_to_array:
+    # Setup stack frame and save callee-saved registers
+    addi sp, sp, -32
+    sw s0, 28(sp)
+    sw s1, 24(sp)
+    sw s2, 20(sp)
+    sw s3, 16(sp)
+    sw s4, 12(sp)
+    sw s5, 8(sp)
+    sw ra, 4(sp)
 
-    # --- Setup ---
-    mv   s0, a0     # s0 = vec
-    mv   s1, a1     # s1 = length
-    mv   s2, a2     # s2 = order
+    # Save argument registers to callee-saved registers
+    mv s0, a0       # s0 = buffer
+    mv s1, a1       # s1 = length
+    mv s2, a2       # s2 = nelem* (pointer to element count)
+    mv s3, a3       # s3 = head* (pointer to read index) <-- CORREÇÃO: Usa a3
+    mv s4, a6       # s4 = array (destination)
+    mv s5, a5       # s5 = n (number of elements to move)
+    # Note: a4 (tail*) é ignorado/não guardado, pois não é necessário para esta operação
 
-    # --- Failure Check: if (length <= 0) ---
-    ble  s1, zero, fail
+    # Load initial values
+    lw t0, 0(s2)            # t0 = *nelem
+    lw t1, 0(s3)            # t1 = head (read index)
+    li t2, 0                # t2 = counter i = 0
 
-    # --- Bubble Sort Initialization ---
-    # s5 = n - 1 (outer loop limit)
-    addi s5, s1, -1
+    # Check for enough elements
+    blt t0, s5, fail        # fail if not enough elements (*nelem < n)
 
-    # s3 = 0 (i = 0)
-    li   s3, 0
+copy_loop:
+    bge t2, s5, copy_done   # Exit if i >= n
 
-outer_loop_start:
-    # Check outer loop condition: if (i >= n-1) goto loop_end
-    bge  s3, s5, loop_end
+    # compute buffer index: (head + i) % length
+    add t3, t1, t2          # t3 = head + i
+    rem t3, t3, s1          # t3 = (head + i) % length
 
-    # s4 = 0 (j = 0)
-    li   s4, 0
+    # load element from buffer
+    slli t4, t3, 2          # t4 = index * 4 (byte offset)
+    add t4, s0, t4          # t4 = &buffer[index]
+    lw t5, 0(t4)            # t5 = element value
 
-    # s6 = (n - 1) - i (inner loop limit)
-    sub  s6, s5, s3
+    # store in array
+    slli t6, t2, 2          # t6 = i * 4 (byte offset)
+    add t6, s4, t6          # t6 = &array[i]
+    sw t5, 0(t6)
 
-inner_loop_start:
-    # Check inner loop condition: if (j >= n-1-i) goto outer_loop_inc
-    bge  s4, s6, outer_loop_inc
+    # Increment counter
+    addi t2, t2, 1
+    j copy_loop
 
-    # --- Element Comparison ---
-    # 1. Get address of vec[j]
-    #    t0 = j * 4
-    slli t0, s4, 2
-    #    t0 = vec + (j * 4)
-    add  t0, s0, t0
+copy_done:
+    # Calculate new head = (head + n) % length
+    add t1, t1, s5          # t1 = head + n
+    rem t1, t1, s1          # t1 = (head + n) % length
+    
+    # Calculate new nelem = nelem - n
+    sub t0, t0, s5          # t0 = *nelem - n
 
-    # 2. Load vec[j] and vec[j+1]
-    lw   t1, 0(t0)  # t1 = vec[j]
-    lw   t2, 4(t0)  # t2 = vec[j+1] (at offset +4 bytes)
+    # Store new head to head* (s3)
+    sw t1, 0(s3) 
 
-    # 3. Check order
-    #    if (order == 0) goto desc_check
-    beq  s2, zero, desc_check
+    # Store new nelem to nelem* (s2)
+    sw t0, 0(s2)
 
-    # --- Ascending Order Check (order == 1) ---
-    #    if (vec[j] <= vec[j+1]) goto inner_loop_inc (no swap)
-    ble  t1, t2, inner_loop_inc
-    j    swap
-
-desc_check:
-    # --- Descending Order Check (order == 0) ---
-    #    if (vec[j] >= vec[j+1]) goto inner_loop_inc (no swap)
-    bge  t1, t2, inner_loop_inc
-    #    (otherwise, fall through to swap)
-
-swap:
-    # Swap vec[j] and vec[j+1]
-    sw   t2, 0(t0)  # vec[j] = t2
-    sw   t1, 4(t0)  # vec[j+1] = t1
-
-inner_loop_inc:
-    # j++
-    addi s4, s4, 1
-    j    inner_loop_start
-
-outer_loop_inc:
-    # i++
-    addi s3, s3, 1
-    j    outer_loop_start
-
-loop_end:
-    # --- Success Path ---
-    li   a0, 1 # Return 1
-    j    restore_and_ret
+    li a0, 1                # Success (return 1)
+    j restore
 
 fail:
-    # --- Failure Path ---
-    li   a0, 0 # Return 0
+    li a0, 0                # Failure (return 0)
 
-restore_and_ret:
-    # --- Epilogue ---
-    # Restore all callee-saved registers
-    lw   ra, 56(sp)
-    lw   s0, 48(sp)
-    lw   s1, 40(sp)
-    lw   s2, 32(sp)
-    lw   s3, 24(sp)
-    lw   s4, 16(sp)
-    lw   s5, 8(sp)
-    lw   s6, 0(sp)
-    addi sp, sp, 64
-
-    ret # Return to caller
+restore:
+    # Restore callee-saved registers and stack pointer
+    lw ra, 4(sp)
+    lw s5, 8(sp)
+    lw s4, 12(sp)
+    lw s3, 16(sp)
+    lw s2, 20(sp)
+    lw s1, 24(sp)
+    lw s0, 28(sp)
+    addi sp, sp, 32
+    ret
