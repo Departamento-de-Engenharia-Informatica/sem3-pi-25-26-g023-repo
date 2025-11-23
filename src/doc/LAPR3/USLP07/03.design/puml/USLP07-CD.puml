@@ -1,0 +1,101 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+hide circle
+hide methods
+
+' --- CORE SCHEDULING CLASSES ---
+
+class DispatcherService {
+  +dispatchTrains(trains: List<Train>)
+}
+
+class SchedulerService {
+  +calculateTrainPerformance(trip: TrainTrip)
+  +calculateTravelTimes(trip: TrainTrip)
+  +dispatchTrains(trips: List<TrainTrip>): SchedulerResult
+  +resolveFirstConflict(TripA, TripB): Conflict
+}
+
+class TrainTrip {
+  -tripId: String
+  -departureTime: LocalDateTime
+  +getRoute(): List<LineSegment>
+  +getLocomotives(): List<Locomotive>
+  +getWagons(): List<Wagon>
+  +getTotalWeightKg(): double
+  +getCombinedPowerKw(): double
+  +getSegmentEntries(): List<SimulationSegmentEntry>
+}
+
+class LineSegment {
+  -segmentId: String
+  -length_km: double
+  -maxSpeedAllowedKmh: double
+  -numberTracks: int // 1 for single, >1 for double
+}
+
+class Locomotive {
+  -locomotiveId: String
+  -power_kw: double
+  -tareWeight_kg: double
+}
+
+class Wagon {
+  -wagonId: String
+  -tareWeight_kg: double
+  -loadWeight_kg: double // Implied load
+}
+
+' --- SCHEDULER OUTPUT DTOs ---
+
+class SimulationSegmentEntry {
+  -entryTime: LocalDateTime
+  -exitTime: LocalDateTime
+  -calculatedSpeedKmh: double
+  // Other fields...
+}
+
+class Conflict {
+  -tripId1: String // Prioritized
+  -tripId2: String // Delayed
+  -delayMinutes: long
+  -safeWaitFacilityId: int
+}
+
+class SchedulerResult {
+  +scheduledTrips: List<TrainTrip>
+  +resolvedConflicts: List<Conflict>
+}
+
+' --- REPOSITORIES / UI ---
+
+class TrainSimulationUI {
+  +runSimulation(trips: List<TrainTrip>)
+}
+
+class TrainRepository {
+  +findAll(): List<Train>
+}
+
+' --- RELATIONSHIPS ---
+
+TrainSimulationUI --> DispatcherService : uses
+DispatcherService --> SchedulerService : coordinates
+DispatcherService --> TrainRepository : loads trains
+
+SchedulerService --> TrainTrip : simulates
+SchedulerService --> LineSegment : reads constraints
+SchedulerService --> Locomotive : reads power
+SchedulerService --> Wagon : reads weight
+SchedulerService --> SchedulerResult : outputs
+
+TrainTrip "1" *-- "1..*" LineSegment : defines route
+TrainTrip "1" *-- "1..*" Locomotive : is pulled by
+TrainTrip "1" *-- "0..*" Wagon : pulls
+TrainTrip "1" *-- "0..*" SimulationSegmentEntry : simulation results
+
+SchedulerResult "1" *-- "0..*" Conflict : details
+
+@enduml

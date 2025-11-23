@@ -1,0 +1,71 @@
+@startuml
+hide circle
+hide methods
+
+' title Domain Model - USLP07: Freight Dispatching and Conflict Resolution
+
+class SchedulerService {
+    +calculateTrainPerformance(TrainTrip)
+    +calculateTravelTimes(TrainTrip)
+    +dispatchTrains(List<TrainTrip>)
+    +resolveFirstConflict(...)
+}
+
+class TrainTrip {
+    tripId
+    departureTime
+    +getRoute() : List<LineSegment>
+    +getLocomotives()
+    +getWagons()
+    +getMaxTrainSpeed()
+    +getTotalWeightKg()
+    +setPassageTime(int facilityId, LocalDateTime time)
+}
+
+class LineSegment {
+    segmentId
+    length_km
+    maxSpeedAllowedKmh
+    numberTracks // Critical for single/double track
+    isViaUnica()
+}
+
+class Locomotive {
+    locomotiveId
+    power_kw
+    tareWeight_kg
+}
+
+class Wagon {
+    wagonId
+    tareWeight_kg
+    loadWeight_kg
+}
+
+class SimulationSegmentEntry {
+    entryTime
+    exitTime
+    calculatedSpeedKmh
+    startFacilityName
+}
+
+class Conflict {
+    tripId1 // Prioritized
+    tripId2 // Delayed
+    delayMinutes
+    safeWaitFacilityId // Location where Trip 2 waits
+}
+
+' Relationships
+SchedulerService "1" --> "*" TrainTrip : processes
+SchedulerService "1" --> "*" Conflict : generates
+
+TrainTrip "1" *-- "1..*" LineSegment : defines route
+TrainTrip "1" *-- "1..*" Locomotive : pulls
+TrainTrip "1" *-- "0..*" Wagon : carries freight
+
+TrainTrip "1" *-- "1..*" SimulationSegmentEntry : simulation output
+
+LineSegment "1" --> "1" LineSegment : inverse_segment_id
+
+@enduml

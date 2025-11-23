@@ -1,0 +1,75 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Freight Manager" as Manager
+participant ":TrainSimulationUI" as UI
+participant ":DispatcherService" as Dispatcher
+participant ":SchedulerService" as Scheduler
+participant "TripA" as TripA
+participant "TripB" as TripB
+participant "Loco" as Loco
+participant "Segment" as Seg
+participant "Conflict" as Conf
+participant "Result" as Res
+
+== Start Dispatching ==
+
+activate UI
+    UI -> Manager : loadTrainList()
+    activate Manager
+    Manager -> UI : return List<Train>
+    deactivate Manager
+
+    UI -> Dispatcher : dispatchTrains(trains)
+    activate Dispatcher
+        Dispatcher -> Scheduler : dispatchTrains(trips)
+        activate Scheduler
+
+            note over Scheduler : 1. Sort Trips by DepartureTime (A, B, ...)
+
+            loop For each pair (TripA, TripB)
+
+                note over Scheduler : 2. Calculate Performance & Times for Trip A
+                Scheduler -> TripA : calculateTrainPerformance()
+                Scheduler -> TripA : calculateTravelTimes(segments)
+
+                note over Scheduler : 3. Calculate Performance & Times for Trip B
+                Scheduler -> TripB : calculateTrainPerformance()
+                Scheduler -> TripB : calculateTravelTimes(segments)
+
+                loop For each segment index (i)
+                    Scheduler -> TripA : getSegmentEntry(i)
+                    Scheduler -> TripB : getSegmentEntry(i)
+
+                    note over Scheduler : 4. Check Conflict (Single Track & Time Overlap)
+                    alt Conflict detected (ExitTimeA > EntryTimeB)
+
+                        Scheduler -> Scheduler : findLastSafeWaitingPointId()
+
+                        note over Scheduler : 5. Calculate Delay & Create Conflict
+                        Scheduler -> Conf : new(delay, waitId)
+                        Scheduler -> Res : addConflict(Conf)
+
+                        note over Scheduler : 6. Recalculate Trip B (Cascading Delay)
+                        Scheduler -> TripB : newDelayedTrip(newDepartureTime)
+                        Scheduler -> TripB : calculateTravelTimes(new segments)
+
+                        break loop // Resolve only first conflict in pair
+                    end
+                end
+            end
+
+            Scheduler -> Res : addTrip(final schedules)
+            Scheduler --> Dispatcher : return SchedulerResult
+        deactivate Scheduler
+
+        Dispatcher --> UI : return SchedulerResult
+    deactivate Dispatcher
+
+    UI --> Manager : display final schedule and conflicts
+deactivate UI
+
+@enduml
