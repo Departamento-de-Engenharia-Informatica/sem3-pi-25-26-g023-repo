@@ -7,8 +7,8 @@
 # a0 = buffer
 # a1 = length
 # a2 = nelem*
-# a3 = tail*
-# a4 = head*
+# a3 = tail*    ← elemento mais antigo
+# a4 = head*    ← próxima posição de inserção
 # a5 = value*
 #
 # returns: 1 if success, 0 if empty
@@ -20,45 +20,46 @@ dequeue_value:
     sw s1, 20(sp)
     sw s2, 16(sp)
     sw s3, 12(sp)
-    sw s4, 8(sp)
 
     mv s0, a0      # buffer
     mv s1, a1      # length
     mv s2, a2      # nelem*
     mv s3, a3      # tail*
-    mv s4, a4      # head*
-    mv t6, a5      # value*
+    # a4 = head* (não usado no dequeue)
+    mv s4, a5      # value*
 
-    # load nelem
-    lw t0, 0(s2)
-    beqz t0, empty_case   # if nelem == 0 → cannot dequeue
+    # Verificar se buffer está vazio
+    lw t0, 0(s2)           # t0 = *nelem
+    beq t0, zero, empty_case
 
-    # read head index
-    lw t1, 0(s4)          # t1 = head
+    # Ler da posição TAIL atual
+    lw t1, 0(s3)           # t1 = *tail (índice do elemento mais antigo)
 
-    # buffer[head]
-    slli t2, t1, 2        # t2 = head * 4
-    add t2, t2, s0        # &buffer[head]
-    lw t3, 0(t2)          # t3 = buffer[head]
+    # Calcular endereço correto
+    slli t2, t1, 2         # t2 = tail * 4 (offset em bytes)
+    add t2, s0, t2         # t2 = &buffer[tail]
+    lw t3, 0(t2)           # t3 = buffer[tail] (valor a ser removido)
 
-    # store into *value
-    sw t3, 0(t6)
+    # Escrever valor no ponteiro de saída
+    sw t3, 0(s4)           # *value = buffer[tail]
 
-    # decrease nelem
+    # Avançar TAIL circularmente
+    addi t1, t1, 1         # tail++
+    blt t1, s1, tail_ok    # if (tail < length) goto tail_ok
+    li t1, 0               # tail = 0 (wrap around)
+tail_ok:
+    sw t1, 0(s3)           # *tail = novo tail
+
+    # Decrementar nelem
+    lw t0, 0(s2)           # recarregar nelem
     addi t0, t0, -1
-    sw t0, 0(s2)
+    sw t0, 0(s2)           # *nelem = nelem - 1
 
-    # advance head
-    addi t1, t1, 1
-    rem t1, t1, s1
-    sw t1, 0(s4)
-
-    # success → return 1
-    li a0, 1
+    li a0, 1               # return 1 (sucesso)
     j finish
 
 empty_case:
-    li a0, 0       # failure
+    li a0, 0               # return 0 (buffer vazio)
 
 finish:
     lw ra, 28(sp)
@@ -66,6 +67,5 @@ finish:
     lw s1, 20(sp)
     lw s2, 16(sp)
     lw s3, 12(sp)
-    lw s4, 8(sp)
     addi sp, sp, 32
     ret
