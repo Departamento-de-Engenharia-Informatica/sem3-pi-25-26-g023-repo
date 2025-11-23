@@ -7,8 +7,8 @@
 # a0 = buffer
 # a1 = length
 # a2 = nelem (ptr)
-# a3 = tail  (ptr)
-# a4 = head  (ptr)
+# a3 = tail  (ptr)  -> aponta para o elemento mais antigo
+# a4 = head  (ptr)  -> aponta para próxima posição de inserção
 # a5 = value
 #
 # returns a0 = 1 if buffer full after insertion, 0 otherwise
@@ -32,44 +32,53 @@ enqueue_value:
     # load current nelem
     lw t0, 0(s2)       # t0 = *nelem
 
-    # check if full: t0 == length ?
-    beq t0, s1, full_case
-
-not_full_case:
-    addi t0, t0, 1     # nelem++
-    sw t0, 0(s2)
-    j insert_value
+    # check if buffer is full
+    bne t0, s1, not_full
 
 full_case:
-    # advance head to drop oldest
-    lw t1, 0(s4)       # t1 = *head
+    # Buffer cheio - sobrescrever elemento mais antigo
+    # Avançar tail (remove elemento mais antigo)
+    lw t1, 0(s3)       # t1 = *tail (índice do mais antigo)
+
+    # Avançar tail circularmente
     addi t1, t1, 1
-    rem t1, t1, s1     # t1 = (head+1) % length
-    sw t1, 0(s4)
-    # nelem stays == length
+    blt t1, s1, tail_ok_full
+    li t1, 0           # wrap around
+tail_ok_full:
+    sw t1, 0(s3)       # atualizar tail
+
+    # nelem permanece o mesmo (substituímos, não adicionamos)
+    j insert_value
+
+not_full:
+    # Buffer não cheio - incrementar nelem
+    addi t0, t0, 1
+    sw t0, 0(s2)
 
 insert_value:
-    # tail index
-    lw t2, 0(s3)       # t2 = *tail
+    # Inserir valor na posição head atual
+    lw t2, 0(s4)       # t2 = *head (próxima posição de inserção)
 
-    # store value at buffer[tail]
-    slli t3, t2, 2     # offset = tail * 4
-    add t3, s0, t3     # &buffer[tail]
-    sw a5, 0(t3)
+    # Calcular endereço: buffer[head]
+    slli t3, t2, 2     # offset = head * 4
+    add t3, s0, t3     # &buffer[head]
+    sw a5, 0(t3)       # buffer[head] = value
 
-    # advance tail
+    # Avançar head circularmente
     addi t2, t2, 1
-    rem t2, t2, s1     # tail = (tail+1) % length
-    sw t2, 0(s3)
+    blt t2, s1, head_ok
+    li t2, 0           # wrap around
+head_ok:
+    sw t2, 0(s4)       # atualizar head
 
-    # return 1 if full after insertion
-    lw t0, 0(s2)       # reload nelem
-    beq t0, s1, ret_full
-    li a0, 0
+    # Verificar se após inserção o buffer está cheio
+    lw t0, 0(s2)       # recarregar nelem
+    bne t0, s1, not_full_after
+    li a0, 1           # return 1 (buffer cheio)
     j finish
 
-ret_full:
-    li a0, 1
+not_full_after:
+    li a0, 0           # return 0 (buffer não cheio)
 
 finish:
     lw ra, 28(sp)
