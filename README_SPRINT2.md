@@ -69,7 +69,7 @@ Implementation of the conceptual model updates and the core scheduling functiona
 
 * **USLP05: Domain Model Update** 🏗️
     * *Objective: Update the conceptual domain model according to the changed requirements (Graph Integration).*
-    * [🏗️ Domain Model Update (PlantUML)](src/doc/LAPR3/USLP05/domain-model-update.puml)
+    * [🏗️ Domain Model Update (PlantUML)](src/doc/LAPR3/USLP05/domainmodel.svg)
 * **USLP06: Data Dictionary/Glossary Update** 📖
     * *Objective: Update the data dictionary/glossary according to the changed requirements.*
     * [📖 Glossary Update](src/doc/LAPR3/USLP06/glossary.md)
