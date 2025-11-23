@@ -51,6 +51,7 @@ class RadiusSearchTest {
             return new KDTree();
         }
 
+
         // Pre-sort para a construção balanceada da KD-Tree
         List<EuropeanStation> stationsByLat = new ArrayList<>(stations);
         List<EuropeanStation> stationsByLon = new ArrayList<>(stations);
