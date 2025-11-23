@@ -12,10 +12,19 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+/**
+ * Repository class responsible for data access operations (CRUD) related to the {@link Train} entity.
+ * It queries the TRAIN table in the database.
+ */
 public class TrainRepository {
 
     /**
-     * Procura todos os comboios na base de dados.
+     * Searches for all trains in the database.
+     *
+     * <p>It handles the combination of 'train_date' and 'train_time' columns
+     * into a single {@link LocalDateTime} departure time.</p>
+     *
+     * @return A list of all {@link Train} objects loaded from the database.
      */
     public List<Train> findAll() {
         List<Train> trains = new ArrayList<>();
@@ -37,12 +46,12 @@ public class TrainRepository {
                     int endFacilityId = rs.getInt("end_facility_id");
 
                     Date date = rs.getDate("train_date");
-                    // O campo train_time é lido como String (ou Time/Timestamp e depois convertido)
+                    // The train_time field is read as String (or Time/Timestamp and then converted)
                     String timeStr = rs.getString("train_time");
 
-                    // FIX para Range [0, 8) out of bounds:
-                    // Se a string for curta (ex: "10:30", length 5), usa-se a string toda.
-                    // Se for longa (ex: "10:30:00.123"), corta-se para "HH:mm:ss" (length 8).
+                    // FIX for Range [0, 8) out of bounds:
+                    // If the string is short (e.g., "10:30", length 5), the whole string is used.
+                    // If it is long (e.g., "10:30:00.123"), it is truncated to "HH:mm:ss" (length 8).
                     String timePart = timeStr.length() >= 8 ? timeStr.substring(0, 8) : timeStr;
                     LocalTime time = LocalTime.parse(timePart);
 
@@ -50,25 +59,30 @@ public class TrainRepository {
 
                     trains.add(new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId, routeId));
                 } catch (Exception e) {
-                    System.err.println("❌ Erro de tipagem ao ler Train: " + e.getMessage());
+                    System.err.println("❌ Typing error when reading Train: " + e.getMessage());
                 }
             }
         } catch (SQLException e) {
-            System.err.println("❌ Erro fatal ao ler tabela TRAIN: " + e.getMessage());
+            System.err.println("❌ Fatal error reading TRAIN table: " + e.getMessage());
         }
 
         return trains;
     }
 
     /**
-     * Procura um comboio pelo ID.
+     * Searches for a train by its ID.
+     *
+     * @param id The unique identifier of the train.
+     * @return An {@link Optional} containing the {@link Train} if found, or empty otherwise.
      */
     public Optional<Train> findById(String id) {
         return findAll().stream().filter(t -> t.getTrainId().equals(id)).findFirst();
     }
 
     /**
-     * Retorna todos os IDs de operadores distintos dos comboios carregados.
+     * Returns all distinct operator IDs from the loaded trains.
+     *
+     * @return A list of unique operator ID strings.
      */
     public List<String> findAllOperators() {
         return findAll().stream()
@@ -78,7 +92,9 @@ public class TrainRepository {
     }
 
     /**
-     * Retorna todos os IDs de rota distintos dos comboios carregados.
+     * Returns all distinct route IDs from the loaded trains.
+     *
+     * @return A list of unique route ID strings.
      */
     public List<String> findAllRouteIds() {
         return findAll().stream()

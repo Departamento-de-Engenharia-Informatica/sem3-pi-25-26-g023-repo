@@ -5,13 +5,13 @@ import java.util.List;
 
 /**
  * Warehouse Management System - Manages warehouse operations.
- * (Versão 2.1 - "Modo Silencioso")
+ * (Version 2.1 - "Silent Mode")
  */
 public class WMS {
 
     /**
-     * Um objeto simples para guardar o resultado do unload
-     * e passá-lo para a Main.java.
+     * A simple object to store the unload result
+     * and pass it to Main.java.
      */
     public static class UnloadResult {
         public final int totalProcessed;
@@ -20,6 +20,9 @@ public class WMS {
         public final int notUnloaded;
         public int totalBoxes;
 
+        /**
+         * Constructs an UnloadResult summary object.
+         */
         public UnloadResult(int totalProcessed, int fully, int partially, int not, int totalBoxes) {
             this.totalProcessed = totalProcessed;
             this.fullyUnloaded = fully;
@@ -34,6 +37,9 @@ public class WMS {
     private final AuditLog auditLog;
     private final List<Warehouse> warehouses;
 
+    /**
+     * Constructs the Warehouse Management System service.
+     */
     public WMS(Quarantine quarantine, Inventory inventory, AuditLog auditLog, List<Warehouse> warehouses) {
         this.quarantine = quarantine;
         this.inventory = inventory;
@@ -43,9 +49,9 @@ public class WMS {
 
     /**
      * USEI01 - Unloads wagons.
-     * (Modo Silencioso: Retorna um sumário em vez de imprimir)
+     * (Silent Mode: Returns a summary instead of printing)
      * @param wagons list of wagons to unload
-     * @return UnloadResult com o sumário da operação.
+     * @return UnloadResult with the operation summary.
      */
     public UnloadResult unloadWagons(List<Wagon> wagons) {
         if (wagons == null || wagons.isEmpty()) {
@@ -70,7 +76,9 @@ public class WMS {
             for (Box b : w.getBoxes()) {
                 boolean storedThisBox = false;
                 for (Warehouse wh : warehouses) {
+                    // Tries to store the box in the warehouse
                     if (wh.storeBox(b)) {
+                        // If successful, update the inventory and counters
                         inventory.insertBoxFEFO(b);
                         storedThisBox = true;
                         anyBoxStored = true;
@@ -79,7 +87,7 @@ public class WMS {
                     }
                 }
                 if (!storedThisBox) {
-                    // SILENCIADO: System.out.printf("  ⚠️ Wagon %s: No space found for Box %s...%n", ...);
+                    // SILENCED: System.out.printf("  ⚠️ Wagon %s: No space found for Box %s...%n", ...);
                 }
             }
 
@@ -100,16 +108,16 @@ public class WMS {
 
     /**
      * USEI05 - Processes returns in quarantine.
-     * (Modo Silencioso: Imprime apenas no log)
+     * (Silent Mode: Only logs to audit log)
      */
     public void processReturns() {
-        // SILENCIADO: System.out.println("\n--- Processing Returns (USEI05) ---");
+        // SILENCED: System.out.println("\n--- Processing Returns (USEI05) ---");
         if (quarantine == null || quarantine.isEmpty()) {
-            // SILENCIADO: System.out.println("ℹ️ Quarantine empty. No returns to process.");
+            // SILENCED: System.out.println("ℹ️ Quarantine empty. No returns to process.");
             return;
         }
         if (warehouses.isEmpty()) {
-            // SILENCIADO: System.err.println("❌ FATAL ERROR: No warehouses to restock returned items!");
+            // SILENCED: System.err.println("❌ FATAL ERROR: No warehouses to restock returned items!");
             return;
         }
 
@@ -122,41 +130,43 @@ public class WMS {
             processed++;
             if (r == null) continue;
 
-            // SILENCIADO: System.out.printf("  Processing Return %s ...%n", ...);
+            // SILENCED: System.out.printf("  Processing Return %s ...%n", ...);
 
             if (r.isRestockable()) {
+                // Try to restock in one of the warehouses
                 if (inventory.restock(r, warehouses)) {
                     auditLog.writeLog(r, "Restocked", r.getQty());
                     restocked++;
                 } else {
-                    // SILENCIADO: System.out.printf("  ⚠️ Item %s (Return %s) was restockable but no space...%n", ...);
+                    // SILENCED: System.out.printf("  ⚠️ Item %s (Return %s) was restockable but no space...%n", ...);
                     auditLog.writeLog(r, "Discarded (No Space)", r.getQty());
                     discarded++;
                 }
             } else {
-                // SILENCIADO: System.out.printf("  Item %s (Return %s) is not restockable...%n", ...);
+                // SILENCED: System.out.printf("  Item %s (Return %s) is not restockable...%n", ...);
+                // Not restockable (e.g., reason is damaged or expired)
                 auditLog.writeLog(r, "Discarded", r.getQty());
                 discarded++;
             }
         }
 
     }
-    // --- GETTERS PARA A GUI ---
-    // (Adiciona estes métodos à tua classe WMS)
+    // --- GETTERS FOR THE GUI ---
+    // (Add these methods to your WMS class)
 
     /**
-     * Permite à GUI aceder ao inventário
-     * para mostrar estatísticas.
-     * @return O objeto Inventory.
+     * Allows the GUI to access the inventory
+     * to display statistics.
+     * @return The Inventory object.
      */
     public Inventory getInventory() {
         return this.inventory;
     }
 
     /**
-     * Permite à GUI aceder à quarentena
-     * para mostrar estatísticas.
-     * @return O objeto Quarantine.
+     * Allows the GUI to access the quarantine
+     * to display statistics.
+     * @return The Quarantine object.
      */
     public Quarantine getQuarantine() {
         return this.quarantine;

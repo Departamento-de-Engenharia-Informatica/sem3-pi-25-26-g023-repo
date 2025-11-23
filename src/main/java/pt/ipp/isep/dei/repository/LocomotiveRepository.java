@@ -7,11 +7,20 @@ import java.util.List;
 import java.util.Optional;
 import java.sql.*;
 
+/**
+ * Repository class responsible for data access operations (CRUD) related to the {@link Locomotive} entity.
+ * It queries the LOCOMOTIVE and ROLLING_STOCK tables in the database.
+ */
 public class LocomotiveRepository {
 
-    /** Busca uma Locomotiva pelo seu ID (int). */
+    /**
+     * Searches for a Locomotive by its ID (int).
+     *
+     * @param id The integer ID of the locomotive (maps to 'stock_id' VARCHAR in DB).
+     * @return An {@link Optional} containing the Locomotive if found, or empty otherwise.
+     */
     public Optional<Locomotive> findById(int id) {
-        // ID é int no método, mas string na DB ('stock_id').
+        // ID is int in the method, but string in the DB ('stock_id').
         String idStr = String.valueOf(id);
 
         String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model " +
@@ -21,15 +30,15 @@ public class LocomotiveRepository {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            stmt.setString(1, idStr); // Usar setString para o stock_id VARCHAR2
+            stmt.setString(1, idStr); // Use setString for the VARCHAR2 stock_id
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    // Mapeamento: rs.getInt("stock_id") funciona se o valor for numérico
+                    // Mapping: rs.getInt("stock_id") works if the value is numeric
                     return Optional.of(new Locomotive(
                             rs.getInt("stock_id"),
                             rs.getString("model"),
-                            rs.getString("locomotive_type"), // <--- CORREÇÃO: Usar o nome correto
+                            rs.getString("locomotive_type"), // <--- CORRECTION: Use the correct column name
                             rs.getDouble("power_kw")
                     ));
                 }
@@ -40,7 +49,11 @@ public class LocomotiveRepository {
         return Optional.empty();
     }
 
-    /** Retorna todas as Locomotivas. */
+    /**
+     * Returns all Locomotives from the database.
+     *
+     * @return A list of {@link Locomotive} objects.
+     */
     public List<Locomotive> findAll() {
         List<Locomotive> locomotives = new ArrayList<>();
         String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model " +

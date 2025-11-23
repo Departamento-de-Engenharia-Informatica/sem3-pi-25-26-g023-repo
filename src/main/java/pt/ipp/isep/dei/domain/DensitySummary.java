@@ -4,32 +4,62 @@ import java.util.Map;
 import java.util.TreeMap;
 
 /**
- * Classe que contém o sumário de densidade das estações dentro de um raio.
- * Fornece estatísticas por país e tipo de cidade conforme USEI10.
+ * An immutable class that holds the density summary of stations found within a specified radius.
+ * Provides statistics aggregated by country, city type, and main station status, as required by USEI10.
  */
 public class DensitySummary {
+
     private final int totalStations;
     private final Map<String, Integer> stationsByCountry;
     private final Map<Boolean, Integer> stationsByCityType;
     private final Map<Boolean, Integer> stationsByMainStation;
 
+    /**
+     * Constructs a new DensitySummary object.
+     *
+     * @param totalStations The total number of stations found in the search radius.
+     * @param stationsByCountry A map counting stations per country (Key: Country Code, Value: Count).
+     * @param stationsByCityType A map counting stations by city status (Key: Boolean isCity, Value: Count).
+     * @param stationsByMainStation A map counting stations by main station status (Key: Boolean isMainStation, Value: Count).
+     */
     public DensitySummary(int totalStations, Map<String, Integer> stationsByCountry,
                           Map<Boolean, Integer> stationsByCityType,
                           Map<Boolean, Integer> stationsByMainStation) {
         this.totalStations = totalStations;
-        this.stationsByCountry = new TreeMap<>(stationsByCountry); // Ordenado por país
+        // Use TreeMap to ensure countries are sorted alphabetically in output
+        this.stationsByCountry = new TreeMap<>(stationsByCountry);
         this.stationsByCityType = stationsByCityType;
         this.stationsByMainStation = stationsByMainStation;
     }
 
-    // Getters
+    /**
+     * Gets the total number of stations found in the radius.
+     * @return The total count.
+     */
     public int getTotalStations() { return totalStations; }
+
+    /**
+     * Gets the map counting stations aggregated by country.
+     * @return An alphabetically sorted map of country codes to station counts.
+     */
     public Map<String, Integer> getStationsByCountry() { return stationsByCountry; }
+
+    /**
+     * Gets the map counting stations aggregated by city status (true/false).
+     * @return Map where true is City and false is Non-City.
+     */
     public Map<Boolean, Integer> getStationsByCityType() { return stationsByCityType; }
+
+    /**
+     * Gets the map counting stations aggregated by main station status (true/false).
+     * @return Map where true is Main Station and false is Regular Station.
+     */
     public Map<Boolean, Integer> getStationsByMainStation() { return stationsByMainStation; }
 
     /**
-     * Retorna uma representação formatada do sumário conforme USEI10.
+     * Returns a formatted string representation of the density summary, typically used for console or UI display.
+     *
+     * @return A detailed, formatted string summary.
      */
     public String getFormattedSummary() {
         StringBuilder sb = new StringBuilder();
@@ -62,6 +92,10 @@ public class DensitySummary {
         return sb.toString();
     }
 
+    /**
+     * Returns the formatted summary string, adhering to the Java convention.
+     * @return The formatted summary string.
+     */
     @Override
     public String toString() {
         return getFormattedSummary();

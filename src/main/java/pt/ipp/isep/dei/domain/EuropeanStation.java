@@ -4,16 +4,16 @@ import java.util.Objects;
 import java.util.Comparator;
 
 /**
- * Representa uma estação do dataset europeu, contendo o ID, coordenadas geográficas
- * e todos os critérios de filtro.
+ * Represents a station from the European dataset, containing the ID, geographical coordinates,
+ * and all filter criteria.
  */
 public class EuropeanStation implements Comparable<EuropeanStation> {
 
-    // Identificação e Grafo
-    private final int idEstacao;
-    private final String station;
+    // Identification and Graph
+    private final int idEstacao; // Station ID
+    private final String station; // Station name
 
-    // Filtros e Coordenadas
+    // Filters and Coordinates
     private final String country;
     private final String timeZoneGroup;
     private final double latitude;
@@ -43,7 +43,7 @@ public class EuropeanStation implements Comparable<EuropeanStation> {
         this.isAirport = isAirport;
     }
 
-    // --- Getters de Uso Geral ---
+    // --- General Purpose Getters ---
     public int getIdEstacao() { return idEstacao; }
     public String getStation() { return station; }
     public String getCountry() { return country; }
@@ -56,13 +56,13 @@ public class EuropeanStation implements Comparable<EuropeanStation> {
 
     @Override
     public int compareTo(EuropeanStation other) {
-        // Ordenação primária por nome da estação
+        // Primary ordering by station name
         return this.station.compareTo(other.station);
     }
 
     /**
-     * Define a igualdade baseada no ID e também em propriedades chave para robustez,
-     * como exigido pelo KD-Tree (agrupamento por coordenadas).
+     * Defines equality based on the ID and also on key properties for robustness,
+     * as required by the KD-Tree (grouping by coordinates).
      */
     @Override
     public boolean equals(Object o) {
@@ -70,7 +70,7 @@ public class EuropeanStation implements Comparable<EuropeanStation> {
         if (o == null || getClass() != o.getClass()) return false;
         EuropeanStation that = (EuropeanStation) o;
 
-        // Compara ID, coordenadas e nome/país para uma igualdade robusta
+        // Compares ID, coordinates and name/country for robust equality
         return idEstacao == that.idEstacao &&
                 Double.compare(that.latitude, latitude) == 0 &&
                 Double.compare(that.longitude, longitude) == 0 &&
@@ -79,7 +79,7 @@ public class EuropeanStation implements Comparable<EuropeanStation> {
     }
 
     /**
-     * Calcula o hash code com base em todos os campos relevantes para a igualdade.
+     * Calculates the hash code based on all relevant fields for equality.
      */
     @Override
     public int hashCode() {

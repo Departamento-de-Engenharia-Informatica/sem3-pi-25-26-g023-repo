@@ -8,24 +8,33 @@ import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import java.util.Comparator;
-import pt.ipp.isep.dei.repository.SegmentLineRepository; // Adicionado para usar o prefixo INVERSE_ID_PREFIX, se necessário
+import pt.ipp.isep.dei.repository.SegmentLineRepository; // Added to use the INVERSE_ID_PREFIX, if necessary
 
+/**
+ * Service responsible for calculating train travel performance, simulating route times,
+ * and resolving single-track conflicts in the scheduling process.
+ */
 public class SchedulerService {
 
-    // Constantes de Cálculo
+    // Calculation Constants
     private static final double POWER_TO_TRACTION_FACTOR = 2.857;
 
     private static final double LOCOMOTIVE_TARA_KG = 80000.0;
     private static final double WAGON_TARA_KG = 25000.0;
     private static final double WAGON_LOAD_KG = 50000.0;
 
-    // Novo limite máximo de engenharia para o comboio (Cap)
+    // New maximum engineering speed limit for the train (Cap)
     private static final double MAX_FREIGHT_SPEED_CAP = 250.0;
     private static final double MIN_FREIGHT_SPEED = 30.0;
 
     private final StationRepository stationRepo;
     private final FacilityRepository facilityRepo;
 
+    /**
+     * Constructs a new SchedulerService.
+     * @param stationRepo Repository for European Stations.
+     * @param facilityRepo Repository for Facilities (Stations/Intersections).
+     */
     public SchedulerService(StationRepository stationRepo, FacilityRepository facilityRepo) {
         this.stationRepo = stationRepo;
         this.facilityRepo = facilityRepo;
@@ -33,7 +42,10 @@ public class SchedulerService {
 
 
     /**
-     * Calcula as propriedades combinadas do comboio (Peso e Potência).
+     * Calculates the combined properties of the train (Weight and Power).
+     *
+     * @param trip The trip to calculate performance for.
+     * @return The updated TrainTrip object.
      */
     public TrainTrip calculateTrainPerformance(TrainTrip trip) {
         double combinedPowerKw = trip.getLocomotives().stream()
@@ -52,11 +64,14 @@ public class SchedulerService {
     }
 
     /**
-     * Calcula o tempo de viagem segmento a segmento com base na performance do comboio e linha.
-     * (Método não alterado)
+     * Calculates the travel time segment by segment based on the train and line performance.
+     * (Unchanged method)
+     *
+     * @param trip The trip to simulate.
+     * @return The updated TrainTrip object with segment entries and calculated times.
      */
     public TrainTrip calculateTravelTimes(TrainTrip trip) {
-        // Implementação do calculateTravelTimes...
+        // Implementation of calculateTravelTimes...
 
         trip = calculateTrainPerformance(trip);
 
@@ -69,12 +84,12 @@ public class SchedulerService {
 
         double cumulativeTimeHours = 0.0;
 
-        // 1. V_max do comboio (Cálculo Dinâmico)
+        // 1. Train V_max (Dynamic Calculation)
         double vMaxTrain = (totalWeightTons > 0)
                 ? (combinedPowerKw * POWER_TO_TRACTION_FACTOR) / totalWeightTons
                 : Double.POSITIVE_INFINITY;
 
-        // Aplica o CAP e MÍNIMO
+        // Apply CAP and MINIMUM
         vMaxTrain = Math.min(vMaxTrain, MAX_FREIGHT_SPEED_CAP);
         vMaxTrain = Math.max(vMaxTrain, MIN_FREIGHT_SPEED);
 
@@ -90,7 +105,7 @@ public class SchedulerService {
             int endId = seg.getIdEstacaoFim();
             int nextStationId;
 
-            // Lógica para determinar a direção correta do percurso
+            // Logic to determine the correct direction of the route
             if (startId == currentStationId) {
                 nextStationId = endId;
             } else if (endId == currentStationId) {
@@ -102,10 +117,10 @@ public class SchedulerService {
                 nextStationId = endId;
             }
 
-            // 2. V_efetiva: Mínimo entre a linha e V_max do comboio (effectiveSpeed deve ser 150.0)
+            // 2. Effective Speed (V_effective): Minimum between line speed and train V_max
             double effectiveSpeed = Math.min(seg.getVelocidadeMaxima(), vMaxTrain);
 
-            // 3. Cálculo do tempo
+            // 3. Time Calculation
             double segmentTimeHours = (effectiveSpeed > 0 && seg.getComprimento() > 0)
                     ? seg.getComprimento() / effectiveSpeed
                     : Double.POSITIVE_INFINITY;
@@ -117,7 +132,7 @@ public class SchedulerService {
             long secondsToAdd = Math.round(segmentTimeHours * 3600);
             LocalDateTime exitTime = entryTime.plusSeconds(secondsToAdd);
 
-            // 4. Cria e armazena a entrada de simulação
+            // 4. Create and store the simulation entry
             SimulationSegmentEntry entry = new SimulationSegmentEntry(
                     trip.getTripId(),
                     seg,
@@ -140,11 +155,14 @@ public class SchedulerService {
     }
 
     /**
-     * Obtém o nome da Facility (Estação) usando o FacilityRepository (mais abrangente).
-     * (Método não alterado)
+     * Gets the name of the Facility (Station) using the FacilityRepository (more comprehensive).
+     * (Unchanged method)
+     *
+     * @param id The facility ID.
+     * @return The name of the facility or a default string if not found.
      */
     private String getFacilityName(int id) {
-        // Implementação do getFacilityName...
+        // Implementation of getFacilityName...
         if (facilityRepo != null) {
             Optional<String> name = facilityRepo.findNameById(id);
             if (name.isPresent()) {
@@ -161,12 +179,16 @@ public class SchedulerService {
     }
 
     /**
-     * Procura o último ponto seguro (estação/facility com acesso a via dupla) antes
-     * do segmento onde ocorre o conflito.
-     * (Método não alterado)
+     * Finds the last safe waiting point (station/facility with access to a double track)
+     * before the segment where the conflict occurs.
+     * (Unchanged method)
+     *
+     * @param trip The trip to analyze.
+     * @param conflictSegmentIndex The index of the segment where the conflict is detected.
+     * @return The ID of the safest waiting facility.
      */
     private int findLastSafeWaitingPointId(TrainTrip trip, int conflictSegmentIndex) {
-        // Implementação do findLastSafeWaitingPointId...
+        // Implementation of findLastSafeWaitingPointId...
         int defaultWaitId = trip.getRoute().get(conflictSegmentIndex).getIdEstacaoInicio();
 
         for (int k = conflictSegmentIndex - 1; k >= 0; k--) {
@@ -182,124 +204,131 @@ public class SchedulerService {
 
 
     /**
-     * Simula o despacho de uma lista de viagens, resolvendo conflitos de via única.
-     * (Método não alterado)
+     * Simulates the dispatch of a list of trips, resolving single-track conflicts.
+     * (Unchanged method)
+     *
+     * @param trips The list of train trips to schedule.
+     * @return A {@link SchedulerResult} containing the final scheduled trips and resolved conflicts.
      */
     public SchedulerResult dispatchTrains(List<TrainTrip> trips) {
-        // Implementação do dispatchTrains...
+        // Implementation of dispatchTrains...
         SchedulerResult result = new SchedulerResult();
 
-        // 1. OTIMIZAÇÃO CRÍTICA: Ordenar os comboios pela hora de partida original.
+        // 1. CRITICAL OPTIMIZATION: Sort trains by original departure time.
         List<TrainTrip> schedule = trips.stream()
                 .sorted(Comparator.comparing(TrainTrip::getDepartureTime))
                 .collect(Collectors.toList());
 
-        // 2. Calcular tempos de viagem iniciais e aplicar atrasos em cascata
+        // 2. Calculate initial travel times and apply cascading delays
         schedule = schedule.stream()
                 .map(this::calculateTravelTimes)
                 .collect(Collectors.toList());
 
-        // 3. Algoritmo de Deteção e Resolução de Conflitos (Via Única)
+        // 3. Conflict Detection and Resolution Algorithm (Single Track)
         for (int i = 0; i < schedule.size(); i++) {
             TrainTrip tripA = schedule.get(i);
             for (int j = i + 1; j < schedule.size(); j++) {
                 TrainTrip tripB = schedule.get(j);
 
-                // O comboio TripA (prioritário, mais cedo) é comparado com TripB (atrasado, mais tarde)
+                // TripA (prioritized, earlier) is compared with TripB (delayed, later)
                 Conflict conflict = resolveFirstConflict(tripA, tripB);
 
                 if (conflict != null) {
                     result.addConflict(conflict);
 
-                    // Lógica para atrasar e recalcular a rota da Trip B (o segundo no par é sempre o atrasado)
+                    // Logic to delay and recalculate the route of Trip B (the second in the pair is always the one delayed)
                     if (conflict.delayMinutes > 0 && conflict.tripId2.equals(tripB.getTripId())) {
                         LocalDateTime newDeparture = tripB.getDepartureTime().plusMinutes(conflict.delayMinutes);
                         TrainTrip delayedTrip = new TrainTrip(
                                 tripB.getTripId(), newDeparture, tripB.getRoute(), tripB.getLocomotives(), tripB.getWagons());
 
-                        // Recalcula e substitui na lista
+                        // Recalculate and substitute in the list
                         delayedTrip = calculateTravelTimes(delayedTrip);
                         schedule.set(j, delayedTrip);
 
-                        // Atualiza a referência local para o próximo loop de conflitos
+                        // Update the local reference for the next conflict loop
                         tripB = delayedTrip;
                     }
                 }
             }
         }
 
-        // 4. Adicionar horários finais (com atrasos) ao resultado
+        // 4. Add final schedules (with delays) to the result
         schedule.forEach(result::addTrip);
         return result;
     }
 
-    // Método auxiliar para obter o ID base do segmento físico
+    // Helper method to get the physical base ID of the segment
     private String getPhysicalSegmentId(String segmentId) {
         if (segmentId.startsWith(SegmentLineRepository.INVERSE_ID_PREFIX)) {
-            // Remove o prefixo INV_ para obter o ID físico
+            // Remove the INV_ prefix to get the physical ID
             return segmentId.substring(SegmentLineRepository.INVERSE_ID_PREFIX.length());
         }
         return segmentId;
     }
 
     /**
-     * Lógica para resolver o PRIMEIRO conflito entre duas viagens em um segmento via única,
-     * calculando o atraso MÍNIMO necessário.
+     * Logic to resolve the FIRST conflict between two trips on a single-track segment,
+     * calculating the MINIMUM required delay.
+     *
+     * @param tripA The prioritized trip (earlier departure).
+     * @param tripB The trip being checked for conflict (later departure).
+     * @return A {@link Conflict} object if a conflict is found and resolved, otherwise {@code null}.
      */
     private Conflict resolveFirstConflict(TrainTrip tripA, TrainTrip tripB) {
-        // Encontra o segmento de via única partilhado
+        // Find the shared single-track segment
         for (int i = 0; i < tripA.getSegmentEntries().size(); i++) {
             SimulationSegmentEntry entryA = tripA.getSegmentEntries().get(i);
             LineSegment segA = entryA.getSegment();
-            // Continuar apenas se o segmento A for via única
+            // Continue only if segment A is single track
             if (!segA.isViaUnica()) continue;
 
-            // Obtém o ID físico do segmento A (sem INV_)
+            // Get the physical ID of segment A (without INV_)
             String physicalIdA = getPhysicalSegmentId(segA.getIdSegmento());
 
             for (int j = 0; j < tripB.getSegmentEntries().size(); j++) {
                 SimulationSegmentEntry entryB = tripB.getSegmentEntries().get(j);
                 LineSegment segB = entryB.getSegment();
 
-                // (Opcional) Poderíamos verificar se B também é via única, mas se A for, é suficiente para colisão.
+                // (Optional) We could check if B is also single track, but if A is, it's enough for collision.
 
-                // Obtém o ID físico do segmento B (sem INV_)
+                // Get the physical ID of segment B (without INV_)
                 String physicalIdB = getPhysicalSegmentId(segB.getIdSegmento());
 
-                // Condição CORRIGIDA: Verifica se ambos os comboios estão a usar a MESMA via física.
+                // CORRECTED Condition: Check if both trains are using the SAME physical track.
                 if (physicalIdA.equals(physicalIdB)) {
 
-                    LocalDateTime exitTimeA = entryA.getExitTime(); // Tempo que A liberta o segmento
-                    LocalDateTime entryTimeB = entryB.getEntryTime(); // Tempo que B tentaria entrar
+                    LocalDateTime exitTimeA = entryA.getExitTime(); // Time when A releases the segment
+                    LocalDateTime entryTimeB = entryB.getEntryTime(); // Time when B would attempt to enter
 
-                    // Condição de Conflito: A Trip A (prioritária) ainda está no segmento quando B tenta entrar
+                    // Conflict Condition: Trip A (prioritized) is still in the segment when B tries to enter
                     if (exitTimeA.isAfter(entryTimeB)) {
 
-                        // CÁLCULO DINÂMICO DO ATRASO MÍNIMO: Tempo que B tem de esperar
+                        // DYNAMIC CALCULATION OF MINIMUM DELAY: Time B must wait
                         Duration waitDuration = Duration.between(entryTimeB, exitTimeA);
 
-                        // Conversão para minutos, arredondando para cima
+                        // Conversion to minutes, rounding up
                         long delaySeconds = waitDuration.getSeconds();
                         long delayMinutes = (long) Math.ceil(delaySeconds / 60.0);
 
-                        // Adiciona 1 minuto de buffer e garante pelo menos 1 min de atraso
+                        // Add 1 minute buffer and ensure at least 1 min delay
                         delayMinutes = Math.max(1, delayMinutes + 1);
 
                         long delay = delayMinutes;
 
-                        // O 'scheduledMeetTime' é o tempo de entrada SEGURO de B no segmento
+                        // The 'scheduledMeetTime' is the SAFE entry time for B into the segment
                         LocalDateTime safeEntryTime = entryB.getEntryTime().plusMinutes(delay);
 
-                        // ENCONTRAR PONTO DE ESPERA SEGURO (VIA DUPLA)
+                        // FIND SAFE WAITING POINT (DOUBLE TRACK)
                         int safeWaitFacilityId = findLastSafeWaitingPointId(tripB, j);
                         String safeWaitFacilityName = getFacilityName(safeWaitFacilityId);
 
 
-                        // Retorna o objeto Conflict com o atraso calculado
+                        // Return the Conflict object with the calculated delay
                         return new Conflict(
                                 tripA.getTripId(),
                                 tripB.getTripId(),
-                                safeWaitFacilityId, // Estação de espera real
+                                safeWaitFacilityId, // Actual waiting station
                                 safeEntryTime,
                                 delay,
                                 String.format("Trip %s must yield segment %s to Trip %s (Waiting %d min at %s)",

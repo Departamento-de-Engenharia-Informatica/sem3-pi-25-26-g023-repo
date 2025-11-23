@@ -8,17 +8,23 @@ import java.util.Map;
 /**
  * USEI10 - Radius search + Density summary
  *
- * Esta classe recebe a 2D KD-Tree construída na USEI07
- * e executa pesquisas por raio com cálculo de sumário estatístico.
+ * This class receives the 2D KD-Tree built in USEI07
+ * and executes radius searches with statistical summary calculation.
  *
- * Complexidade:
- *  - radiusSearch(): O(√N + K)
- *  - radiusSearchWithSummary(): O(√N + K log K)
+ * Complexity:
+ * - radiusSearch(): O(√N + K)
+ * - radiusSearchWithSummary(): O(√N + K log K)
  */
 public class RadiusSearch {
 
     private final KDTree spatialIndex;
 
+    /**
+     * Constructs a RadiusSearch service instance.
+     *
+     * @param spatialIndex The initialized KD-Tree structure.
+     * @throws IllegalArgumentException if the KDTree is null.
+     */
     public RadiusSearch(KDTree spatialIndex) {
         if (spatialIndex == null)
             throw new IllegalArgumentException("KDTree cannot be null.");
@@ -26,7 +32,13 @@ public class RadiusSearch {
     }
 
     /**
-     * Executa apenas a pesquisa por raio e devolve a lista de estações.
+     * Executes only the radius search and returns the list of stations found.
+     *
+     * @param lat The target latitude.
+     * @param lon The target longitude.
+     * @param radiusKm The search radius in kilometers.
+     * @return A list of {@link EuropeanStation} objects within the radius.
+     * @throws IllegalArgumentException if the radius is negative.
      */
     public List<EuropeanStation> radiusSearch(double lat, double lon, double radiusKm) {
         if (radiusKm < 0)
@@ -35,26 +47,29 @@ public class RadiusSearch {
     }
 
     /**
-     * Executa a pesquisa por raio e devolve:
+     * Executes the radius search and returns:
      *
-     *   - BST ordenada por distância ASC e nome DESC
-     *   - Sumário da densidade (país, cidade, main station)
+     * - An ordered BST (Binary Search Tree) sorted by distance ASC and name DESC.
+     * - A density summary (country, city, main station counts).
      *
+     * @param lat The target latitude.
+     * @param lon The target longitude.
+     * @param radiusKm The search radius in kilometers.
      * @return Object[] = { BST<StationDistance>, DensitySummary }
      */
     public Object[] radiusSearchWithSummary(double lat, double lon, double radiusKm) {
 
-        // === 1. Buscar estações no raio (O(√N + K)) ===
+        // === 1. Search for stations within the radius (O(√N + K)) ===
         List<EuropeanStation> stationsInRadius =
                 spatialIndex.radiusSearch(lat, lon, radiusKm);
 
-        // === 2. Preparar estruturas ===
+        // === 2. Prepare structures ===
         List<StationDistance> distanceList = new ArrayList<>();
         Map<String, Integer> countryCount = new HashMap<>();
         Map<Boolean, Integer> cityCount = new HashMap<>();
         Map<Boolean, Integer> mainStationCount = new HashMap<>();
 
-        // === 3. Calcular distâncias e estatísticas (O(K)) ===
+        // === 3. Calculate distances and statistics (O(K)) ===
         for (EuropeanStation st : stationsInRadius) {
 
             double dist = GeoDistance.haversine(lat, lon,
@@ -68,7 +83,7 @@ public class RadiusSearch {
             mainStationCount.merge(st.isMainStation(), 1, Integer::sum);
         }
 
-        // === 4. Construir BST ordenada por distância ASC e nome DESC (O(K log K)) ===
+        // === 4. Build balanced BST sorted by distance ASC and name DESC (O(K log K)) ===
         BST<StationDistance, StationDistance> bst = new BST<>();
         bst.buildBalancedTree(distanceList, sd -> sd); // key = StationDistance
 
@@ -79,7 +94,7 @@ public class RadiusSearch {
                 mainStationCount
         );
 
-        // === 5. Devolver estrutura completa ===
+        // === 5. Return complete structure ===
         return new Object[]{bst, summary};
     }
 }

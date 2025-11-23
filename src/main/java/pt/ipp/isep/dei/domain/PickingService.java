@@ -6,9 +6,13 @@ import java.util.*;
 
 /**
  * Service for generating and managing picking plans.
+ *
+ * <p>It handles the process of converting allocations into pickable assignments,
+ * applying packing heuristics, and exporting the final plan.</p>
  */
 public class PickingService {
 
+    // Map to quickly look up Item details using SKU
     private Map<String, Item> itemsMap;
 
     /** Creates a new picking service. */
@@ -17,13 +21,22 @@ public class PickingService {
         this.itemsMap = new HashMap<>();
     }
 
-    /** Sets the items map for SKU lookup. */
+    /**
+     * Sets the items map for SKU lookup.
+     *
+     * @param itemsMap The map containing Item objects keyed by SKU.
+     */
     public void setItemsMap(Map<String, Item> itemsMap) {
         this.itemsMap = itemsMap != null ? itemsMap : new HashMap<>();
     }
 
     /**
      * Generates a picking plan based on allocations and heuristic.
+     *
+     * @param allocations The list of allocations (order items with stock locations) to process.
+     * @param trolleyCapacity The maximum capacity (weight) of each trolley.
+     * @param heuristic The packing heuristic to use (e.g., Best Fit, First Fit).
+     * @return A generated {@link PickingPlan} object.
      */
     public PickingPlan generatePickingPlan(List<Allocation> allocations,
                                            double trolleyCapacity,
@@ -53,7 +66,12 @@ public class PickingService {
         return plan;
     }
 
-    /** Converts allocations to picking assignments, filtering invalid locations. */
+    /**
+     * Converts allocations to picking assignments, filtering invalid locations.
+     *
+     * @param allocations The list of allocations to convert.
+     * @return A list of valid {@link PickingAssignment} objects.
+     */
     private List<PickingAssignment> convertToAssignments(List<Allocation> allocations) {
         List<PickingAssignment> assignments = new ArrayList<>();
         int skippedCount = 0;
@@ -96,7 +114,12 @@ public class PickingService {
         return "PLAN_" + System.currentTimeMillis();
     }
 
-    /** Exports picking plan to CSV string. */
+    /**
+     * Exports picking plan to a CSV formatted string.
+     *
+     * @param plan The {@link PickingPlan} to export.
+     * @return A String containing the CSV data.
+     */
     public String exportToCSV(PickingPlan plan) {
         StringBuilder csv = new StringBuilder();
         csv.append("PlanID,Heuristic,TrolleyCapacity,TrolleyID,TrolleyUtilization(%),OrderID,LineNo,SKU,ItemName,Quantity,BoxID,Aisle,Bay,Weight(kg)\n");
@@ -130,7 +153,12 @@ public class PickingService {
         return csv.toString();
     }
 
-    /** Exports picking plan to CSV file. */
+    /**
+     * Exports picking plan to a CSV file.
+     *
+     * @param plan The {@link PickingPlan} to export.
+     * @param filename The name of the output CSV file.
+     */
     public void exportToCSVFile(PickingPlan plan, String filename) {
         String csvData = exportToCSV(plan);
         try (FileWriter writer = new FileWriter(filename)) {

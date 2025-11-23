@@ -18,13 +18,18 @@ import javafx.util.Duration;
 import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
 import pt.ipp.isep.dei.repository.TrainRepository;
-// --- NOVOS IMPORTS NECESSÁRIOS ---
+// --- NEW NECESSARY IMPORTS ---
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.SegmentLineRepository;
 
 import java.io.IOException;
 import java.net.URL;
 
+/**
+ * Main Controller for the JavaFX application.
+ * Manages view navigation, dependency injection into sub-controllers,
+ * and maintains global application state (e.g., last results, run status).
+ */
 public class MainController {
 
     @FXML
@@ -47,29 +52,29 @@ public class MainController {
     private KDTree spatialKDTree;
 
     // -------------------------------------------------------------
-    // --- CORREÇÃO DE INICIALIZAÇÃO DE DEPENDÊNCIAS COMPLEXAS ---
-    // 1. Inicializar os repositórios de base
+    // --- CORRECTION OF COMPLEX DEPENDENCY INITIALIZATION ---
+    // 1. Initialize base repositories
     private TrainRepository trainRepository = new TrainRepository();
     private FacilityRepository facilityRepository = new FacilityRepository();
     private LocomotiveRepository locomotiveRepository = new LocomotiveRepository();
-    private StationRepository stationRepository = new StationRepository(); // <-- NOVO!
-    private SegmentLineRepository segmentLineRepository = new SegmentLineRepository(); // <-- NOVO!
+    private StationRepository stationRepository = new StationRepository(); // <-- NEW!
+    private SegmentLineRepository segmentLineRepository = new SegmentLineRepository(); // <-- NEW!
 
-    // 2. Inicializar serviços que dependem dos repositórios
+    // 2. Initialize services that depend on repositories
 
-    // SchedulerService exige 2 argumentos: StationRepository e FacilityRepository
+    // SchedulerService requires 2 arguments: StationRepository and FacilityRepository
     private SchedulerService schedulerService = new SchedulerService(
             this.stationRepository,
             this.facilityRepository
     );
 
-    // RailwayNetworkService exige 2 argumentos: StationRepository e SegmentLineRepository
+    // RailwayNetworkService requires 2 arguments: StationRepository and SegmentLineRepository
     private RailwayNetworkService networkService = new RailwayNetworkService(
             this.stationRepository,
             this.segmentLineRepository
     );
 
-    // 3. Inicializar o DispatcherService com 5 argumentos (Repos e Serviços)
+    // 3. Initialize DispatcherService with 5 arguments (Repos and Services)
     private DispatcherService dispatcherService = new DispatcherService(
             this.trainRepository,
             this.networkService,
@@ -84,11 +89,15 @@ public class MainController {
     private boolean isAllocationsRun = false;
     private boolean isPickingRun = false;
 
-    // --- ESTADO GLOBAL (como na CargoHandlingUI) ---
+    // --- GLOBAL STATE (as in CargoHandlingUI) ---
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
 
 
+    /**
+     * Sets the core backend services (WMS, InventoryManager, Controllers) to this controller.
+     * Called by the application's main entry point (App.java).
+     */
     public void setBackendServices(WMS wms, InventoryManager manager,
                                    TravelTimeController ttc,
                                    StationIndexManager sim, KDTree kdt) {
@@ -102,6 +111,9 @@ public class MainController {
                 manager.getItemsCount(), wms.getInventory().getBoxes().size()));
     }
 
+    /**
+     * Initializes the controller after the FXML has been loaded.
+     */
     @FXML
     public void initialize() {
         statusLabel.setText("Loading services...");
@@ -113,7 +125,10 @@ public class MainController {
     }
 
     /**
-     * Carrega uma nova vista FXML na área de conteúdo central.
+     * Loads a new FXML view into the central content area.
+     *
+     * @param fxmlFileName The name of the FXML file (e.g., "dashboard-view.fxml").
+     * @param backendService The main dependency to inject into the new view's controller.
      */
     private void loadView(String fxmlFileName, Object backendService) {
         try {
@@ -128,7 +143,7 @@ public class MainController {
             Parent view = loader.load();
             Object controller = loader.getController();
 
-            // --- INJEÇÃO DE DEPENDÊNCIA (Atualizada) ---
+            // --- DEPENDENCY INJECTION (Updated) ---
 
             if (backendService instanceof TravelTimeController && controller instanceof TravelTimeGUIController) {
                 ((TravelTimeGUIController) controller).setBackend((TravelTimeController) backendService);
@@ -146,28 +161,28 @@ public class MainController {
                 if (backendService instanceof InventoryManager) {
                     ((Usei02Controller) controller).setServices(this, (InventoryManager) backendService);
                 } else {
-                    System.err.println("Erro de injeção: Usei02Controller esperava um InventoryManager.");
+                    System.err.println("Injection Error: Usei02Controller expected an InventoryManager.");
                 }
             }
 
-            // ✅ --- BLOCO PARA USEI03 ---
+            // ✅ --- BLOCK FOR USEI03 ---
             else if (controller instanceof Usei03Controller) {
                 if (backendService instanceof InventoryManager) {
                     ((Usei03Controller) controller).setServices(this, (InventoryManager) backendService);
                 } else {
-                    System.err.println("Erro de injeção: Usei03Controller esperava um InventoryManager.");
+                    System.err.println("Injection Error: Usei03Controller expected an InventoryManager.");
                 }
             }
-            // ✅ --- BLOCO PARA USEI04 ---
+            // ✅ --- BLOCK FOR USEI04 ---
             else if (controller instanceof Usei04Controller) {
                 if (backendService instanceof MainController) {
                     ((Usei04Controller) controller).setServices((MainController) backendService);
                 } else {
-                    System.err.println("Erro de injeção: Usei04Controller esperava um MainController.");
+                    System.err.println("Injection Error: Usei04Controller expected a MainController.");
                 }
             }
 
-            // ✅ --- BLOCO PARA USEI05 ---
+            // ✅ --- BLOCK FOR USEI05 ---
             else if (controller instanceof Usei05Controller) {
                 ((Usei05Controller) controller).setServices(this, this.wms, this.manager);
             }
@@ -176,45 +191,45 @@ public class MainController {
                 if (backendService instanceof StationIndexManager) {
                     ((Usei06Controller) controller).setServices(this, (StationIndexManager) backendService);
                 } else {
-                    System.err.println("Erro de injeção: Usei06Controller esperava um StationIndexManager.");
+                    System.err.println("Injection Error: Usei06Controller expected a StationIndexManager.");
                 }
             }
-            // ✅ --- BLOCO PARA USEI07 ---
+            // ✅ --- BLOCK FOR USEI07 ---
             else if (controller instanceof Usei07Controller) {
                 if (backendService instanceof StationIndexManager) {
                     ((Usei07Controller) controller).setServices(this, (StationIndexManager) backendService);
                 } else {
-                    System.err.println("Erro de injeção: Usei07Controller esperava um StationIndexManager.");
+                    System.err.println("Injection Error: Usei07Controller expected a StationIndexManager.");
                 }
             }
 
-            // ✅ --- BLOCO PARA USEI08 ---
+            // ✅ --- BLOCK FOR USEI08 ---
             else if (controller instanceof Usei08Controller) {
                 if (backendService instanceof KDTree) {
                     ((Usei08Controller) controller).setServices(this, (KDTree) backendService);
                 } else {
-                    System.err.println("Erro de injeção: Usei08Controller esperava a KDTree.");
+                    System.err.println("Injection Error: Usei08Controller expected the KDTree.");
                 }
             }
 
-            // ✅ --- NOVO BLOCO PARA USEI10 (Radius Search) ---
+            // ✅ --- NEW BLOCK FOR USEI10 (Radius Search) ---
             else if (controller instanceof Usei10Controller) {
-                // A USEI10 precisa do StationIndexManager para obter o RadiusSearchEngine
+                // USEI10 needs the StationIndexManager to obtain the RadiusSearchEngine
                 if (backendService instanceof StationIndexManager) {
                     ((Usei10Controller) controller).setServices(this, (StationIndexManager) backendService);
                 } else {
-                    System.err.println("Erro de injeção: Usei10Controller esperava um StationIndexManager.");
+                    System.err.println("Injection Error: Usei10Controller expected a StationIndexManager.");
                 }
             }
-            // --- FIM DO NOVO BLOCO DE INJEÇÃO ---
+            // --- END OF NEW INJECTION BLOCK ---
 
 
-            // ✅ --- BLOCO PARA BDDADMainController ---
+            // ✅ --- BLOCK FOR BDDADMainController ---
             else if (controller instanceof BDDADMainController) {
                 if (backendService instanceof MainController) {
                     ((BDDADMainController) controller).setServices((MainController) backendService);
                 } else {
-                    System.err.println("Erro de injeção: BDDADMainController esperava um MainController.");
+                    System.err.println("Injection Error: BDDADMainController expected a MainController.");
                 }
             }
             // --- END OF INJECTION ---
@@ -234,19 +249,28 @@ public class MainController {
     }
 
 
-    // --- MÉTODOS PÚBLICOS PARA ATUALIZAR O STATUS ---
+    // --- PUBLIC METHODS TO UPDATE STATUS ---
 
+    /**
+     * Updates the status flag for allocations and refreshes the header.
+     */
     public void updateStatusAllocations(boolean hasRun) {
         this.isAllocationsRun = hasRun;
         updateStatusHeader();
     }
 
+    /**
+     * Updates the status flag for picking and refreshes the header.
+     */
     public void updateStatusPicking(boolean hasRun) {
         this.isPickingRun = hasRun;
         updateStatusHeader();
     }
 
 
+    /**
+     * Refreshes the style and text of the status labels in the main header.
+     */
     private void updateStatusHeader() {
         if (statusAllocations == null || statusPicking == null) {
             return;
@@ -257,6 +281,9 @@ public class MainController {
     }
 
 
+    /**
+     * Helper to apply CSS classes based on the run status.
+     */
     private void updateLabelStyle(Label label, boolean hasRun) {
         if (hasRun) {
             label.setText("RUN");
@@ -270,26 +297,30 @@ public class MainController {
     }
 
 
-    // --- MÉTODOS PÚBLICOS PARA ESTADO GLOBAL ---
+    // --- PUBLIC METHODS FOR GLOBAL STATE ---
 
+    /** Returns the result of the last order allocation operation. */
     public AllocationResult getLastAllocationResult() {
         return lastAllocationResult;
     }
 
+    /** Sets the result of the last order allocation operation. */
     public void setLastAllocationResult(AllocationResult lastAllocationResult) {
         this.lastAllocationResult = lastAllocationResult;
     }
 
+    /** Returns the result of the last picking plan generation. */
     public PickingPlan getLastPickingPlan() {
         return lastPickingPlan;
     }
 
+    /** Sets the result of the last picking plan generation. */
     public void setLastPickingPlan(PickingPlan lastPickingPlan) {
         this.lastPickingPlan = lastPickingPlan;
     }
 
 
-    // --- HANDLERS DE NAVEGAÇÃO ---
+    // --- NAVIGATION HANDLERS ---
 
     @FXML
     private VBox notificationPane;
@@ -349,7 +380,7 @@ public class MainController {
 
     @FXML
     void handleShowUSEI09(ActionEvent event) {
-        // A USEI09 não utiliza o 'loadView' tradicional, então o código é mantido separado
+        // USEI09 does not use the traditional 'loadView', so the code is kept separate
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/esinf-usei09-view.fxml"));
             BorderPane view = loader.load();
@@ -369,11 +400,11 @@ public class MainController {
         }
     }
 
-    // ✅ --- HANDLER INTEGRADO PARA USEI10 ---
+    // ✅ --- INTEGRATED HANDLER FOR USEI10 ---
     @FXML
     public void handleShowUSEI10(ActionEvent event) {
         statusLabel.setText("Radius Search & Density Summary [USEI10]");
-        // Passa o StationIndexManager, que contém o RadiusSearchEngine
+        // Pass the StationIndexManager, which contains the RadiusSearchEngine
         loadView("esinf-usei10-view.fxml", this.stationIndexManager);
     }
     // ----------------------------------------
@@ -391,14 +422,14 @@ public class MainController {
         AnchorPane.setLeftAnchor(t, 25.0);
     }
 
-    // ... [Outros Handlers e Métodos de CRUD omitidos por brevidade, mas devem ser mantidos]
+    // ... [Other Handlers and CRUD Methods omitted for brevity, but should be kept]
 
-    // --- MÉTODOS PÚBLICOS PARA CRUDS (MANTIDOS DA ESTRUTURA ANTERIOR) ---
+    // --- PUBLIC METHODS FOR CRUDS (KEPT FROM PREVIOUS STRUCTURE) ---
 
     @FXML
     public void handleShowSimulation(ActionEvent event) throws IOException {
         if (this.statusLabel != null) {
-            this.statusLabel.setText("USLP07 - Simulação Completa e Conflitos");
+            this.statusLabel.setText("USLP07 - Full Simulation and Conflicts");
         }
 
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/lapr3-simulation-view.fxml"));
@@ -416,7 +447,7 @@ public class MainController {
 
         controller.initController();
 
-        // Associar ação do botão manualmente (opcional)
+        // Manually associate button action (optional)
         controller.runButton.setOnAction(e -> controller.runSimulation());
 
         this.centerContentPane.getChildren().clear();
@@ -428,6 +459,7 @@ public class MainController {
         AnchorPane.setRightAnchor(root, 0.0);
     }
 
+    /** Loads the Train CRUD view. */
     public void loadTrainCrudView() {
         statusLabel.setText("BDDAD Features: Train CRUD");
         centerContentPane.getChildren().clear();
@@ -498,6 +530,7 @@ public class MainController {
         loadView("bdad-main-view.fxml", this);
     }
 
+    /** Loads the Operator CRUD view. */
     public void loadOperatorCrudView() {
         statusLabel.setText("BDDAD Features: Operator CRUD");
         centerContentPane.getChildren().clear();
@@ -520,6 +553,7 @@ public class MainController {
         }
     }
 
+    /** Loads the Locomotive CRUD view. */
     public void loadLocomotiveCrudView() {
         statusLabel.setText("BDDAD Features: Locomotive CRUD");
         centerContentPane.getChildren().clear();
@@ -542,9 +576,14 @@ public class MainController {
         }
     }
 
-
+    /**
+     * Shows a transient notification pop-up in the corner of the application.
+     *
+     * @param message The message to display.
+     * @param type The type of notification ("success", "error", or other for info).
+     */
     public void showNotification(String message, String type) {
-        // Lógica da notificação
+        // Notification logic
         Label notificationLabel = new Label(message);
         notificationLabel.getStyleClass().add("notification-label");
 
@@ -579,6 +618,7 @@ public class MainController {
         fadeIn.play();
     }
 
+    /** Loads the Wagon CRUD view. */
     public void loadWagonCrudView() {
         statusLabel.setText("BDDAD Features: Wagon CRUD");
         centerContentPane.getChildren().clear();

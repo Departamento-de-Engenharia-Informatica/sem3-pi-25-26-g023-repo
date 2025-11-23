@@ -3,19 +3,18 @@ package pt.ipp.isep.dei.domain;
 import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.TrainRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
-// import pt.ipp.isep.dei.repository.SegmentLineRepository; // Já não é necessário
+// import pt.ipp.isep.dei.repository.SegmentLineRepository; // No longer needed
 
-import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
 /**
- * Serviço responsável por orquestrar a simulação de comboios,
- * convertendo os objetos de repositório (Train) para objetos de domínio
- * (TrainTrip) e delegando o agendamento e resolução de conflitos
- * ao SchedulerService.
+ * Service responsible for orchestrating the train simulation process (USLP07).
+ * It handles the conversion of repository objects (Train) into domain objects (TrainTrip)
+ * by finding the optimal route and identifying the locomotive data.
+ * The core scheduling and conflict resolution tasks are delegated to the {@code SchedulerService}.
  */
 public class DispatcherService {
 
@@ -23,49 +22,49 @@ public class DispatcherService {
     private final RailwayNetworkService networkService;
     private final FacilityRepository facilityRepo;
     private final LocomotiveRepository locomotiveRepo;
-    private final SchedulerService schedulerService; // <--- NOVO CAMPO INJETADO (ESSENCIAL)
-
-    // Constantes de Cálculo (Mantidas apenas para a lógica de criação do TrainTrip)
-    private static final double DEFAULT_MAX_SPEED = 1000.0; // Velocidade alta para shortest path
-
-    // NOTA: Os campos de timeline e os métodos de simulação antigos foram removidos.
+    private final SchedulerService schedulerService;
 
     /**
-     * Construtor do DispatcherService.
-     * * @param trainRepo Repositório de comboios.
-     * @param networkService Serviço de rede ferroviária.
-     * @param facilityRepo Repositório de facilities.
-     * @param locomotiveRepo Repositório de locomotivas.
-     * @param schedulerService Serviço de agendamento e resolução de conflitos (NOVO).
+     * Default maximum speed used to find the shortest path (minimum travel time) in the network service.
+     */
+    private static final double DEFAULT_MAX_SPEED = 1000.0;
+
+    /**
+     * Constructs the DispatcherService, injecting all necessary repositories and the core scheduling logic service.
+     * * @param trainRepo The train repository.
+     * @param networkService The railway network service for route finding.
+     * @param facilityRepo The facility repository.
+     * @param locomotiveRepo The locomotive repository.
+     * @param schedulerService The scheduling and conflict resolution service.
      */
     public DispatcherService(
             TrainRepository trainRepo,
             RailwayNetworkService networkService,
             FacilityRepository facilityRepo,
             LocomotiveRepository locomotiveRepo,
-            SchedulerService schedulerService) { // <--- CONSTRUTOR ATUALIZADO
+            SchedulerService schedulerService) {
 
         this.trainRepo = trainRepo;
         this.networkService = networkService;
         this.facilityRepo = facilityRepo;
         this.locomotiveRepo = locomotiveRepo;
-        this.schedulerService = schedulerService; // <--- INJEÇÃO
+        this.schedulerService = schedulerService;
     }
 
     // =================================================================================
-    // 1. Agendamento Principal (scheduleTrains - NOVO NOME PARA REFLETIR O OBJETIVO)
+    // 1. Core Scheduling Method
     // =================================================================================
 
     /**
-     * Prepara as viagens (TrainTrip) e delega a simulação e resolução de conflitos
-     * ao SchedulerService, retornando o resultado final.
-     * * @param trainsToSimulate Lista dos comboios (Trains) a simular.
-     * @return SchedulerResult contendo o horário final e os conflitos resolvidos.
+     * Prepares the trips (TrainTrip) by finding their routes and delegates the full simulation,
+     * including time calculation and conflict resolution, to the SchedulerService.
+     * * @param trainsToSimulate List of Train repository objects to simulate.
+     * @return A {@code SchedulerResult} containing the final schedules and resolved conflicts.
      */
     public SchedulerResult scheduleTrains(List<Train> trainsToSimulate) {
         List<TrainTrip> initialTrips = new ArrayList<>();
 
-        // 1. Converter Trains em TrainTrips
+        // 1. Convert Trains into TrainTrips
         for (Train train : trainsToSimulate) {
             Optional<TrainTrip> trip = createTrainTrip(train);
             trip.ifPresent(initialTrips::add);
@@ -75,24 +74,28 @@ public class DispatcherService {
             return new SchedulerResult();
         }
 
-        // 2. Delega a simulação completa (cálculo de tempos + resolução de conflitos)
-        // para o SchedulerService. O SchedulerService retorna os horários recalculados.
+        // 2. Delegate the complete simulation (time calculation + conflict resolution)
+        // to the SchedulerService. The SchedulerService returns the recalculated schedules.
         return schedulerService.dispatchTrains(initialTrips);
     }
 
     /**
-     * Converte um objeto Train para um TrainTrip, encontrando a rota e a locomotiva.
+     * Converts a Train repository object into a TrainTrip domain object by finding the route and loading the locomotive data.
+     * * Route/Locomotive failures are typically handled or logged by the calling layer (UI/Controller)
+     * upon checking the Optional result.
+     *
+     * @param train The train to process.
+     * @return An Optional containing the {@code TrainTrip} if a valid route is found, otherwise {@code Optional.empty()}.
      */
     private Optional<TrainTrip> createTrainTrip(Train train) {
-        // Encontra a rota.
+        // Find the route.
         List<LineSegment> route = findRouteForTrain(train);
 
         if (route.isEmpty()) {
-            System.err.println("Skipping Train " + train.getTrainId() + ": Route not found for Route ID " + train.getRouteId());
             return Optional.empty();
         }
 
-        // Encontra a locomotiva para construir o TrainTrip.
+        // Find the locomotive to build the TrainTrip.
         List<Locomotive> locomotives = Collections.emptyList();
         try {
             int locoId = Integer.parseInt(train.getLocomotiveId());
@@ -101,26 +104,30 @@ public class DispatcherService {
                 locomotives = Collections.singletonList(optLoco.get());
             }
         } catch (NumberFormatException e) {
-            System.err.println("Error: Locomotive ID is not a number for train " + train.getTrainId());
+            // Error handling print removed (handled by UI layer).
         }
 
-        // Cria o TrainTrip. O cálculo de peso/potência e Vmax será feito pelo SchedulerService.
+        // Create the TrainTrip. The calculation of weight/power and Vmax is handled by the SchedulerService.
         TrainTrip trip = new TrainTrip(
                 train.getTrainId(),
                 train.getDepartureTime(),
                 route,
                 locomotives,
-                Collections.emptyList() // Assumindo 0 vagões para simplificação ou use o repo de Vagões se aplicável.
+                Collections.emptyList() // Assuming 0 wagons for simplification or use the Wagon repo if applicable.
         );
 
         return Optional.of(trip);
     }
 
     /**
-     * Usa o RailwayNetworkService para encontrar a rota completa (baseado no Route ID do comboio).
+     * Uses the RailwayNetworkService to find the complete route (based on the train's start and end facilities).
+     * The fastest path (shortest time) is prioritized by using a high speed assumption.
+     *
+     * @param train The train whose route is to be found.
+     * @return The list of {@code LineSegment}s forming the route, or an empty list if no path is found.
      */
     private List<LineSegment> findRouteForTrain(Train train) {
-        // Encontra o caminho mais rápido/mínimo, usando uma velocidade alta para priorizar o tempo mínimo
+        // Find the fastest/shortest path, using a high speed to prioritize minimum time
         RailwayPath path = networkService.findFastestPath(
                 train.getStartFacilityId(),
                 train.getEndFacilityId(),
@@ -129,13 +136,4 @@ public class DispatcherService {
 
         return (path != null) ? path.getSegments() : Collections.emptyList();
     }
-
-
-    // =================================================================================
-    // 2. MÉTODOS OBSOLETOS REMOVIDOS
-    // =================================================================================
-    /*
-     * Os métodos runSimulation (antigo), calculateTrainSegmentTimes,
-     * updateGlobalTimeline e checkConflictsAndSuggestCrossings foram removidos.
-     */
 }

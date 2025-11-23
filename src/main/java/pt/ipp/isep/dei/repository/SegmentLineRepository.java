@@ -9,26 +9,35 @@ import java.util.stream.Collectors;
 
 /**
  * Repository class responsible for loading and managing {@link LineSegment} entities.
+ *
+ * <p>It loads segments from the database and creates inverse segments to support
+ * bidirectional route simulation. It uses an in-memory cache for fast lookup.</p>
  */
 public class SegmentLineRepository {
 
-    // Constante para prefixar IDs do segmento inverso (CRÍTICO PARA CONFLITOS)
+    // Constant to prefix inverse segment IDs (CRITICAL FOR CONFLICTS)
     public static final String INVERSE_ID_PREFIX = "INV_";
     private static final double GENERIC_MAX_SPEED_KMH = 150.0;
 
     private final Map<String, LineSegment> segmentCache = new HashMap<>();
 
-    // 🚨 MOCK TEMPORÁRIO PARA LIGAÇÃO FACILITY <-> SEGMENTO 🚨
+    // 🚨 TEMPORARY MOCK FOR FACILITY <-> SEGMENT LINKAGE 🚨
     private final Map<Integer, Integer[]> segmentFacilityMapping = new HashMap<>();
 
 
+    /**
+     * Constructs the Segment Line Repository and initializes data loading.
+     */
     public SegmentLineRepository() {
         System.out.println("SegmentLineRepository: Initialized (Loading data from DB).");
         loadSegmentsFromDatabase();
     }
 
+    /**
+     * Populates the hardcoded mapping between segment IDs (integer key) and the start/end facility IDs.
+     */
     private void populateFacilityMapping() {
-        // Mapeamento mantido para a consistência do grafo
+        // Mapping maintained for graph consistency
         segmentFacilityMapping.put(1, new Integer[]{7, 5});
         segmentFacilityMapping.put(3, new Integer[]{5, 13});
         segmentFacilityMapping.put(30, new Integer[]{13, 43});
@@ -51,6 +60,9 @@ public class SegmentLineRepository {
     }
 
 
+    /**
+     * Loads segment data from the LINE_SEGMENT database table and creates inverse segments.
+     */
     private void loadSegmentsFromDatabase() {
 
         populateFacilityMapping();
@@ -85,7 +97,7 @@ public class SegmentLineRepository {
                 int endFacilityId = facilities[1];
                 double lengthKm = lengthM / 1000.0;
 
-                // Segmento 1: A -> B (ID original)
+                // Segment 1: A -> B (Original ID)
                 LineSegment segAB = new LineSegment(
                         segmentId,
                         startFacilityId,
@@ -98,7 +110,7 @@ public class SegmentLineRepository {
                 segmentCache.put(segmentId, segAB);
                 segmentsCount++;
 
-                // Segmento 2: B -> A (Inverso)
+                // Segment 2: B -> A (Inverse)
                 String inverseId = INVERSE_ID_PREFIX + segmentId;
                 LineSegment segBA = new LineSegment(
                         inverseId,
@@ -121,7 +133,12 @@ public class SegmentLineRepository {
         }
     }
 
-
+    /**
+     * Finds a list of segments by their IDs.
+     *
+     * @param segmentIds The list of segment ID strings (including inverse IDs).
+     * @return A list of matching {@link LineSegment} objects.
+     */
     public List<LineSegment> findByIds(List<String> segmentIds) {
         return segmentIds.stream()
                 .filter(segmentCache::containsKey)
@@ -129,18 +146,38 @@ public class SegmentLineRepository {
                 .collect(Collectors.toList());
     }
 
+    /**
+     * Finds a single segment by its ID.
+     *
+     * @param id The segment ID string.
+     * @return An {@link Optional} containing the segment if found, or empty otherwise.
+     */
     public Optional<LineSegment> findById(String id) {
         return Optional.ofNullable(segmentCache.get(id));
     }
 
+    /**
+     * Finds the direct segment going from Station A to Station B.
+     *
+     * @param stationAId The ID of the starting station.
+     * @param stationBId The ID of the ending station.
+     * @return An {@link Optional} containing the segment, if a direct mapping is found.
+     */
     public Optional<LineSegment> findDirectSegment(int stationAId, int stationBId) {
         return segmentCache.values().stream()
                 .filter(s -> (s.getIdEstacaoInicio() == stationAId && s.getIdEstacaoFim() == stationBId))
                 .findFirst();
     }
 
+    /**
+     * Returns all segments (original and inverse) currently loaded in the cache.
+     * @return A list of all {@link LineSegment} objects.
+     */
     public List<LineSegment> findAll() { return new ArrayList<>(segmentCache.values()); }
 
+    /**
+     * Helper method to calculate line lengths (Currently unused/placeholder).
+     */
     private Map<Integer, Double> calculateAllLineLengthsKm() {
         return new HashMap<>();
     }

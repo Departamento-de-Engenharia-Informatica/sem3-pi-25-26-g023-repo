@@ -7,9 +7,18 @@ import java.util.List;
 import java.util.Optional;
 import java.sql.*;
 
+/**
+ * Repository class responsible for data access operations (CRUD) related to the {@link Wagon} entity.
+ * It queries the WAGON and ROLLING_STOCK tables in the database.
+ */
 public class WagonRepository {
 
-    /** Busca um Wagon pelo seu ID (String). */
+    /**
+     * Searches for a Wagon by its ID (String).
+     *
+     * @param id The String ID of the wagon (maps to 'stock_id' VARCHAR in DB).
+     * @return An {@link Optional} containing the Wagon if found, or empty otherwise.
+     */
     public Optional<Wagon> findById(String id) {
         String sql = "SELECT R.stock_id, W.model_id, W.service_year " +
                 "FROM WAGON W JOIN ROLLING_STOCK R ON W.stock_id = R.stock_id " +
@@ -22,7 +31,7 @@ public class WagonRepository {
 
             try (ResultSet rs = stmt.executeQuery()) {
                 if (rs.next()) {
-                    // Construtor Wagon corrigido para String ID
+                    // Wagon constructor corrected for String ID
                     return Optional.of(new Wagon(
                             rs.getString("stock_id"),
                             rs.getInt("model_id"),
@@ -36,7 +45,11 @@ public class WagonRepository {
         return Optional.empty();
     }
 
-    /** Retorna todos os Vagões. */
+    /**
+     * Returns all Wagons from the database.
+     *
+     * @return A list of all {@link Wagon} objects.
+     */
     public List<Wagon> findAll() {
         List<Wagon> wagons = new ArrayList<>();
         String sql = "SELECT R.stock_id, W.model_id, W.service_year FROM WAGON W JOIN ROLLING_STOCK R ON W.stock_id = R.stock_id ORDER BY R.stock_id";

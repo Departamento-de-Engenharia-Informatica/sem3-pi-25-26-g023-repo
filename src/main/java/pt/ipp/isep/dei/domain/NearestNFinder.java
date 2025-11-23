@@ -9,15 +9,15 @@ import java.util.ArrayList;
 /**
  * Implements the recursive k-Nearest Neighbor search algorithm on the KD-Tree.
  *
- * Utiliza um Max-Heap (PriorityQueue com ordenação invertida) para manter os N vizinhos mais próximos
- * de forma eficiente (custo de atualização O(log N)).
- * Implementa a PODA (Pruning) da KD-Tree.
- * Complexidade: O(log N) no caso médio para árvore balanceada.
+ * <p>It uses a Max-Heap (PriorityQueue with reversed ordering) to efficiently maintain the N closest neighbors
+ * (update cost O(log N)).</p>
+ * <p>It implements KD-Tree **Pruning** (PODA in Portuguese) optimization.</p>
+ * <p>Complexity: O(log N) in the average case for a balanced tree.</p>
  */
 public class NearestNFinder {
 
-    // Max-Heap: A PriorityQueue com Comparator.reversed() é um Max-Heap.
-    // O elemento no topo (peek) é o mais distante dos N encontrados.
+    // Max-Heap: A PriorityQueue with Comparator.reversed() is a Max-Heap.
+    // The element at the top (peek) is the furthest among the N found neighbors.
     private final PriorityQueue<Neighbor> nearestNeighbors;
     private final int N;
     private final String filterTimeZone;
@@ -25,7 +25,7 @@ public class NearestNFinder {
     private final double targetLon;
 
     /**
-     * Construtor do Finder. Inicializa o Max-Heap para N elementos.
+     * Constructor for the Finder. Initializes the Max-Heap for N elements.
      */
     public NearestNFinder(int N, String filterTimeZone, double targetLat, double targetLon) {
         this.N = N;
@@ -33,79 +33,79 @@ public class NearestNFinder {
         this.targetLat = targetLat;
         this.targetLon = targetLon;
 
-        // Max-Heap: Ordena pelo maior (reversed) para o elemento mais distante estar no topo (peek).
+        // Max-Heap: Orders by the largest (reversed) so the most distant element is at the top (peek).
         this.nearestNeighbors = new PriorityQueue<>(N, Comparator.comparingDouble(Neighbor::getDistance).reversed());
     }
 
     /**
-     * Método recursivo de busca na KD-Tree (k-Nearest Neighbor Search).
-     * Otimização: Uso de PODA (Pruning) comparando a distância máxima do heap com o plano de divisão.
-     * @param node O nó atual da KD-Tree a ser processado.
+     * Recursive search method in the KD-Tree (k-Nearest Neighbor Search).
+     * Optimization: Uses **Pruning** (PODA) by comparing the maximum distance in the heap with the splitting plane.
+     * @param node The current KD-Tree node (or bucket) to be processed.
      */
     public void search(KDTree.Node node) {
         if (node == null) return;
 
-        // 1. Processamento do Nó (Bucket)
+        // 1. Node (Bucket) Processing
         for (EuropeanStation station : node.getStations()) {
 
-            // Aplica o FILTRO (Critério de Aceitação)
+            // Apply the FILTER (Acceptance Criterion)
             if (filterTimeZone == null || station.getTimeZoneGroup().equalsIgnoreCase(filterTimeZone)) {
 
                 double distance = GeoDistance.haversine(targetLat, targetLon, station.getLatitude(), station.getLongitude());
 
-                // Lógica de Max-Heap
+                // Max-Heap Logic
                 if (nearestNeighbors.size() < N) {
-                    // Custo: O(log N)
+                    // Cost: O(log N)
                     nearestNeighbors.add(new Neighbor(station, distance));
                 } else if (distance < nearestNeighbors.peek().getDistance()) {
-                    // Custo: O(log N) (poll + add)
-                    nearestNeighbors.poll(); // Remove o vizinho mais distante
-                    nearestNeighbors.add(new Neighbor(station, distance)); // Adiciona o novo vizinho mais próximo
+                    // Cost: O(log N) (poll + add)
+                    nearestNeighbors.poll(); // Remove the furthest neighbor
+                    nearestNeighbors.add(new Neighbor(station, distance)); // Add the new closest neighbor
                 }
             }
         }
 
-        // 2. Determinação de Subárvores e Poda
+        // 2. Subtree Determination and Pruning
         int dim = node.getDepth() % 2;
         double targetCoord = (dim == 0) ? targetLat : targetLon;
         double nodeCoord = node.getCoordinate(dim);
 
-        // Determina a subárvore mais próxima e a mais distante
+        // Determine the closer and the farther subtree
         KDTree.Node closerSubtree = (targetCoord < nodeCoord) ? node.getLeft() : node.getRight();
         KDTree.Node fartherSubtree = (targetCoord < nodeCoord) ? node.getRight() : node.getLeft();
 
-        // A. Sempre explora a subárvore mais próxima
+        // A. Always explore the closer subtree first
         search(closerSubtree);
 
-        // B. Lógica de Poda (Pruning)
-        // Se ainda não tiver N vizinhos, deve-se explorar o outro lado (não há maxDistanceInQueue)
+        // B. Pruning Logic
+        // If N neighbors haven't been found yet, the other side must be explored (no maxDistanceInQueue yet)
         if (nearestNeighbors.size() < N) {
             search(fartherSubtree);
             return;
         }
 
-        // maxDistanceInQueue é a distância Haversine do N-ésimo vizinho mais distante.
+        // maxDistanceInQueue is the Haversine distance of the N-th furthest neighbor.
         double maxDistanceInQueue = nearestNeighbors.peek().getDistance();
-        // coordDiff é a distância mínima do ponto alvo ao plano de corte (eixo de corte)
+        // coordDiff is the minimum distance from the target point to the cutting plane (split axis)
         double coordDiff = Math.abs(targetCoord - nodeCoord);
 
-        // Condição de PODA: A distância do plano de corte ao ponto alvo é menor que o
-        // raio de busca atual (maxDistanceInQueue).
-        // Se `coordDiff` (mínimo que podemos encontrar no outro lado) for menor que o
-        // `maxDistanceInQueue` (o pior resultado que temos), a subárvore distante deve ser explorada.
+        // PRUNING Condition: The distance from the cutting plane to the target point is less than the
+        // current search radius (maxDistanceInQueue).
+        // If `coordDiff` (minimum distance we could find on the other side) is less than the
+        // `maxDistanceInQueue` (the worst result we currently have), the farther subtree must be explored.
         if (coordDiff < maxDistanceInQueue) {
             search(fartherSubtree);
         }
     }
 
     /**
-     * Recupera os resultados finais, ordenados pela distância crescente.
-     * Custo: O(N log N) para a ordenação final.
+     * Retrieves the final results, sorted by ascending distance.
+     * Cost: O(N log N) for the final sorting.
      */
     public List<EuropeanStation> getResults() {
         List<Neighbor> sortedNeighbors = new ArrayList<>(nearestNeighbors);
 
-        // Ordena a lista final (Heap para lista) por distância crescente
+        // Sort the final list (Heap to List) by ascending distance
         return sortedNeighbors.stream()
                 .sorted(Comparator.comparingDouble(Neighbor::getDistance))
                 .map(Neighbor::getStation)
