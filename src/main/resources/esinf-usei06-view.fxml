@@ -29,14 +29,14 @@
                                 <ToggleGroup fx:id="tzToggleGroup" />
                             </toggleGroup>
                         </RadioButton>
-                        <TextField fx:id="fieldSingleTZ" maxWidth="200.0" promptText="e.g., CET, EET, WET" />
+                        <TextField fx:id="fieldSingleTZ" maxWidth="200.0" promptText="e.g., CET, EET, WET/GMT" />
 
                         <RadioButton fx:id="radioWindowTZ" mnemonicParsing="false" text="By Time Zone Window" toggleGroup="$tzToggleGroup" />
                         <HBox alignment="CENTER_LEFT" spacing="10.0">
                             <children>
-                                <TextField fx:id="fieldMinTZ" disable="true" maxWidth="150.0" promptText="e.g., WET" />
+                                <TextField fx:id="fieldMinTZ" disable="true" maxWidth="150.0" promptText="e.g.,CET " />
                                 <Label text="to" />
-                                <TextField fx:id="fieldMaxTZ" disable="true" maxWidth="150.0" promptText="e.g., EET" />
+                                <TextField fx:id="fieldMaxTZ" disable="true" maxWidth="150.0" promptText="e.g., WET/GMT" />
                             </children>
                         </HBox>
                         <HBox alignment="CENTER_LEFT" spacing="10.0">

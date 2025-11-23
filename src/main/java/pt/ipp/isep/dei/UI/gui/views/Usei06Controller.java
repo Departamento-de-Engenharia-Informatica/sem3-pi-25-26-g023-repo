@@ -93,7 +93,7 @@ public class Usei06Controller {
 
     @FXML
     void handleStep1Search() {
-        step1ErrorLabel.setText("");
+        step1ErrorLabel.setText(""); // Limpa o label antes de cada pesquisa
         String tzg1 = fieldSingleTZ.getText().trim().toUpperCase();
         String tzgMin = fieldMinTZ.getText().trim().toUpperCase();
         String tzgMax = fieldMaxTZ.getText().trim().toUpperCase();
@@ -103,25 +103,36 @@ public class Usei06Controller {
             if (radioSingleTZ.isSelected()) {
                 if (tzg1.isEmpty()) {
                     String errorMsg = "Time Zone Group cannot be empty.";
-                    step1ErrorLabel.setText(errorMsg);
-                    mainController.showNotification(errorMsg, "error"); // ✅ Notificação Pop-up
+                    step1ErrorLabel.setText(errorMsg); // Mantém no ecrã para este erro, se quiseres
+                    mainController.showNotification(errorMsg, "error");
                     return;
                 }
                 baseResults = stationIndexManager.getStationsByTimeZoneGroup(tzg1);
             } else {
                 if (tzgMin.isEmpty() || tzgMax.isEmpty()) {
                     String errorMsg = "Min and Max Time Zones cannot be empty.";
-                    step1ErrorLabel.setText(errorMsg);
-                    mainController.showNotification(errorMsg, "error"); // ✅ Notificação Pop-up
+                    step1ErrorLabel.setText(errorMsg); // Mantém no ecrã para este erro, se quiseres
+                    mainController.showNotification(errorMsg, "error");
                     return;
                 }
+
+                // VALIDAÇÃO DA ORDEM (Min <= Max)
+                if (tzgMin.compareTo(tzgMax) > 0) {
+                    String errorMsg = String.format(
+                            "❌ Erro de Janela Temporal: O valor Mínimo ('%s') deve ser alfabeticamente anterior ou igual ao Máximo ('%s'). Por favor, inverta os campos.",
+                            tzgMin, tzgMax);
+                    // ✅ Apenas a notificação pop-up: Comenta/Remove a linha que define o texto no ecrã
+                    // step1ErrorLabel.setText(errorMsg);
+                    mainController.showNotification(errorMsg, "error");
+                    return; // Interrompe a pesquisa
+                }
+
                 baseResults = stationIndexManager.getStationsInTimeZoneWindow(tzgMin, tzgMax);
             }
 
             if (baseResults.isEmpty()) {
                 String errorMsg = "No stations found for this time zone query.";
                 step1ErrorLabel.setText(errorMsg);
-                // "Não encontrado" não é um erro, por isso não usamos pop-up
             } else {
                 List<EuropeanStation> sortedResults = baseResults.stream()
                         .sorted(Comparator.comparing(EuropeanStation::getCountry)
@@ -132,13 +143,13 @@ public class Usei06Controller {
                 updateResultsCount();
                 showStep(2);
 
-                // ✅ Notificação Pop-up de Sucesso
                 mainController.showNotification(String.format("Search successful. Found %d stations.", baseResults.size()), "success");
             }
         } catch (Exception e) {
-            String errorMsg = "Error: " + e.getMessage();
+            String errorMsg = "❌ An unexpected error occurred in the service layer: " + e.getMessage();
             step1ErrorLabel.setText(errorMsg);
-            mainController.showNotification(errorMsg, "error"); // ✅ Notificação Pop-up
+            mainController.showNotification(errorMsg, "error");
+            e.printStackTrace();
         }
     }
 

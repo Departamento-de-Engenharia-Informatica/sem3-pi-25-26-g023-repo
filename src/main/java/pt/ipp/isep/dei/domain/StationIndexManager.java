@@ -77,8 +77,16 @@ public class StationIndexManager {
      * @return List of matching stations, sorted.
      */
     public List<EuropeanStation> getStationsByTimeZoneGroup(String timeZoneGroup) {
-        // 1. Find all stations in the group (handles duplicate keys)
-        List<EuropeanStation> stations = bstTimeZoneGroup.findAll(timeZoneGroup);
+        List<EuropeanStation> stations;
+
+        try {
+            // 1. Find all stations in the group (handles duplicate keys)
+            stations = bstTimeZoneGroup.findAll(timeZoneGroup);
+        } catch (Exception e) {
+            // ✅ CORREÇÃO: Se a chave não for encontrada e o BST lançar exceção,
+            // devolvemos uma lista vazia. Isto permite ao controlador mostrar "No stations found."
+            return Collections.emptyList();
+        }
 
         // 2. Sort them by Country (ASC) and then by Name (ASC)
         return stations.stream()
@@ -96,7 +104,16 @@ public class StationIndexManager {
      * @return List of matching stations, sorted.
      */
     public List<EuropeanStation> getStationsInTimeZoneWindow(String tzgMin, String tzgMax) {
-        List<EuropeanStation> stations = bstTimeZoneGroup.findInRange(tzgMin, tzgMax);
+        // O método findInRange geralmente devolve uma lista vazia se não encontrar nada,
+        // mas vamos adicionar o try-catch por segurança, caso a implementação do findInRange
+        // possa lançar exceção em BSTs vazias ou limites inválidos.
+        List<EuropeanStation> stations;
+        try {
+            stations = bstTimeZoneGroup.findInRange(tzgMin, tzgMax);
+        } catch (Exception e) {
+            return Collections.emptyList();
+        }
+
 
         // Sort the final list
         return stations.stream()

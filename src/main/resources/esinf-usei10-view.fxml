@@ -14,12 +14,14 @@
 <?import javafx.scene.layout.HBox?>
 <?import javafx.scene.layout.VBox?>
 <?import javafx.scene.text.Font?>
-<?import javafx.scene.control.ScrollPane?> <AnchorPane prefHeight="650.0" prefWidth="1000.0" styleClass="background-pane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.Usei10Controller">
+<?import javafx.scene.control.ScrollPane?>
+<AnchorPane prefHeight="650.0" prefWidth="1000.0" styleClass="background-pane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.Usei10Controller">
     <VBox prefHeight="650.0" prefWidth="1000.0" spacing="20.0" AnchorPane.bottomAnchor="0.0" AnchorPane.leftAnchor="0.0" AnchorPane.rightAnchor="0.0" AnchorPane.topAnchor="0.0">
         <padding>
             <Insets bottom="30.0" left="30.0" right="30.0" top="30.0" />
         </padding>
-        <Label styleClass="header-label" text="[USEI10] Radius Search &amp; Density Summary">
+        <Label styleClass="header-label" text="[USEI10] Radius Search &amp;
+Density Summary">
             <font>
                 <Font name="System Bold" size="22.0" />
             </font>
@@ -46,33 +48,32 @@
         <Separator />
 
         <HBox VBox.vgrow="ALWAYS" spacing="20.0">
-            <VBox prefWidth="350.0" spacing="10.0" styleClass="card" VBox.vgrow="ALWAYS">
-                <TitledPane text="Density Summary by Country and Type" expanded="true" collapsible="false" VBox.vgrow="ALWAYS" styleClass="summary-pane">
+            <VBox prefWidth="350.0" spacing="10.0" styleClass="card" HBox.hgrow="NEVER" VBox.vgrow="ALWAYS"> <TitledPane text="Density Summary by Country and Type" expanded="true" collapsible="false" VBox.vgrow="ALWAYS" styleClass="summary-pane">
 
-                    <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS">
-                        <content>
-                            <VBox spacing="10.0">
-                                <padding>
-                                    <Insets top="10.0" />
-                                </padding>
-                                <Label fx:id="lblTotalStations" styleClass="total-stations-label" text="Total Stations: N/A" />
-                                <Separator />
+                <ScrollPane fitToWidth="true" VBox.vgrow="ALWAYS" fitToHeight="true">
+                    <content>
+                        <VBox spacing="10.0" style="-fx-background-color: #303030;">
+                            <padding>
+                                <Insets top="10.0" />
+                            </padding>
+                            <Label fx:id="lblTotalStations" styleClass="total-stations-label" text="Total Stations: N/A" />
+                            <Separator />
 
-                                <Label styleClass="subheader-label" text="Distribution by Country:" />
-                                <VBox fx:id="vboxCountrySummary" spacing="5.0" />
+                            <Label styleClass="subheader-label" text="Distribution by Country:" />
+                            <VBox fx:id="vboxCountrySummary" spacing="5.0" />
 
-                                <Label styleClass="subheader-label" text="Distribution by Type:" />
-                                <GridPane fx:id="gridTypeSummary" hgap="10.0" vgap="5.0">
-                                    <columnConstraints>
-                                        <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="120.0" />
-                                        <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="180.0" />
-                                    </columnConstraints>
-                                </GridPane>
-                            </VBox>
-                        </content>
-                    </ScrollPane>
+                            <Label styleClass="subheader-label" text="Distribution by Type:" />
+                            <GridPane fx:id="gridTypeSummary" hgap="10.0" vgap="5.0">
+                                <columnConstraints>
+                                    <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="120.0" />
+                                    <javafx.scene.layout.ColumnConstraints hgrow="SOMETIMES" minWidth="10.0" prefWidth="180.0" />
+                                </columnConstraints>
+                            </GridPane>
+                        </VBox>
+                    </content>
+                </ScrollPane>
 
-                </TitledPane>
+            </TitledPane>
             </VBox>
 
             <VBox HBox.hgrow="ALWAYS" spacing="5.0">
