@@ -56,6 +56,8 @@ The scheduling service relies on the correct implementation of the domain model 
 
 ---
 
+
+
 ## 2. Technical Implementation Details
 
 ### 2.1. Dynamic Performance Calculation
