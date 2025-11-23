@@ -150,7 +150,7 @@ public class MainController {
                 }
             }
 
-            // ✅ --- NOVO BLOCO PARA USEI03 ---
+            // ✅ --- BLOCO PARA USEI03 ---
             else if (controller instanceof Usei03Controller) {
                 if (backendService instanceof InventoryManager) {
                     ((Usei03Controller) controller).setServices(this, (InventoryManager) backendService);
@@ -158,9 +158,8 @@ public class MainController {
                     System.err.println("Erro de injeção: Usei03Controller esperava um InventoryManager.");
                 }
             }
-            // ✅ --- NOVO BLOCO PARA USEI04 ---
+            // ✅ --- BLOCO PARA USEI04 ---
             else if (controller instanceof Usei04Controller) {
-                // A USEI04 precisa do MainController para aceder ao getLastPickingPlan()
                 if (backendService instanceof MainController) {
                     ((Usei04Controller) controller).setServices((MainController) backendService);
                 } else {
@@ -168,12 +167,10 @@ public class MainController {
                 }
             }
 
-            // ✅ --- NOVO BLOCO PARA USEI05 ---
+            // ✅ --- BLOCO PARA USEI05 ---
             else if (controller instanceof Usei05Controller) {
-                // O Usei05Controller precisa do MainController, WMS e Manager
                 ((Usei05Controller) controller).setServices(this, this.wms, this.manager);
             }
-            // --- FIM DO NOVO BLOCO ---
 
             else if (controller instanceof Usei06Controller) {
                 if (backendService instanceof StationIndexManager) {
@@ -182,7 +179,7 @@ public class MainController {
                     System.err.println("Erro de injeção: Usei06Controller esperava um StationIndexManager.");
                 }
             }
-            // ✅ --- NOVO BLOCO PARA USEI07 ---
+            // ✅ --- BLOCO PARA USEI07 ---
             else if (controller instanceof Usei07Controller) {
                 if (backendService instanceof StationIndexManager) {
                     ((Usei07Controller) controller).setServices(this, (StationIndexManager) backendService);
@@ -191,9 +188,8 @@ public class MainController {
                 }
             }
 
-            // ✅ --- NOVO BLOCO PARA USEI08 ---
+            // ✅ --- BLOCO PARA USEI08 ---
             else if (controller instanceof Usei08Controller) {
-                // A USEI08 precisa da KDTree
                 if (backendService instanceof KDTree) {
                     ((Usei08Controller) controller).setServices(this, (KDTree) backendService);
                 } else {
@@ -201,17 +197,26 @@ public class MainController {
                 }
             }
 
-            // ✅ --- NOVO BLOCO PARA BDDADMainController (ADICIONADO) ---
+            // ✅ --- NOVO BLOCO PARA USEI10 (Radius Search) ---
+            else if (controller instanceof Usei10Controller) {
+                // A USEI10 precisa do StationIndexManager para obter o RadiusSearchEngine
+                if (backendService instanceof StationIndexManager) {
+                    ((Usei10Controller) controller).setServices(this, (StationIndexManager) backendService);
+                } else {
+                    System.err.println("Erro de injeção: Usei10Controller esperava um StationIndexManager.");
+                }
+            }
+            // --- FIM DO NOVO BLOCO DE INJEÇÃO ---
+
+
+            // ✅ --- BLOCO PARA BDDADMainController ---
             else if (controller instanceof BDDADMainController) {
                 if (backendService instanceof MainController) {
-                    // O BDDADMainController precisa do MainController para chamar loadOperatorCrudView()
                     ((BDDADMainController) controller).setServices((MainController) backendService);
                 } else {
                     System.err.println("Erro de injeção: BDDADMainController esperava um MainController.");
                 }
             }
-            // --- FIM DO NOVO BLOCO DE INJEÇÃO ---
-
             // --- END OF INJECTION ---
 
             centerContentPane.getChildren().clear();
@@ -266,7 +271,6 @@ public class MainController {
 
 
     // --- MÉTODOS PÚBLICOS PARA ESTADO GLOBAL ---
-    // (Necessários para USEI02 -> USEI03 -> USEI04)
 
     public AllocationResult getLastAllocationResult() {
         return lastAllocationResult;
@@ -308,21 +312,15 @@ public class MainController {
         loadView("esinf-usei02-view.fxml", this.manager);
     }
 
-    // ✅ --- NOVO HANDLER PARA USEI03 ---
     @FXML
     public void handleShowUSEI03(ActionEvent event) {
         statusLabel.setText("Pack Trolleys [USEI03]");
-        // A USEI03 precisa do InventoryManager (para o itemsMap)
         loadView("esinf-usei03-view.fxml", this.manager);
     }
-    // --- FIM DO NOVO HANDLER ---
 
     @FXML
     public void handleShowUSEI04(ActionEvent event) {
         statusLabel.setText("Pick Path Sequencing [USEI04]");
-
-        // A LINHA IMPORTANTE É ESTA:
-        // Tem de ser 'this', não pode ser 'null'.
         loadView("esinf-usei04-view.fxml", this);
     }
     @FXML
@@ -340,42 +338,46 @@ public class MainController {
     @FXML
     public void handleShowUSEI07(ActionEvent event) {
         statusLabel.setText("Analyze 2D-Tree [USEI07]");
-        // A USEI07 precisa do StationIndexManager (para obter as stats da árvore)
         loadView("esinf-usei07-view.fxml", this.stationIndexManager);
     }
 
     @FXML
     public void handleShowUSEI08(ActionEvent event) {
         statusLabel.setText("Spatial Queries [USEI08]");
-        // A USEI08 precisa da KDTree (para as pesquisas)
         loadView("esinf-usei08-view.fxml", this.spatialKDTree);
     }
 
     @FXML
     void handleShowUSEI09(ActionEvent event) {
+        // A USEI09 não utiliza o 'loadView' tradicional, então o código é mantido separado
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/esinf-usei09-view.fxml"));
-
-            // 1. CORREÇÃO: Mudar o tipo para BorderPane
             BorderPane view = loader.load();
 
-            // 2. Injetar serviços no Controller (manter lógica existente)
             Usei09Controller controller = loader.getController();
             controller.setServices(this, this.spatialKDTree);
 
-            // 3. Mostrar a vista
             centerContentPane.getChildren().setAll(view);
-
-            // 4. ANCORAGEM: Preencher o AnchorPane pai (centerContentPane)
             AnchorPane.setTopAnchor(view, 0.0);
             AnchorPane.setBottomAnchor(view, 0.0);
             AnchorPane.setLeftAnchor(view, 0.0);
             AnchorPane.setRightAnchor(view, 0.0);
+            statusLabel.setText("Proximity Search [USEI09]");
 
         } catch (IOException e) {
-            // ... (lidar com erro de carregamento)
+            statusLabel.setText("❌ Error loading USEI09 view.");
         }
     }
+
+    // ✅ --- HANDLER INTEGRADO PARA USEI10 ---
+    @FXML
+    public void handleShowUSEI10(ActionEvent event) {
+        statusLabel.setText("Radius Search & Density Summary [USEI10]");
+        // Passa o StationIndexManager, que contém o RadiusSearchEngine
+        loadView("esinf-usei10-view.fxml", this.stationIndexManager);
+    }
+    // ----------------------------------------
+
 
     @FXML
     public void handleShowESINF(ActionEvent event) {
@@ -388,6 +390,11 @@ public class MainController {
         AnchorPane.setTopAnchor(t, 25.0);
         AnchorPane.setLeftAnchor(t, 25.0);
     }
+
+    // ... [Outros Handlers e Métodos de CRUD omitidos por brevidade, mas devem ser mantidos]
+
+    // --- MÉTODOS PÚBLICOS PARA CRUDS (MANTIDOS DA ESTRUTURA ANTERIOR) ---
+
     @FXML
     public void handleShowSimulation(ActionEvent event) throws IOException {
         if (this.statusLabel != null) {
@@ -397,7 +404,6 @@ public class MainController {
         FXMLLoader loader = new FXMLLoader(getClass().getResource("/lapr3-simulation-view.fxml"));
         TrainSimulationController controller = new TrainSimulationController();
 
-        // Injetar dependências (Mantido da correção anterior)
         controller.setDependencies(
                 this,
                 this.facilityRepository,
@@ -408,27 +414,18 @@ public class MainController {
         loader.setController(controller);
         Parent root = loader.load();
 
-        // Inicializar controller (carregar comboios)
         controller.initController();
 
         // Associar ação do botão manualmente (opcional)
         controller.runButton.setOnAction(e -> controller.runSimulation());
 
-        // <<<<<<<<<<<<<<<<< CORREÇÃO CRÍTICA DE NAVEGAÇÃO >>>>>>>>>>>>>>>>>>>
-        // 1. Limpar o conteúdo anterior do AnchorPane central
-        //    Isto garante que a vista USLP07 substitui qualquer outra vista.
         this.centerContentPane.getChildren().clear();
-
-        // 2. Adicionar a nova vista ao AnchorPane central
         this.centerContentPane.getChildren().add(root);
 
-        // 3. Ancorar o root para preencher o centerContentPane (como o loadView faz)
         AnchorPane.setTopAnchor(root, 0.0);
         AnchorPane.setBottomAnchor(root, 0.0);
         AnchorPane.setLeftAnchor(root, 0.0);
         AnchorPane.setRightAnchor(root, 0.0);
-
-        // O 'mainPane.setCenter()' é AGORA removido.
     }
 
     public void loadTrainCrudView() {
@@ -437,30 +434,20 @@ public class MainController {
 
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/train-crud-view.fxml"));
-
-            // 1. CARREGA O FXML. O FXMLLoader INSTANCIA AGORA O CONTROLLER (Devido ao fx:controller no FXML).
             Parent root = loader.load();
-
-            // 2. RECUPERA A INSTÂNCIA QUE FOI CRIADA
             TrainCRUDController controller = loader.getController();
 
-            // 3. INJETA DEPENDÊNCIAS (CORRIGIDO: PASSANDO OS 5 ARGUMENTOS)
             if (controller != null) {
                 controller.setDependencies(
                         this,
                         this.trainRepository,
-                        this.facilityRepository, // <--- ARGUMENTO EM FALTA
-                        this.locomotiveRepository, // <--- ARGUMENTO EM FALTA
-                        this.networkService // <--- ARGUMENTO EM FALTA
+                        this.facilityRepository,
+                        this.locomotiveRepository,
+                        this.networkService
                 );
-                // 4. Inicializa o carregamento dos dados
                 controller.initController();
-            } else {
-                // Isto não deve acontecer se o fx:controller estiver no FXML
-                throw new IllegalStateException("FXMLLoader failed to get the controller instance.");
             }
 
-            // 5. Adicionar e ancorar a nova vista
             centerContentPane.getChildren().add(root);
             AnchorPane.setTopAnchor(root, 0.0);
             AnchorPane.setLeftAnchor(root, 0.0);
@@ -469,8 +456,6 @@ public class MainController {
 
         } catch (Exception e) {
             statusLabel.setText("❌ Error loading Train CRUD view.");
-            System.err.println("Error loading FXML for Train CRUD: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
@@ -487,18 +472,15 @@ public class MainController {
 
             FXMLLoader loader = new FXMLLoader(fxmlUrl);
 
-            // 1. Instanciar o controller
             BDADQueriesController controller = new BDADQueriesController();
-            controller.setMainController(this); // Injetar dependência
+            controller.setMainController(this);
 
             loader.setController(controller);
             Parent root = loader.load();
 
-            // 2. Substituir o conteúdo central (usando o padrão corrigido)
             this.centerContentPane.getChildren().clear();
             this.centerContentPane.getChildren().add(root);
 
-            // 3. Ancorar o root
             AnchorPane.setTopAnchor(root, 0.0);
             AnchorPane.setBottomAnchor(root, 0.0);
             AnchorPane.setLeftAnchor(root, 0.0);
@@ -506,40 +488,27 @@ public class MainController {
 
         } catch (IOException e) {
             this.showNotification("Failed to load BDDAD Queries view: " + e.getMessage(), "error");
-            e.printStackTrace();
         }
     }
 
 
-    /**
-     * Tratador do menu principal BDDAD. Carrega o menu de escolha de entidades.
-     */
     @FXML
     public void handleShowBDDAD(ActionEvent event) {
         statusLabel.setText("BDDAD Features Menu");
-        // Carrega o novo menu de CRUDs
         loadView("bdad-main-view.fxml", this);
     }
 
-    /**
-     * Carrega o ecrã CRUD para a entidade Operator. Chamado pelo BDDADMainController.
-     */
     public void loadOperatorCrudView() {
         statusLabel.setText("BDDAD Features: Operator CRUD");
-        // Limpa o painel central antes de carregar a nova vista
         centerContentPane.getChildren().clear();
 
         try {
-            // 1. Carrega o FXML
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/database-crud-view.fxml"));
             Parent root = loader.load();
 
-            // 2. Obtém o Controller e injeta o serviço
             DatabaseCRUDController controller = loader.getController();
-            // Assume que 'this' é o MainController, que é o que o DatabaseCRUDController espera.
             controller.setServices(this);
 
-            // 3. Adiciona e ancora a nova vista para preencher o painel central
             centerContentPane.getChildren().add(root);
             AnchorPane.setTopAnchor(root, 0.0);
             AnchorPane.setLeftAnchor(root, 0.0);
@@ -548,29 +517,20 @@ public class MainController {
 
         } catch (Exception e) {
             statusLabel.setText("❌ Error loading BDDAD CRUD view.");
-            System.err.println("Error loading FXML for BDDAD CRUD: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
-    /**
-     * Carrega o ecrã CRUD para a entidade Locomotive. Chamado pelo BDDADMainController.
-     */
     public void loadLocomotiveCrudView() {
         statusLabel.setText("BDDAD Features: Locomotive CRUD");
         centerContentPane.getChildren().clear();
 
         try {
-            // 1. Carrega o FXML
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/locomotive-crud-view.fxml"));
             Parent root = loader.load();
 
-            // 2. Obtém o Controller e injeta o serviço
             LocomotiveCRUDController controller = loader.getController();
-            // IMPORTANTE: O nome do controller é 'LocomotiveCRUDController'
             controller.setServices(this);
 
-            // 3. Adiciona e ancora a nova vista
             centerContentPane.getChildren().add(root);
             AnchorPane.setTopAnchor(root, 0.0);
             AnchorPane.setLeftAnchor(root, 0.0);
@@ -579,25 +539,15 @@ public class MainController {
 
         } catch (Exception e) {
             statusLabel.setText("❌ Error loading Locomotive CRUD view.");
-            System.err.println("Error loading FXML for Locomotive CRUD: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 
 
-    /**
-     * Mostra uma notificação pop-up no canto superior direito.
-     * Esta função pode ser chamada por qualquer controlador filho.
-     *
-     * @param message A mensagem a mostrar.
-     * @param type "success" (verde) ou "error" (vermelho).
-     */
     public void showNotification(String message, String type) {
-        // 1. Criar o Label da notificação
+        // Lógica da notificação
         Label notificationLabel = new Label(message);
         notificationLabel.getStyleClass().add("notification-label");
 
-        // 2. Definir o estilo (success ou error)
         if ("success".equals(type)) {
             notificationLabel.getStyleClass().add("notification-success");
         } else if ("error".equals(type)) {
@@ -606,23 +556,18 @@ public class MainController {
             notificationLabel.getStyleClass().add("notification-info");
         }
 
-        // 3. Adicionar animação de Fade-In (aparecer suavemente)
         FadeTransition fadeIn = new FadeTransition(Duration.millis(300), notificationLabel);
         fadeIn.setFromValue(0.0);
         fadeIn.setToValue(1.0);
 
-        // 4. Criar a pausa (quanto tempo fica no ecrã)
         PauseTransition delay = new PauseTransition(Duration.seconds(4));
 
-        // 5. Criar animação de Fade-Out (desaparecer suavemente)
         FadeTransition fadeOut = new FadeTransition(Duration.millis(500), notificationLabel);
         fadeOut.setFromValue(1.0);
         fadeOut.setToValue(0.0);
 
-        // 6. Definir o que acontece quando o fade-out termina
         fadeOut.setOnFinished(e -> notificationPane.getChildren().remove(notificationLabel));
 
-        // 7. Ligar tudo:
         fadeIn.setOnFinished(e -> {
             delay.play();
         });
@@ -630,7 +575,6 @@ public class MainController {
             fadeOut.play();
         });
 
-        // 8. Adicionar o label ao ecrã e começar a animação
         notificationPane.getChildren().add(notificationLabel);
         fadeIn.play();
     }
@@ -654,8 +598,6 @@ public class MainController {
 
         } catch (Exception e) {
             statusLabel.setText("❌ Error loading Wagon CRUD view.");
-            System.err.println("Error loading FXML for Wagon CRUD: " + e.getMessage());
-            e.printStackTrace();
         }
     }
 

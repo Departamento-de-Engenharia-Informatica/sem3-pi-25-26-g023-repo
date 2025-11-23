@@ -3,12 +3,13 @@ package pt.ipp.isep.dei.domain;
 import java.util.*;
 import java.util.stream.Collectors;
 
+// Assume-se que esta classe de utilidade com as cores existe na UI (como no CargoHandlingUI)
 import static pt.ipp.isep.dei.UI.CargoHandlingUI.*;
 
 /**
  * Gere os índices BST/AVL para as estações europeias (USEI06).
  * <p>
- * *** ATUALIZADO PARA INCLUIR CAMPOS E MÉTODOS DA USEI07 ***
+ * ATUALIZADO PARA INCLUIR CAMPOS E MÉTODOS DA USEI07/USEI10.
  */
 public class StationIndexManager {
 
@@ -17,10 +18,13 @@ public class StationIndexManager {
     private BST<Double, EuropeanStation> bstLongitude;
     private BST<String, EuropeanStation> bstTimeZoneGroup;
 
-    // --- ADICIONADO PARA USEI07 ---
+    // --- CAMPOS PARA USEI07/08/09/10 ---
     private KDTree station2DTree;
     private List<EuropeanStation> orderedByLat;
     private List<EuropeanStation> orderedByLon;
+
+    // Campo para USEI10
+    private RadiusSearch radiusSearchEngine;
 
 
     public StationIndexManager() {
@@ -28,51 +32,46 @@ public class StationIndexManager {
         this.bstLongitude = new BST<>();
         this.bstTimeZoneGroup = new BST<>();
 
-        // --- ADICIONADO PARA USEI07 ---
-        // Inicializa os novos campos
-        this.station2DTree = null; // Será construída quando for pedida
+        this.station2DTree = null;
         this.orderedByLat = new ArrayList<>();
         this.orderedByLon = new ArrayList<>();
+
+        this.radiusSearchEngine = null;
     }
 
     /**
-     * Constrói todos os índices BST/AVL com base na lista de estações.
-     * Este método implementa o requisito principal da USEI06.
-     * <p>
-     * *** LÓGICA ATUALIZADA (v5) - CORREÇÃO DEFINITIVA ***
+     * Constrói todos os índices BST/AVL com base na lista de estações (USEI06).
      */
     public void buildIndexes(List<EuropeanStation> stations) {
         System.out.println("Building BST/AVL indexes for " + stations.size() + " stations...");
 
-        // Reinicializa as árvores
         this.bstLatitude = new BST<>();
         this.bstLongitude = new BST<>();
         this.bstTimeZoneGroup = new BST<>();
 
         // Pré-ordenar por nome (para o critério de desempate)
         List<EuropeanStation> sortedStations = stations.stream()
-                .sorted() // Usa o compareTo(other) da EuropeanStation (que ordena por nome)
+                .sorted()
                 .collect(Collectors.toList());
 
-        // Agora, constrói as árvores balanceadas
         bstLatitude.buildBalancedTree(sortedStations, EuropeanStation::getLatitude);
         bstLongitude.buildBalancedTree(sortedStations, EuropeanStation::getLongitude);
         bstTimeZoneGroup.buildBalancedTree(sortedStations, EuropeanStation::getTimeZoneGroup);
 
         System.out.println("✅ All BST/AVL indexes built successfully (USEI06).");
 
-        // --- 4. ADICIONADO PARA USEI07 (COM CORREÇÃO DEFINITIVA) ---
-        // Extrai e armazena as listas ordenadas (necessárias para a construção da 2D-Tree)
+        // Extrai e armazena as listas ordenadas para a KDTree (USEI07)
         System.out.println("Extracting ordered lists for 2D-Tree...");
 
-        // CORREÇÃO: O método na tua BST.java chama-se 'inOrderTraversal()'
-        // e já retorna uma List<V>, por isso podemos atribuir diretamente.
-
+        // Nota: inOrderTraversal() é o método na sua BST.java
         this.orderedByLat = this.bstLatitude.inOrderTraversal();
         this.orderedByLon = this.bstLongitude.inOrderTraversal();
-
-        // --- FIM DA CORREÇÃO ---
+        System.out.println("✅ All station indexes built.");
     }
+
+    // ==========================================================
+    // === MÉTODOS USEI06: QUERY EUROPEAN STATION INDEX (RESTAURADOS) ===
+    // ==========================================================
 
     /**
      * Executa a query da USEI06:
@@ -104,7 +103,7 @@ public class StationIndexManager {
                 .collect(Collectors.toList());
     }
 
-    // Getters para os índices (necessários para as US seguintes)
+    // Getters para os índices
     public BST<Double, EuropeanStation> getBstLatitude() {
         return bstLatitude;
     }
@@ -118,17 +117,12 @@ public class StationIndexManager {
     }
 
 
-    // --- 5. ADICIONAR OS 3 NOVOS MÉTODOS SEGUINTES PARA A USEI07 ---
+    // ==========================================================
+    // === MÉTODOS USEI07/USEI08/USEI09/USEI10: KD-TREE & SEARCH ===
+    // ==========================================================
 
     /**
-     * Constrói a 2D-Tree balanceada (se ainda não tiver sido construída).
-     * Usa as listas pré-ordenadas extraídas das BSTs da USEI06.
-     */
-    /**
-     * Constrói a 2D-Tree balanceada (se ainda não tiver sido construída).
-     * Usa as listas pré-ordenadas extraídas das BSTs da USEI06.
-     * <p>
-     * (V2: Translated to English)
+     * Constrói a 2D-Tree balanceada (se ainda não tiver sido construída) (USEI07).
      */
     public void build2DTree() {
         if (this.station2DTree != null) {
@@ -141,23 +135,21 @@ public class StationIndexManager {
             throw new IllegalStateException("Cannot build 2D-Tree. USEI06 indexes are not ready.");
         }
 
-        System.out.println("⚙️  Building balanced 2D-Tree (USEI07)...");
+        System.out.println("⚙️  Building balanced KD-Tree for spatial queries (USEI08)...");
         long startTime = System.nanoTime();
 
         this.station2DTree = new KDTree();
-        // Passa as listas pré-ordenadas para o construtor da 2D-Tree
         this.station2DTree.buildBalanced(this.orderedByLat, this.orderedByLon);
 
         long endTime = System.nanoTime();
-        System.out.printf(ANSI_GREEN + "✅ 2D-Tree built successfully in %.2f ms.%n" + ANSI_RESET, (endTime - startTime) / 1_000_000.0);
+        System.out.printf(ANSI_GREEN + "✅ KD-Tree built: %d nodes, height: %d, bucket distribution: %s%n" + ANSI_RESET,
+                station2DTree.size(), station2DTree.height(), station2DTree.getBucketSizes());
     }
 
     /**
-     * Retorna as estatísticas da 2D-Tree (Tamanho, Altura, Buckets).
-     * Constrói a árvore se for a primeira vez que é chamada.
+     * Retorna as estatísticas da 2D-Tree (USEI07).
      */
     public Map<String, Object> get2DTreeStats() {
-        // Garante que a árvore está construída antes de devolver estatísticas
         if (this.station2DTree == null) {
             build2DTree();
         }
@@ -174,10 +166,31 @@ public class StationIndexManager {
      * Getter para a 2D-Tree (necessário para USEI08, 09, 10).
      */
     public KDTree getStation2DTree() {
-        // Garante que a árvore está construída antes de ser usada
         if (this.station2DTree == null) {
             build2DTree();
         }
         return station2DTree;
+    }
+
+    /**
+     * Getter para o motor de busca por raio (USEI10).
+     * Constrói o RadiusSearch e injeta a KDTree.
+     * @return O serviço RadiusSearch.
+     */
+    public RadiusSearch getRadiusSearchEngine() {
+        // 1. Garante que a KDTree está pronta (dependência)
+        if (this.station2DTree == null) {
+            build2DTree();
+        }
+
+        // 2. Inicializa o serviço se for a primeira vez
+        if (this.radiusSearchEngine == null) {
+            // Cria o serviço, injetando a KDTree
+            this.radiusSearchEngine = new RadiusSearch(this.station2DTree);
+            // Simula a mensagem de "ready" que aparece no console
+            System.out.println("⚙️  Initializing Radius Search Engine (USEI10)...");
+            System.out.println("✅ USEI10 Radius Search ready! Complexity: O(sqrt(N) + K log K) average case");
+        }
+        return this.radiusSearchEngine;
     }
 }
