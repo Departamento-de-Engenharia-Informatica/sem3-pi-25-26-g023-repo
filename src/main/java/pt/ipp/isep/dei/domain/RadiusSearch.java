@@ -1,145 +1,85 @@
 package pt.ipp.isep.dei.domain;
 
-import java.util.List;
 import java.util.ArrayList;
-import java.util.Map;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
- * USEI07 (ou USEI10) - Radius search and density summary
+ * USEI10 - Radius search + Density summary
  *
- * Classe principal que implementa a funcionalidade de busca por raio e sumário de densidade.
+ * Esta classe recebe a 2D KD-Tree construída na USEI07
+ * e executa pesquisas por raio com cálculo de sumário estatístico.
  *
- * Complexidade Temporal:
- * - radiusSearch(): O(sqrt(N) + K log K) onde:
- * N = Número total de estações no KD-Tree.
- * K = Número de estações dentro do raio.
- * O(sqrt(N)) = Custo de busca na KD-Tree (M = número de nós visitados).
- * O(K log K) = Custo de criação/balanceamento da BST/AVL de output.
- *
- * - getDensitySummary(): O(sqrt(N) + K)
+ * Complexidade:
+ *  - radiusSearch(): O(√N + K)
+ *  - radiusSearchWithSummary(): O(√N + K log K)
  */
 public class RadiusSearch {
 
     private final KDTree spatialIndex;
 
-    /**
-     * Construtor que inicializa o índice espacial.
-     *
-     * @param spatialIndex Árvore KD contendo as estações indexadas por coordenadas
-     */
     public RadiusSearch(KDTree spatialIndex) {
+        if (spatialIndex == null)
+            throw new IllegalArgumentException("KDTree cannot be null.");
         this.spatialIndex = spatialIndex;
     }
 
     /**
-     * Realiza busca por raio e retorna as estações numa BST/AVL ordenada.
-     * Requisito (US07/US10): "BST/AVL tree sorted by distance (ASC), and station name (DESC)"
-     *
-     * @param targetLat Latitude do ponto alvo
-     * @param targetLon Longitude do ponto alvo
-     * @param radiusKm Raio de busca em quilômetros
-     * @return BST ordenada por distância (ASC) e nome da estação (DESC)
+     * Executa apenas a pesquisa por raio e devolve a lista de estações.
      */
-    public BST<StationDistance, StationDistance> radiusSearch(double targetLat, double targetLon, double radiusKm) {
-        // 1. Busca eficiente na KD-Tree (O(sqrt(N) + K))
-        List<EuropeanStation> stationsInRadius = spatialIndex.radiusSearch(targetLat, targetLon, radiusKm);
-
-        // 2. Criação da BST/AVL de output
-        BST<StationDistance, StationDistance> resultTree = new BST<>();
-
-        // Converter para lista de StationDistance
-        List<StationDistance> stationDistances = new ArrayList<>();
-        for (EuropeanStation station : stationsInRadius) {
-            double distance = GeoDistance.haversine(
-                    targetLat, targetLon,
-                    station.getLatitude(), station.getLongitude()
-            );
-            // StationDistance deve implementar Comparable para a ordenação desejada
-            stationDistances.add(new StationDistance(station, distance));
-        }
-
-        // 3. Construção da árvore balanceada a partir da lista (O(K log K))
-        // Esta operação insere K elementos numa árvore balanceada.
-        resultTree.buildBalancedTree(stationDistances, sd -> sd);
-
-        return resultTree;
+    public List<EuropeanStation> radiusSearch(double lat, double lon, double radiusKm) {
+        if (radiusKm < 0)
+            throw new IllegalArgumentException("Radius cannot be negative.");
+        return spatialIndex.radiusSearch(lat, lon, radiusKm);
     }
 
     /**
-     * Gera sumário de densidade das estações dentro do raio especificado.
-     * Conforme USEI07/US10: "summary by country and by is_city"
+     * Executa a pesquisa por raio e devolve:
      *
-     * @param targetLat Latitude do ponto alvo
-     * @param targetLon Longitude do ponto alvo
-     * @param radiusKm Raio de busca em quilômetros
-     * @return Objeto DensitySummary contendo estatísticas por país e tipo de cidade
+     *   - BST ordenada por distância ASC e nome DESC
+     *   - Sumário da densidade (país, cidade, main station)
+     *
+     * @return Object[] = { BST<StationDistance>, DensitySummary }
      */
-    public DensitySummary getDensitySummary(double targetLat, double targetLon, double radiusKm) {
-        // A busca é o gargalo O(sqrt(N) + K)
-        List<EuropeanStation> stationsInRadius = spatialIndex.radiusSearch(targetLat, targetLon, radiusKm);
+    public Object[] radiusSearchWithSummary(double lat, double lon, double radiusKm) {
 
+        // === 1. Buscar estações no raio (O(√N + K)) ===
+        List<EuropeanStation> stationsInRadius =
+                spatialIndex.radiusSearch(lat, lon, radiusKm);
+
+        // === 2. Preparar estruturas ===
+        List<StationDistance> distanceList = new ArrayList<>();
         Map<String, Integer> countryCount = new HashMap<>();
         Map<Boolean, Integer> cityCount = new HashMap<>();
         Map<Boolean, Integer> mainStationCount = new HashMap<>();
 
-        // A agregação é linear O(K) onde K = número de estações no raio
-        for (EuropeanStation station : stationsInRadius) {
-            // Contagem por país
-            countryCount.merge(station.getCountry(), 1, Integer::sum);
+        // === 3. Calcular distâncias e estatísticas (O(K)) ===
+        for (EuropeanStation st : stationsInRadius) {
 
-            // Contagem por tipo de cidade
-            cityCount.merge(station.isCity(), 1, Integer::sum);
+            double dist = GeoDistance.haversine(lat, lon,
+                    st.getLatitude(), st.getLongitude());
 
-            // Contagem por estação principal (adicional)
-            mainStationCount.merge(station.isMainStation(), 1, Integer::sum);
+            StationDistance sd = new StationDistance(st, dist);
+            distanceList.add(sd);
+
+            countryCount.merge(st.getCountry(), 1, Integer::sum);
+            cityCount.merge(st.isCity(), 1, Integer::sum);
+            mainStationCount.merge(st.isMainStation(), 1, Integer::sum);
         }
 
-        return new DensitySummary(stationsInRadius.size(), countryCount, cityCount, mainStationCount);
+        // === 4. Construir BST ordenada por distância ASC e nome DESC (O(K log K)) ===
+        BST<StationDistance, StationDistance> bst = new BST<>();
+        bst.buildBalancedTree(distanceList, sd -> sd); // key = StationDistance
+
+        DensitySummary summary = new DensitySummary(
+                stationsInRadius.size(),
+                countryCount,
+                cityCount,
+                mainStationCount
+        );
+
+        // === 5. Devolver estrutura completa ===
+        return new Object[]{bst, summary};
     }
-
-    /**
-     * Método combinado que retorna tanto a BST ordenada quanto o sumário de densidade.
-     *
-     * @param targetLat Latitude do ponto alvo
-     * @param targetLon Longitude do ponto alvo
-     * @param radiusKm Raio de busca em quilômetros
-     * @return Array com [BST, DensitySummary]
-     */
-    public Object[] radiusSearchWithSummary(double targetLat, double targetLon, double radiusKm) {
-        // 1. Busca na KD-Tree: O(sqrt(N) + K)
-        List<EuropeanStation> stationsInRadius = spatialIndex.radiusSearch(targetLat, targetLon, radiusKm);
-
-        // 2. Inicialização e Processamento Linear (O(K)) para coleta de dados e distâncias
-        BST<StationDistance, StationDistance> resultTree = new BST<>();
-        List<StationDistance> stationDistances = new ArrayList<>();
-
-        Map<String, Integer> countryCount = new HashMap<>();
-        Map<Boolean, Integer> cityCount = new HashMap<>();
-        Map<Boolean, Integer> mainStationCount = new HashMap<>();
-
-        for (EuropeanStation station : stationsInRadius) {
-            double distance = GeoDistance.haversine(targetLat, targetLon,
-                    station.getLatitude(), station.getLongitude());
-            StationDistance stationDistance = new StationDistance(station, distance);
-            stationDistances.add(stationDistance);
-
-            // Coletar estatísticas (O(1) para HashMaps)
-            countryCount.merge(station.getCountry(), 1, Integer::sum);
-            cityCount.merge(station.isCity(), 1, Integer::sum);
-            mainStationCount.merge(station.isMainStation(), 1, Integer::sum);
-        }
-
-        // 3. Construção da BST/AVL: O(K log K)
-        resultTree.buildBalancedTree(stationDistances, sd -> sd);
-
-        DensitySummary summary = new DensitySummary(stationsInRadius.size(), countryCount,
-                cityCount, mainStationCount);
-
-        // Complexidade Total: O(sqrt(N) + K log K)
-
-        return new Object[]{resultTree, summary};
-    }
-
-    // --- Outros métodos (Omitidos para brevidade) ---
 }

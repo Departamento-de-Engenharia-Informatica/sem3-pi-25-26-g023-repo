@@ -309,12 +309,24 @@ public class KDTree {
         // B. Pruning condition: If the splitting plane intersects the search circle (radius),
         // the farther subtree must also be explored.
 
-        // Calculate the minimum distance from the target point to the splitting plane
-        double minDistanceToFartherPlane = Math.abs(targetCoord - nodeCoord);
+        double pointOnPlaneLat, pointOnPlaneLon;
 
+        if (dim == 0) { // Cortamos por Latitude (dim=0). Plano é uma linha de Latitude constante.
+            pointOnPlaneLat = nodeCoord;   // Latitude do plano de corte
+            pointOnPlaneLon = targetLon;   // Longitude é a do ponto alvo
+        } else { // Cortamos por Longitude (dim=1). Plano é uma linha de Longitude constante.
+            pointOnPlaneLat = targetLat;   // Latitude é a do ponto alvo
+            pointOnPlaneLon = nodeCoord;   // Longitude do plano de corte
+        }
+
+        // Calculate the minimum distance from the target point to the splitting plane
+        double minDistanceToPlaneKm = GeoDistance.haversine(
+                targetLat, targetLon,
+                pointOnPlaneLat, pointOnPlaneLon
+        );
         // If the distance to the splitting plane is less than or equal to the radius,
         // explore the farther subtree.
-        if (minDistanceToFartherPlane <= radiusKm) {
+        if (minDistanceToPlaneKm <= radiusKm) {
             radiusSearchRecursive(fartherSubtree, targetLat, targetLon, radiusKm, results, depth + 1);
         }
     }
