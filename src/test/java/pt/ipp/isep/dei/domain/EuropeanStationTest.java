@@ -6,37 +6,37 @@ import org.junit.jupiter.api.BeforeEach;
 import static org.junit.jupiter.api.Assertions.*;
 
 /**
- * Testes EXAUSTIVOS para a classe de Entidade EuropeanStation (Base da USEI06/07).
- * Foca-se na validação do Construtor, Lógica de Ordenação (compareTo) e Igualdade (equals/hashCode).
+ * EXHAUSTIVE Tests for the EuropeanStation Entity Class (Base for USEI06/07).
+ * Focuses on validating the Constructor, Ordering Logic (compareTo), and Equality (equals/hashCode).
  */
 class EuropeanStationTest {
 
-    // Constante para margem de erro em comparação de doubles
+    // Constant for margin of error in double comparison
     private static final double DELTA = 0.0001;
 
-    // Estações Válidas para Teste (9 argumentos)
-    private EuropeanStation S_A; // Base
-    private EuropeanStation S_B; // Nome diferente (maior)
-    private EuropeanStation S_DUP; // Duplicata exata de S_A
-    private EuropeanStation S_TIE; // Nome diferente, mesmas coordenadas
-    private EuropeanStation S_DIFF_ID; // ID diferente, mesma coordenada/nome
+    // Valid Stations for Testing (9 arguments)
+    private EuropeanStation S_A; // Base case
+    private EuropeanStation S_B; // Different name (greater)
+    private EuropeanStation S_DUP; // Exact duplicate of S_A
+    private EuropeanStation S_TIE; // Different Country, same coordinates/name
+    private EuropeanStation S_DIFF_ID; // Different ID, same coordinate/name
 
     @BeforeEach
     void setUp() {
         S_A = new EuropeanStation(1, "Aachen Hbf", "DE", "CET", 50.77, 6.08, true, true, false);
         S_B = new EuropeanStation(2, "Berlin Hbf", "DE", "CET", 52.52, 13.40, true, true, false);
         S_DUP = new EuropeanStation(1, "Aachen Hbf", "DE", "CET", 50.77, 6.08, true, true, false);
-        S_TIE = new EuropeanStation(3, "Aachen Hbf", "FR", "CET", 50.77, 6.08, true, true, false); // Diferente Country
+        S_TIE = new EuropeanStation(3, "Aachen Hbf", "FR", "CET", 50.77, 6.08, true, true, false);
         S_DIFF_ID = new EuropeanStation(10, "Aachen Hbf", "DE", "CET", 50.77, 6.08, true, true, false);
     }
 
     // =============================================================
-    // 🧪 TESTES DO CONSTRUTOR E VALIDAÇÃO
+    // 🧪 CONSTRUCTOR AND VALIDATION TESTS
     // =============================================================
 
     @Test
     void testConstructor_ValidInput() {
-        // Verifica se a construção com input válido funciona e getters retornam o esperado
+        // Checks if construction with valid input works and getters return expected values
         assertEquals(1, S_A.getIdEstacao());
         assertEquals("Aachen Hbf", S_A.getStation());
         assertEquals(50.77, S_A.getLatitude(), DELTA);
@@ -48,12 +48,12 @@ class EuropeanStationTest {
         // Latitude > 90
         assertThrows(IllegalArgumentException.class, () -> {
             new EuropeanStation(1, "A", "P", "W", 90.1, 0.0, true, false, false);
-        }, "Deve lançar exceção para Latitude inválida.");
+        }, "Must throw exception for invalid Latitude (> 90).");
 
         // Latitude < -90
         assertThrows(IllegalArgumentException.class, () -> {
             new EuropeanStation(1, "A", "P", "W", -90.1, 0.0, true, false, false);
-        }, "Deve lançar exceção para Latitude inválida.");
+        }, "Must throw exception for invalid Latitude (< -90).");
     }
 
     @Test
@@ -61,7 +61,7 @@ class EuropeanStationTest {
         // Longitude > 180
         assertThrows(IllegalArgumentException.class, () -> {
             new EuropeanStation(1, "A", "P", "W", 0.0, 180.1, true, false, false);
-        }, "Deve lançar exceção para Longitude inválida.");
+        }, "Must throw exception for invalid Longitude.");
     }
 
     @Test
@@ -69,77 +69,75 @@ class EuropeanStationTest {
         // station == null
         assertThrows(IllegalArgumentException.class, () -> {
             new EuropeanStation(1, null, "P", "W", 0.0, 0.0, true, false, false);
-        }, "Deve lançar exceção se Station for null.");
+        }, "Must throw exception if Station name is null.");
 
         // timeZoneGroup == null
         assertThrows(IllegalArgumentException.class, () -> {
             new EuropeanStation(1, "A", "P", null, 0.0, 0.0, true, false, false);
-        }, "Deve lançar exceção se TimeZoneGroup for null.");
+        }, "Must throw exception if TimeZoneGroup is null.");
     }
 
     // =============================================================
-    // 🧪 TESTES DE COMPARAÇÃO (compareTo)
+    // 🧪 COMPARISON TESTS (compareTo)
     // =============================================================
 
     @Test
     void testCompareTo_PrimaryOrderingByName() {
-        // Aachen (A) deve ser menor que Berlin (B)
-        assertTrue(S_A.compareTo(S_B) < 0, "A ordenação deve ser primariamente pelo nome (station).");
+        // Aachen (A) must be less than Berlin (B)
+        assertTrue(S_A.compareTo(S_B) < 0, "The primary ordering must be by station name.");
 
-        // Berlin (B) deve ser maior que Aachen (A)
+        // Berlin (B) must be greater than Aachen (A)
         assertTrue(S_B.compareTo(S_A) > 0);
 
-        // Estações idênticas
-        assertEquals(0, S_A.compareTo(S_DUP), "Estações idênticas devem ter compareTo == 0.");
+        // Identical stations
+        assertEquals(0, S_A.compareTo(S_DUP), "Identical stations must have compareTo == 0.");
     }
 
     @Test
-    void testCompareTo_IgnoringCoordinates() {
-        // S_A e S_TIE têm nomes diferentes ("Aachen Hbf" vs "Aachen Hbf"), a diferença está no país.
-        // O compareTo apenas usa o nome (station), então deve ser 0.
-        assertEquals(0, S_A.compareTo(S_TIE), "O compareTo deve ignorar coordenadas e país, usando apenas o nome.");
+    void testCompareTo_IgnoringCoordinatesAndCountry() {
+        // S_A and S_TIE have the same name ("Aachen Hbf"), but different country/ID.
+        // The compareTo method should only use the station name.
+        assertEquals(0, S_A.compareTo(S_TIE), "compareTo must ignore coordinates, country, and flags, using only the station name.");
     }
 
     // =============================================================
-    // 🧪 TESTES DE IGUALDADE (equals e hashCode)
+    // 🧪 EQUALITY TESTS (equals and hashCode)
     // =============================================================
 
     @Test
     void testEquals_SymmetryAndConsistency() {
-        // Reflexividade
-        assertTrue(S_A.equals(S_A));
-        // Simetria
+        // Symmetry
         assertTrue(S_A.equals(S_DUP));
         assertTrue(S_DUP.equals(S_A));
-        // Consistência
+        // Consistency
         assertTrue(S_A.equals(S_DUP));
     }
 
     @Test
     void testEquals_IdenticalEntities_True() {
-        // Compara ID, coordenadas e nome/país
-        assertTrue(S_A.equals(S_DUP), "Duas estações com as mesmas propriedades devem ser iguais.");
-        assertEquals(S_A.hashCode(), S_DUP.hashCode(), "HashCodes devem ser iguais para objetos iguais.");
+        // Compares ID, coordinates, and name/country
+        assertTrue(S_A.equals(S_DUP), "Two stations with identical properties must be equal.");
+        assertEquals(S_A.hashCode(), S_DUP.hashCode(), "HashCodes must be equal for equal objects.");
     }
 
     @Test
     void testEquals_DifferentName_False() {
-        // Diferença no nome (Berlin)
-        assertFalse(S_A.equals(S_B), "Estações com nomes diferentes não devem ser iguais.");
+        // Difference in name (Berlin)
+        assertFalse(S_A.equals(S_B), "Stations with different names must not be equal.");
         assertNotEquals(S_A.hashCode(), S_B.hashCode());
     }
 
     @Test
     void testEquals_DifferentID_False() {
-        // Diferença apenas no ID (mas o resto é igual)
-        // A lógica do equals *inclui* o ID (idEstacao == that.idEstacao)
-        assertFalse(S_A.equals(S_DIFF_ID), "Estações com IDs diferentes não devem ser iguais.");
+        // Difference only in ID
+        // The equals logic *includes* the ID (idEstacao == that.idEstacao)
+        assertFalse(S_A.equals(S_DIFF_ID), "Stations with different IDs must not be equal.");
     }
 
     @Test
     void testEquals_DifferentCountry_False() {
         // S_A (DE) vs S_TIE (FR)
-        // A lógica do equals *inclui* o país (country.equals(that.country))
-        assertFalse(S_A.equals(S_TIE), "Estações com países diferentes não devem ser iguais.");
+        // The equals logic *includes* the country (country.equals(that.country))
+        assertFalse(S_A.equals(S_TIE), "Stations with different countries must not be equal.");
     }
 }
