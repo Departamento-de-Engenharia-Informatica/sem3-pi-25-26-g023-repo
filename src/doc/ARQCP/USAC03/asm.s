@@ -1,181 +1,161 @@
-.section .text
-.global extract_data
+.text
+.globl extract_data
 
-# -------------------------------------------------------------------
-# USAC03: extract_data
-# a0: char* str, a1: char* token, a2: char* unit, a3: int* value
-# Retorna: 1 (sucesso), 0 (falha)
-#
-# tokens esperados: TEMP ou HUM (ambos com 4 caracteres)
-# -------------------------------------------------------------------
+# int extract_data(char* input, char* token, char* unit, int* value)
 extract_data:
-    # --- Prologue ---
-    addi sp, sp, -24
-    sw ra, 20(sp)
-    sw s0, 16(sp) # s0 = str pointer (current position)
-    sw s1, 12(sp) # s1 = token pointer
-    sw s2, 8(sp)  # s2 = unit pointer
-    sw s3, 4(sp)  # s3 = value pointer (address)
+    addi sp, sp, -32
+    sw ra, 28(sp)
+    sw s0, 24(sp)  # input
+    sw s1, 20(sp)  # token
+    sw s2, 16(sp)  # unit
+    sw s3, 12(sp)  # value
+    sw s4, 8(sp)   # current pointer
 
-    mv s0, a0   # s0 = str (current position in the input string)
-    mv s1, a1   # s1 = token
-    mv s2, a2   # s2 = unit (output string pointer)
-    mv s3, a3   # s3 = value (output integer pointer address)
+    mv s0, a0  # input
+    mv s1, a1  # token
+    mv s2, a2  # unit
+    mv s3, a3  # value
 
-    li a0, 0    # Default return value is 0 (failure)
+    # Initialize outputs
+    sb zero, 0(s2)
+    sw zero, 0(s3)
 
-# -------------------------------------------------------------------
-# FASE 1: Loop para procurar o TOKEN
-# -------------------------------------------------------------------
-search_token_loop:
-    # 1. Carrega o caractere atual
-    lbu t0, 0(s0)   # t0 = *s0 (current char)
+    # Start search from beginning
+    mv s4, s0
 
-    # Paragem 1: Fim da string, falha
-    beq t0, zero, fail_usac03
+search_loop:
+    lb t0, 0(s4)
+    beqz t0, not_found
 
-    # Paragem 2: Se for '#', avança para o próximo bloco
-    li t1, '#'
-    beq t0, t1, advance_block
+    # Check if current position matches token (4 characters)
+    mv t1, s4
+    mv t2, s1
+    li t3, 4
 
-    # Tentar match do token (usando a0/a1 para check_token)
-    mv a0, s0        # a0 = Ptr para a posição atual (para check_token)
-    mv a1, s1        # a1 = Ptr para o token de pesquisa
-    call check_token # Chama check_token (retorna a0=1 se match)
-    mv t3, a0        # t3 = resultado do check_token
+check_loop:
+    beqz t3, check_structure
+    lb t4, 0(t1)
+    lb t5, 0(t2)
+    bne t4, t5, next_char
+    addi t1, t1, 1
+    addi t2, t2, 1
+    addi t3, t3, -1
+    j check_loop
 
-    li t4, 1
-    beq t3, t4, token_match # Se t3 == 1 (match), avançar
+next_char:
+    addi s4, s4, 1
+    j search_loop
 
-    # Avançar para o próximo caractere
-    addi s0, s0, 1
-    j search_token_loop
+check_structure:
+    # Token matched, check if followed by valid structure
+    addi t0, s4, 4  # position after token
 
-advance_block:
-    # Se encontrou '#', avança para o próximo bloco (depois de '#')
-    addi s0, s0, 1
-    j search_token_loop
+    # Check for "&unit::"
+    lb t1, 0(t0)   # '&'
+    li t2, '&'
+    bne t1, t2, next_char
+    lb t1, 1(t0)   # 'u'
+    li t2, 'u'
+    bne t1, t2, next_char
+    lb t1, 2(t0)   # 'n'
+    li t2, 'n'
+    bne t1, t2, next_char
+    lb t1, 3(t0)   # 'i'
+    li t2, 'i'
+    bne t1, t2, next_char
+    lb t1, 4(t0)   # 't'
+    li t2, 't'
+    bne t1, t2, next_char
+    lb t1, 5(t0)   # ':'
+    li t2, ':'
+    bne t1, t2, next_char
+    lb t1, 6(t0)   # ':'
+    li t2, ':'
+    bne t1, t2, next_char
 
-token_match:
-    # s0 aponta para o 1º caractere do TOKEN.
-    # 1. Avançar s0 pelo TOKEN (comprimento 4)
-    addi s0, s0, 4
+    # Valid structure found - extract data
+    addi s4, s4, 4  # skip token
+    addi s4, s4, 7  # skip "&unit::"
 
-    # 2. Procurar por "&unit:" (deve ter 5 bytes: '&', 'u', 'n', 'i', 't', ':')
-    # O ponteiro s0 está agora em '&'
-    addi s0, s0, 6 # s0 aponta para o início da unidade
+    # Extract unit
+    mv t0, s2
+unit_loop:
+    lb t1, 0(s4)
+    li t2, '&'
+    beq t1, t2, unit_done
+    beqz t1, not_found
+    sb t1, 0(t0)
+    addi s4, s4, 1
+    addi t0, t0, 1
+    j unit_loop
 
-    # -------------------------------------------------------------------
-    # FASE 2: Extrair UNIT
-    # -------------------------------------------------------------------
-extract_unit_loop:
-    lbu t0, 0(s0) # t0 = char da unidade
-    li t1, '&'
-    beq t0, t1, unit_end # Fim da unidade
-    beq t0, zero, fail_usac03 # Fim da string (erro)
+unit_done:
+    sb zero, 0(t0)
 
-    sb t0, 0(s2)    # *s2 = t0 (copia char)
-    addi s0, s0, 1  # s0++
-    addi s2, s2, 1  # s2++
-    j extract_unit_loop
+    # Skip '&' and check "value::"
+    addi s4, s4, 1
 
-unit_end:
-    sb zero, 0(s2)  # Adiciona terminador nulo à unidade
+    lb t1, 0(s4)   # 'v'
+    li t2, 'v'
+    bne t1, t2, not_found
+    lb t1, 1(s4)   # 'a'
+    li t2, 'a'
+    bne t1, t2, not_found
+    lb t1, 2(s4)   # 'l'
+    li t2, 'l'
+    bne t1, t2, not_found
+    lb t1, 3(s4)   # 'u'
+    li t2, 'u'
+    bne t1, t2, not_found
+    lb t1, 4(s4)   # 'e'
+    li t2, 'e'
+    bne t1, t2, not_found
+    lb t1, 5(s4)   # ':'
+    li t2, ':'
+    bne t1, t2, not_found
+    lb t1, 6(s4)   # ':'
+    li t2, ':'
+    bne t1, t2, not_found
 
-    # -------------------------------------------------------------------
-    # FASE 3: Procurar por "value:" e extrair VALUE
-    # -------------------------------------------------------------------
+    addi s4, s4, 7  # skip "value::"
 
-    # s0 aponta para 'v' de "value"
-    addi s0, s0, 6 # s0 aponta para o início do valor (número), pulando "value:"
+    # Convert number
+    mv t0, s4
+    li t1, 0
+    li t2, 10
 
-    # Conversão de ASCII para inteiro
-    li t0, 0 # t0 = valor_convertido (inicializado a 0)
+convert_loop:
+    lb t3, 0(t0)
+    beqz t3, convert_done
+    li t4, '#'
+    beq t3, t4, convert_done
+    li t4, '0'
+    blt t3, t4, convert_done
+    li t4, '9'
+    bgt t3, t4, convert_done
 
-convert_value_loop:
-    lbu t1, 0(s0) # t1 = char
-    li t2, '#'    # Paragem 1: Fim do bloco
-    beq t1, t2, value_end
-    beq t1, zero, value_end # Paragem 2: Fim da string
+    mul t1, t1, t2
+    addi t4, zero, '0'
+    sub t5, t3, t4
+    add t1, t1, t5
 
-    # Verificar se é um dígito ('0' a '9')
-    li t3, '0'
-    blt t1, t3, fail_usac03 # Não é dígito
-    li t3, '9'
-    bgt t1, t3, fail_usac03 # Não é dígito
+    addi t0, t0, 1
+    j convert_loop
 
-    # t0 = t0 * 10 + (t1 - '0')
-    li t3, 10
-    mul t0, t0, t3       # t0 = t0 * 10
-    addi t1, t1, -'0'    # t1 = t1 - '0'
-    add t0, t0, t1       # t0 = t0 + digito
+convert_done:
+    sw t1, 0(s3)
+    li a0, 1
+    j exit
 
-    addi s0, s0, 1
-    j convert_value_loop
+not_found:
+    li a0, 0
 
-value_end:
-    # Armazenar o valor (t0) no ponteiro de saída (s3)
-    sw t0, 0(s3)
-
-    li a0, 1 # Retorna 1 (sucesso)
-    j restore_and_ret_usac03
-
-# -------------------------------------------------------------------
-# Sub-rotina: check_token
-# Verifica se a substring em a0 (str) é igual ao token em a1 (token)
-# Usa os registradores temporários do chamador (a0, a1)
-# Retorna em a0: 1 se match, 0 se não match
-# -------------------------------------------------------------------
-check_token:
-    # Salvar registradores temporários antes da chamada
-    addi sp, sp, -8
-    sw t5, 4(sp)
-    sw t6, 0(sp)
-
-    mv t5, a0 # t5 = str (posição atual)
-    mv t6, a1 # t6 = token de pesquisa
-
-    li a0, 1 # Assume match
-
-    # Comparar 4 bytes (TOKEN = TEMP ou HUM)
-    li t1, 4 # Contador
-token_cmp_loop:
-    beq t1, zero, token_cmp_end # Se contador = 0, match
-
-    lbu t2, 0(t5) # char da str
-    lbu t3, 0(t6) # char do token
-
-    bne t2, t3, token_cmp_fail # Diferentes, não há match
-
-    addi t5, t5, 1
-    addi t6, t6, 1
-    addi t1, t1, -1
-    j token_cmp_loop
-
-token_cmp_fail:
-    li a0, 0 # Retorna 0 (não match)
-
-token_cmp_end:
-    # Restaurar registradores temporários
-    lw t6, 0(sp)
-    lw t5, 4(sp)
-    addi sp, sp, 8
-    ret
-
-fail_usac03:
-    # Limpar a saída em caso de falha
-    li t0, 0
-    sw t0, 0(s3) # *value = 0
-    sb zero, 0(s2) # *unit = '\0'
-
-    li a0, 0 # Retorna 0 (falha)
-
-restore_and_ret_usac03:
-    # --- Epilogue ---
-    lw s3, 4(sp)
-    lw s2, 8(sp)
-    lw s1, 12(sp)
-    lw s0, 16(sp)
-    lw ra, 20(sp)
-    addi sp, sp, 24
+exit:
+    lw ra, 28(sp)
+    lw s0, 24(sp)
+    lw s1, 20(sp)
+    lw s2, 16(sp)
+    lw s3, 12(sp)
+    lw s4, 8(sp)
+    addi sp, sp, 32
     ret

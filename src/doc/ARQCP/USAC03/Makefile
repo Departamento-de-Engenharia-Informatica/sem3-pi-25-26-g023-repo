@@ -1,26 +1,21 @@
 CC = riscv32-linux-gcc
-CFLAGS = -Wall -Wextra -fanalyzer -g
+CFLAGS = -Wall -Wextra -g -O0
 ARCHFLAGS = -march=rv32imd -mabi=ilp32d
 LIBRV32 = ${HOME}/bin/bootlin/riscv32-buildroot-linux-gnu/sysroot
 
 .PHONY: clean run debug
 
-program_usac03.elf: usac03_main.o usac03_asm.o
-	$(CC) $(CFLAGS) $(ARCHFLAGS) usac03_main.o usac03_asm.o -o program_usac03.elf
+program.elf: main.o asm.o
+	$(CC) $(CFLAGS) $(ARCHFLAGS) main.o asm.o -o program.elf
 
-usac03_main.o: usac03_main.c usac03_asm.h
-	$(CC) $(CFLAGS) $(ARCHFLAGS) -c usac03_main.c -o usac03_main.o
+main.o: main.c asm.h
+	$(CC) $(CFLAGS) $(ARCHFLAGS) -c main.c -o main.o
 
-usac03_asm.o: usac03_asm.s usac03_asm.h
-	$(CC) $(CFLAGS) $(ARCHFLAGS) -c usac03_asm.s -o usac03_asm.o
+asm.o: asm.s
+	$(CC) $(CFLAGS) $(ARCHFLAGS) -c asm.s -o asm.o
 
 clean:
 	rm -f *.o *.elf
 
-run: clean program_usac03.elf
-	qemu-riscv32 -L $(LIBRV32) ./program_usac03.elf
-
-debug: program_usac03.elf
-	@echo "On other terminal window do:"
-	@echo "riscv32-linux-gdb-tui ./program_usac03.elf "
-	qemu-riscv32 -L $(LIBRV32) -g 1234 program_usac03.elf -S
+run: program.elf
+	qemu-riscv32 -L $(LIBRV32) ./program.elf
