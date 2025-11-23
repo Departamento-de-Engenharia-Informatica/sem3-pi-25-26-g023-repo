@@ -1,0 +1,63 @@
+@startuml
+
+class EuropeanStation {
+  - idEstacao : int
+  - station : String
+  - country : String
+  - timeZoneGroup : String
+  - latitude : double
+  - longitude : double
+  - isCity : boolean
+  - isMainStation : boolean
+  - isAirport : boolean
+}
+
+class Neighbor {
+  - station : EuropeanStation
+  - distance : double
+}
+
+class KDTree {
+  - root : Node
+  - size : int
+  + buildBalanced(stationsByLat:List<EuropeanStation>, stationsByLon:List<EuropeanStation>) : void
+  + findNearestN(targetLat:double, targetLon:double, N:int, timeZoneFilter:String) : List<EuropeanStation>
+  + radiusSearch(targetLat:double, targetLon:double, radiusKm:double) : List<EuropeanStation>
+  + height() : int
+  + size() : int
+}
+
+class Node {
+  - stations : List<EuropeanStation>
+  - left : Node
+  - right : Node
+  - latitude : double
+  - longitude : double
+  - depth : int
+  + getCoordinate(dim:int) : double
+}
+
+class NearestNFinder {
+  - nearestNeighbors : PriorityQueue<Neighbor>
+  - N : int
+  - filterTimeZone : String
+  - targetLat : double
+  - targetLon : double
+  + search(node:Node) : void
+  + getResults() : List<EuropeanStation>
+}
+
+
+KDTree "1" -- "1" Node : root >
+Node "1" -- "many" Node : children >
+Node "1" -- "many" EuropeanStation : contains >
+
+NearestNFinder --> Node : visits >
+NearestNFinder --> Neighbor : manages >
+Neighbor --> EuropeanStation : wraps >
+
+KDTree --> NearestNFinder : uses >
+KDTree --> EuropeanStation : returns >
+
+@enduml
+
