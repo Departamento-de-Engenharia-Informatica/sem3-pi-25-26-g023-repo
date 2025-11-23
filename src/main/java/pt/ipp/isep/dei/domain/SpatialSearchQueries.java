@@ -5,22 +5,25 @@ import java.util.List;
 
 /**
  * USEI08 - Spatial Search Queries
- * Provides 5 predefined spatial queries for demonstration as required.
- * This class works with SpatialSearch to showcase practical applications
- * of KD-Tree spatial searches for European railway stations.
- *
- * @version 1.0
+ * Provides 5 predefined spatial queries for demonstration as required by USEI08 acceptance criteria.
+ * This class works with SpatialSearch to showcase practical applications of KD-Tree spatial searches
+ * for European railway stations.
  */
 public class SpatialSearchQueries {
 
     private final SpatialSearch spatialSearch;
 
+    /**
+     * Constructs a SpatialSearchQueries instance with the specified SpatialSearch engine.
+     *
+     * @param spatialSearch the spatial search engine to use for queries
+     */
     public SpatialSearchQueries(SpatialSearch spatialSearch) {
         this.spatialSearch = spatialSearch;
     }
 
     /**
-     * Represents the result of a spatial query with performance metrics
+     * Represents the result of a spatial query with performance metrics.
      */
     public static class QueryResult {
         public final String description;
@@ -28,6 +31,13 @@ public class SpatialSearchQueries {
         public final long executionTimeNs;
         public final int stationsFound;
 
+        /**
+         * Constructs a QueryResult with execution metrics.
+         *
+         * @param description query description
+         * @param stations list of stations found
+         * @param executionTimeNs execution time in nanoseconds
+         */
         public QueryResult(String description, List<EuropeanStation> stations, long executionTimeNs) {
             this.description = description;
             this.stations = stations;
@@ -35,6 +45,11 @@ public class SpatialSearchQueries {
             this.stationsFound = stations.size();
         }
 
+        /**
+         * Returns execution time in milliseconds.
+         *
+         * @return execution time in ms
+         */
         public double getExecutionTimeMs() {
             return executionTimeNs / 1_000_000.0;
         }
@@ -46,24 +61,22 @@ public class SpatialSearchQueries {
         }
     }
 
-    // ============================================================
-    // === 5 PREDEFINED QUERIES (AS REQUIRED) ===
-    // ============================================================
-
     /**
-     * QUERY 1: Todas as estações em Portugal
-     * Demonstra filtro por país em área geográfica específica
+     * Query 1: All stations in Portugal.
+     * Demonstrates country filter within specific geographical area.
+     *
+     * @return query result with stations in Portugal
      */
     public QueryResult queryAllStationsInPortugal() {
         String description = "All stations in Portugal";
         long startTime = System.nanoTime();
 
         List<EuropeanStation> results = spatialSearch.searchByGeographicalArea(
-                36.0, 42.0,    // Latitude range covering Portugal
-                -9.5, -6.0,    // Longitude range covering Portugal
-                "PT",          // Country filter: Portugal
-                null,          // No city filter
-                null           // No main station filter
+                36.0, 42.0,
+                -9.5, -6.0,
+                "PT",
+                null,
+                null
         );
 
         long endTime = System.nanoTime();
@@ -71,19 +84,21 @@ public class SpatialSearchQueries {
     }
 
     /**
-     * QUERY 2: Estações principais na área de Lisboa
-     * Demonstra combinação de área geográfica e filtro por tipo de estação
+     * Query 2: Main stations in Lisbon area.
+     * Demonstrates combination of geographical area and station type filter.
+     *
+     * @return query result with main stations in Lisbon area
      */
     public QueryResult queryMainStationsInLisbon() {
         String description = "Main stations in Lisbon area";
         long startTime = System.nanoTime();
 
         List<EuropeanStation> results = spatialSearch.searchByGeographicalArea(
-                38.70, 38.75,  // Lisbon latitude range
-                -9.15, -9.10,  // Lisbon longitude range
-                "PT",          // Portugal
-                null,          // No city filter
-                true           // Only main stations
+                38.70, 38.75,
+                -9.15, -9.10,
+                "PT",
+                null,
+                true
         );
 
         long endTime = System.nanoTime();
@@ -91,19 +106,21 @@ public class SpatialSearchQueries {
     }
 
     /**
-     * QUERY 3: Estações em cidades de França
-     * Demonstra filtro por país e estatuto de cidade
+     * Query 3: City stations in France.
+     * Demonstrates country and city status filters.
+     *
+     * @return query result with city stations in France
      */
     public QueryResult queryCityStationsInFrance() {
         String description = "City stations in France";
         long startTime = System.nanoTime();
 
         List<EuropeanStation> results = spatialSearch.searchByGeographicalArea(
-                42.0, 51.0,    // France latitude range
-                -5.0, 8.0,     // France longitude range
-                "FR",          // France
-                true,          // Only city stations
-                null           // No main station filter
+                42.0, 51.0,
+                -5.0, 8.0,
+                "FR",
+                true,
+                null
         );
 
         long endTime = System.nanoTime();
@@ -111,19 +128,21 @@ public class SpatialSearchQueries {
     }
 
     /**
-     * QUERY 4: Estações não-principais em Itália
-     * Demonstra filtro por tipo de estação (não-principal)
+     * Query 4: Non-main stations in Italy.
+     * Demonstrates filter for non-main stations.
+     *
+     * @return query result with non-main stations in Italy
      */
     public QueryResult queryNonMainStationsInItaly() {
         String description = "Non-main stations in Italy";
         long startTime = System.nanoTime();
 
         List<EuropeanStation> results = spatialSearch.searchByGeographicalArea(
-                35.0, 47.0,    // Italy latitude range
-                6.0, 18.0,     // Italy longitude range
-                "IT",          // Italy
-                null,          // No city filter
-                false          // Only non-main stations
+                35.0, 47.0,
+                6.0, 18.0,
+                "IT",
+                null,
+                false
         );
 
         long endTime = System.nanoTime();
@@ -131,31 +150,31 @@ public class SpatialSearchQueries {
     }
 
     /**
-     * QUERY 5: Todas as estações na área metropolitana de Madrid
-     * Demonstra busca em área geográfica precisa
+     * Query 5: All stations in Madrid metropolitan area.
+     * Demonstrates precise geographical area search.
+     *
+     * @return query result with stations in Madrid area
      */
     public QueryResult queryStationsInMadrid() {
         String description = "All stations in Madrid area";
         long startTime = System.nanoTime();
 
         List<EuropeanStation> results = spatialSearch.searchByGeographicalArea(
-                40.30, 40.50,  // Madrid latitude range
-                -3.80, -3.60,  // Madrid longitude range
-                "ES",          // Spain
-                null,          // No city filter
-                null           // No main station filter
+                40.30, 40.50,
+                -3.80, -3.60,
+                "ES",
+                null,
+                null
         );
 
         long endTime = System.nanoTime();
         return new QueryResult(description, results, endTime - startTime);
     }
 
-    // ============================================================
-    // === BATCH QUERY EXECUTION ===
-    // ============================================================
-
     /**
-     * Executes all 5 predefined queries and returns results with performance metrics
+     * Executes all 5 predefined queries and returns results with performance metrics.
+     *
+     * @return list of query results for all demo queries
      */
     public List<QueryResult> executeAllDemoQueries() {
         List<QueryResult> allResults = new ArrayList<>();
@@ -170,7 +189,17 @@ public class SpatialSearchQueries {
     }
 
     /**
-     * Executes a custom query with the specified parameters
+     * Executes a custom query with the specified parameters.
+     *
+     * @param description query description
+     * @param latMin minimum latitude
+     * @param latMax maximum latitude
+     * @param lonMin minimum longitude
+     * @param lonMax maximum longitude
+     * @param country country filter
+     * @param isCity city station filter
+     * @param isMain main station filter
+     * @return query result with execution metrics
      */
     public QueryResult executeCustomQuery(String description,
                                           double latMin, double latMax,
@@ -188,12 +217,10 @@ public class SpatialSearchQueries {
         return new QueryResult(description, results, endTime - startTime);
     }
 
-    // ============================================================
-    // === ANALYSIS AND STATISTICS ===
-    // ============================================================
-
     /**
-     * Generates a comprehensive performance report for the 5 queries
+     * Generates a comprehensive performance report for the 5 queries.
+     *
+     * @return formatted performance report string
      */
     public String generatePerformanceReport() {
         List<QueryResult> results = executeAllDemoQueries();
@@ -227,7 +254,9 @@ public class SpatialSearchQueries {
     }
 
     /**
-     * Gets sample stations from each query for demonstration
+     * Gets sample stations from each query for demonstration.
+     *
+     * @return formatted string with sample stations
      */
     public String getQuerySamples() {
         List<QueryResult> results = executeAllDemoQueries();
@@ -241,7 +270,6 @@ public class SpatialSearchQueries {
             if (result.stations.isEmpty()) {
                 samples.append("  No stations found\n");
             } else {
-                // Show up to 3 sample stations
                 result.stations.stream()
                         .limit(3)
                         .forEach(station ->
