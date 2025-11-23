@@ -3,17 +3,14 @@
 
 ' --- GERAL SETTINGS ---
 skinparam monochrome true
-skinparam packageStyle rectangle
 skinparam shadowing true
 skinparam linetype polyline
 skinparam classAttributeIconSize 0
 hide empty methods
 hide circles
 
-' --- DOMAIN MODEL PACKAGES ---
-' (Define all classes and internal relationships first)
+' --- DOMAIN MODEL - CLASSES PURAS (Agrupamentos removidos para evitar erro) ---
 
-package "Railway Infrastructure" {
     class RailwayNetwork {
         name
     }
@@ -29,6 +26,8 @@ package "Railway Infrastructure" {
         maxSpeed_kmh
         maxWeight_kg_m
         trackType
+        startFacilityId : int
+        endFacilityId : int
     }
     class Station {
         stationId
@@ -39,9 +38,9 @@ package "Railway Infrastructure" {
         hasWarehouse
         hasRefrigerated
     }
-    ' Facilities are logical locations
     abstract class Facility {
         name
+        facilityId : int
     }
     class FreightYard {
         typeOfCargo
@@ -52,7 +51,6 @@ package "Railway Infrastructure" {
     class Siding {
         purpose
     }
-    ' Buildings are physical structures at a Station
     abstract class Building {}
     class RefrigeratedArea {}
     class GrainSilo {}
@@ -71,9 +69,7 @@ package "Railway Infrastructure" {
 
     Station "1" -- "0..*" RefrigeratedArea : "can have"
     Station "1" -- "0..*" GrainSilo : "can have"
-}
 
-package "Rolling Stock & Operators" {
     class TrainOperator {
         id
         name
@@ -112,45 +108,38 @@ package "Rolling Stock & Operators" {
     RollingStock <|-- Locomotive
     RollingStock <|-- Wagon
     TrainOperator "1" -- "0..*" RollingStock : owns
-}
+    LineOwner "1" -- "0..*" RailwayLine : owns
 
-package "Route Planning & Execution (Sprint 2)" {
     class Freight {
         freightId
         status
     }
 
-    ' A planned route is the template
     class PlannedRoute {
         routeId
         name
         totalDistance
     }
 
-    ' A stop on the route template
     class RouteStop {
         sequenceNumber
         isStop (Y/N)
     }
 
-    ' A specific journey executing a route
-    class TrainJourney {
+    class TrainTrip {
         journeyId
         startDateTime
         status
     }
 
-    ' An event recorded during a journey
     class TrainEvent {
         timestamp
         eventType (arrival, departure)
     }
 
-    TrainJourney "1" -- "1" PlannedRoute : follows >
-    TrainJourney "1" -- "1..*" TrainEvent : records >
-}
+    TrainTrip "1" -- "1" PlannedRoute : follows >
+    TrainTrip "1" -- "1..*" TrainEvent : records >
 
-package "Warehouse (WMS - Sprint 1)" {
     class Warehouse extends Building {
         warehouseId
         name
@@ -168,6 +157,8 @@ package "Warehouse (WMS - Sprint 1)" {
         qtyAvailable
         expiryDate
         receivedAt
+        aisle : int
+        bay : int
     }
     class Item {
         sku
@@ -203,32 +194,20 @@ package "Warehouse (WMS - Sprint 1)" {
     OrderLine "*" -- "1" Item : requests >
     Return "*" -- "1" Item : concerns >
     Quarantine "1" -- "0..*" Return : holds >
-}
 
-package "Station Management (ARQCP - Sprint 2)" {
     class StationMngtSystem {
         manageStation()
     }
     class Track {
         trackNumber (1-99)
     }
-    class LightSign {
-        state (Green, Red, Yellow, BlinkRed)
-    }
-    class Sensor {
-        type (Temperature, Humidity)
-        value
-    }
     class StationLog {
         timestamp
         message
     }
 
-    Track "1" -- "1" LightSign : is controlled by >
     StationMngtSystem "1" -- "1" StationLog : writes to >
-}
 
-package "Station Index (ESINF - Sprint 2)" {
     class StationIndex {
         searchByArea()
         searchByRadius()
@@ -243,31 +222,19 @@ package "Station Index (ESINF - Sprint 2)" {
     StationIndex "1" -- "1" EuropeanStationDataset : is built from >
     StationIndex "1" -- "*" TreeIndex : uses >
     StationIndex "1" -- "1" SpatialIndex : uses >
-}
 
-' --- GLOBAL RELATIONSHIPS (CROSS-PACKAGE) ---
-' (All relationships between packages are defined AFTER packages)
+' --- GLOBAL RELATIONSHIPS ---
 
-' Infrastructure <--> WMS
-' A Herança (extends) já foi definida dentro do pacote WMS.
-' Esta linha define a associação (o que uma Estação pode ter).
 Station "1" -- "0..*" Warehouse : "can have"
 
-' Infrastructure <--> Route Planning
 RouteStop "1" -- "1" Station : "is at"
 RouteStop "1" -- "1" LineSegment : "is reached via"
 TrainEvent "1" -- "1" Station : "occurs at"
 
-' Infrastructure <--> Station Management
 StationMngtSystem "1" -- "1" Station : manages >
 Station "1" -- "1..99" Track : has >
-Station "1" -- "2" Sensor : has >
 
-' Rolling Stock <--> Route Planning
-TrainJourney "1" -- "1..*" Locomotive : "is pulled by"
+TrainTrip "1" -- "1..*" Locomotive : "is pulled by"
 Freight "1" -- "1..*" Wagon : "is composed of"
-
-' Rolling Stock <--> Infrastructure
-LineOwner "1" -- "0..*" RailwayLine : owns
 
 @enduml
