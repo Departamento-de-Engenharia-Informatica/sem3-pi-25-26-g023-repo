@@ -22,6 +22,5 @@
         <Button text="Locomotive (CRUD)" onAction="#handleShowLocomotiveCRUD" prefWidth="300.0" styleClass="button-feature"/>
         <Button text="Wagon (CRUD)" onAction="#handleShowWagonCRUD" prefWidth="300.0" styleClass="button-feature"/>
         <Button  onAction="#handleShowTrainCRUD" prefWidth="300.0" styleClass="button-feature" text="Train CRUD" />
-        <Button text="Segment (A implementar)" prefWidth="300.0" disable="true"/>
     </VBox>
 </VBox>
