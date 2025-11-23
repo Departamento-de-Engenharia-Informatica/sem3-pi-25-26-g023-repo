@@ -17,16 +17,24 @@ import java.sql.Date;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
-import java.time.Duration; // Import necessário
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional; // Import necessário
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 public class TrainSimulationController {
+
+    // --- ANSI COLOR CONSTANTS (REMOVIDAS DO OUTPUT FINAL) ---
+    private static final String ANSI_RESET = "";
+    private static final String ANSI_RED = "";
+    private static final String ANSI_YELLOW = "";
+    private static final String ANSI_CYAN = "";
+    private static final String ANSI_BOLD = "";
+    // ----------------------------
 
     @FXML private TableView<TrainWrapper> trainTable;
     @FXML private TableColumn<TrainWrapper, String> idColumn;
@@ -107,7 +115,6 @@ public class TrainSimulationController {
             mainController.showNotification("Loading trains... Please wait.", "info");
         }
 
-        // FIX 1: Tipo de retorno do Task e do call() deve ser List<TrainWrapper>
         Task<List<TrainWrapper>> loadTask = new Task<>() {
             @Override
             protected List<TrainWrapper> call() throws Exception {
@@ -136,7 +143,6 @@ public class TrainSimulationController {
                             LocalDateTime departureTime = null;
 
                             if (date != null && timeStr != null && !timeStr.isEmpty()) {
-                                // FIX 2: CORREÇÃO DE LEITURA DA HORA
                                 String timePart = timeStr.length() >= 8 ? timeStr.substring(0, 8) : timeStr;
                                 LocalTime time = LocalTime.parse(timePart);
                                 departureTime = date.toLocalDate().atTime(time);
@@ -151,8 +157,6 @@ public class TrainSimulationController {
                     System.err.println("❌ Fatal Error reading TRAIN table. Possible connection failure: " + e.getMessage());
                     throw e;
                 }
-
-                // --- DADOS MOCK REMOVIDOS ---
 
                 if (facilityRepository == null) {
                     throw new IllegalStateException("facilityRepository is null. Injection failed in MainController.");
@@ -257,7 +261,7 @@ public class TrainSimulationController {
 
     /**
      * Converte o resultado da simulação para um formato legível (semelhante ao output da consola).
-     * Corrigido para aplicar o atraso de conflito sequencialmente, refletindo o agendamento final.
+     * CORREÇÃO: Remove o Total Weight e mascara o prefixo INV_ dos IDs.
      */
     private String formatSimulationOutput(SchedulerResult result) {
         if (result.scheduledTrips.isEmpty()) {
@@ -267,7 +271,23 @@ public class TrainSimulationController {
         StringBuilder output = new StringBuilder();
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        // 1. Relatório de Conflitos (Formato da consola)
+        // Larguras de coluna ajustadas para Monoespaçado e Nomes longos
+        final int SEGMENT_W = 8;
+        final int FACILITY_W = 20;
+        final int TIME_W = 8;
+        final int SPD_W = 6;
+        final String SEPARATOR = " | ";
+        final String LINE_BREAK = "\n";
+
+        // Formato para as linhas da tabela (garante alinhamento)
+        String tableFormat = "%-" + SEGMENT_W + "s" + SEPARATOR +
+                "%-" + FACILITY_W + "s" + SEPARATOR +
+                "%-" + FACILITY_W + "s" + SEPARATOR +
+                "%-" + TIME_W + "s" + SEPARATOR +
+                "%-" + TIME_W + "s" + SEPARATOR +
+                "%-" + SPD_W + "s" + LINE_BREAK;
+
+        // 1. Relatório de Conflitos (LIMPO DE ANSI)
         output.append("=================================================================\n");
         output.append("             🚦 CONFLICT AND DELAY REPORT 🚦\n");
         output.append("=================================================================\n");
@@ -277,22 +297,22 @@ public class TrainSimulationController {
         } else {
             output.append("⚠️ ").append(result.resolvedConflicts.size()).append(" Conflicts resolved (delays injected):\n");
             for (Conflict c : result.resolvedConflicts) {
-                // Assumindo que tripId2, delayMinutes e tripId1 são campos public
+                // REMOVIDO ANSI, APENAS STRING PLANA
                 output.append(String.format("   • [Trip %s] Delay: %2d min in %s due to [Trip %s]\n",
                         c.tripId2, c.delayMinutes, getFacilityName(c.getSafeWaitFacilityId()), c.tripId1));
             }
             output.append("\n");
         }
 
-        // 2. Linha Temporal Detalhada
+        // 2. Linha Temporal Detalhada (LIMPO DE ANSI)
         output.append("=========================================================================================\n");
         output.append("                           DETAILED SEGMENT TIMETABLE\n");
         output.append("=========================================================================================\n\n");
 
         for (TrainTrip trip : result.scheduledTrips) {
 
-            // --- LÓGICA DE RECALCULO DE TEMPO SEQUENCIAL (PARA REPLICAR O OUTPUT DA CONSOLA) ---
-            int delayMinutes = 0;
+            // Variáveis de estado para rastrear o atraso
+            long currentDelayMinutes = 0;
             String waitFacilityName = null;
 
             Optional<Conflict> conflictOpt = result.resolvedConflicts.stream()
@@ -300,83 +320,119 @@ public class TrainSimulationController {
                     .findFirst();
 
             if (conflictOpt.isPresent()) {
-                delayMinutes = (int) conflictOpt.get().delayMinutes;
-                // Usa getFacilityName para garantir consistência com o nome na tabela
+                currentDelayMinutes = conflictOpt.get().delayMinutes;
                 waitFacilityName = getFacilityName(conflictOpt.get().getSafeWaitFacilityId());
             }
 
-            // O tempo de saída do último segmento/partida agendado.
-            LocalDateTime currentSimulatedTime = trip.getDepartureTime();
-            // -------------------------------------------------------------------------
+            // Ponto de partida agendado original (usado como base para calcular a hora de chegada)
+            LocalDateTime originalDeparture = trip.getDepartureTime();
+
+            // Variável que rastreia a próxima hora de entrada. Começa com a partida original menos o delay total.
+            LocalDateTime nextSegmentEntryTime = originalDeparture;
+
+            if (conflictOpt.isPresent()) {
+                nextSegmentEntryTime = nextSegmentEntryTime.minusMinutes(currentDelayMinutes);
+            }
+
+            // Variável para armazenar a hora de chegada final (exit time do último segmento)
+            LocalDateTime finalArrivalTime = null;
+            LocalDateTime expectedArrivalTime = null;
+
+
+            // --- Output de Informação do Comboio (LIMPO DE ANSI) ---
 
             String rotaStart = trip.getRoute().isEmpty() ? "N/A" : getFacilityName(trip.getRoute().get(0).getIdEstacaoInicio());
             String rotaEnd = trip.getRoute().isEmpty() ? "N/A" : getFacilityName(trip.getRoute().get(trip.getRoute().size() - 1).getIdEstacaoFim());
 
-            output.append(String.format("🚆 Train %s — Scheduled Departure: %s | Total Weight: %.0f t\n",
-                    trip.getTripId(), trip.getDepartureTime().toLocalTime().format(timeFormatter), trip.getTotalWeightKg() / 1000.0));
-            output.append(String.format("   Max Calculated Speed: %.0f km/h | Route: %s -> %s\n",
-                    trip.getMaxTrainSpeed(), rotaStart, rotaEnd));
+            // Placeholder para Arrival Times
+            String arrivalPlaceholder = " | EAT: %s | AAT: %s";
+
+            // Primeira Linha: Train ID, Departure (REMOVIDO TOTAL WEIGHT)
+            String line1 = String.format("🚆 Train %s — Scheduled Departure: %s",
+                    trip.getTripId(), nextSegmentEntryTime.toLocalTime().format(timeFormatter));
+            output.append(line1).append(LINE_BREAK);
+
+            // Segunda Linha: Speed, Route, ARRIVAL TIMES (EAT e AAT)
+            output.append(String.format("   Max Calculated Speed: %.0f km/h | Route: %s -> %s%s",
+                    trip.getMaxTrainSpeed(), rotaStart, rotaEnd, arrivalPlaceholder));
+            output.append(LINE_BREAK);
+
 
             // Cabeçalho da Tabela
-            output.append(String.format("\n%-8s | %-16s | %-16s | %-8s | %-8s | %-6s\n",
+            output.append(String.format(tableFormat,
                     "SEGMENT", "START", "END", "ENTRY", "EXIT", "SPD (C/A)"));
-            output.append("-".repeat(85)).append("\n");
+            output.append("-".repeat(85)).append(LINE_BREAK);
+
+
+            // ----------------------------------------------------------------
+            // Itera pelas SimulationSegmentEntry
+            // ----------------------------------------------------------------
+
+            long remainingDelayMinutes = currentDelayMinutes;
 
             for (SimulationSegmentEntry entry : trip.getSegmentEntries()) {
+
+                LocalDateTime finalEntryTime = nextSegmentEntryTime;
 
                 // Calcula a duração do segmento (usando a diferença dos horários não ajustados)
                 Duration segmentDuration = Duration.between(entry.getEntryTime(), entry.getExitTime());
 
-                // O tempo de entrada do segmento é o tempo simulado atual.
-                LocalDateTime finalEntryTime = currentSimulatedTime;
+                // Calcula o tempo de saída (tempo de viagem do segmento)
+                LocalDateTime finalExitTime = finalEntryTime.plus(segmentDuration);
 
-                // Calcula o tempo de chegada (Arrival time)
-                LocalDateTime finalArrivalTime = finalEntryTime.plus(segmentDuration);
-                LocalDateTime finalExitTime = finalArrivalTime; // Valor padrão
+                // --- VARIÁVEIS PARA OUTPUT ---
+                // MASCARAMENTO DO PREFIXO INV_
+                String rawSegmentId = entry.getSegmentId();
+                String segmentId = rawSegmentId.startsWith("INV_") ? rawSegmentId.substring(4) : rawSegmentId;
+
+                String startName = entry.getStartFacilityName().substring(0, Math.min(entry.getStartFacilityName().length(), FACILITY_W));
+                String endName = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), FACILITY_W));
 
                 // ----------------------------------------------------------------
                 // LÓGICA DE APLICAÇÃO E INSERÇÃO DA LINHA DELAY
                 // ----------------------------------------------------------------
-                // 1. Verifica se este segmento termina na estação de espera e se ainda há atraso para aplicar
-                if (delayMinutes > 0 && entry.getEndFacilityName().equals(waitFacilityName)) {
 
-                    // O tempo real de partida após a espera
-                    LocalDateTime delayDepartureTime = finalArrivalTime.plusMinutes(delayMinutes);
+                if (remainingDelayMinutes > 0 && entry.getEndFacilityName().equals(waitFacilityName)) {
 
-                    // --- INSERÇÃO DA LINHA DELAY (para replicar o output do console) ---
-                    // O nome da estação no console é cortado a 15, aqui usaremos o nome completo e o short para o alinhamento
-                    String waitFacilityShort = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), 15));
+                    // O tempo de partida após a espera
+                    LocalDateTime departureFromWaitPoint = finalExitTime.plusMinutes(remainingDelayMinutes);
 
-                    // Saída do segmento atual (Ex: INV_21) é a chegada (finalArrivalTime)
-                    finalExitTime = finalArrivalTime;
+                    // --- IMPRIME A LINHA DO SEGMENTO (Chegada ao ponto de espera) ---
+                    output.append(String.format(tableFormat,
+                            segmentId,
+                            startName,
+                            endName,
+                            finalEntryTime.toLocalTime().format(timeFormatter),
+                            finalExitTime.toLocalTime().format(timeFormatter), // Chega ao ponto de espera
+                            String.format("%.0f/%.0f", entry.getCalculatedSpeedKmh(), entry.getSegment().getVelocidadeMaxima())
+                    ));
 
-                    // A linha DELAY é inserida AGORA (após o segmento INV_21 e antes do INV_18)
-                    output.append(String.format("%-8s | %-16s | %-16s | %-8s | %-8s | %-6s\n",
+                    // --- INSERÇÃO DA LINHA DELAY ---
+                    String waitFacilityShort = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), FACILITY_W));
+
+                    output.append(String.format(tableFormat,
                             "DELAY",
                             waitFacilityShort,
                             waitFacilityShort,
-                            finalArrivalTime.toLocalTime().format(timeFormatter), // ENTRY = Chegada (Ex: 10:03)
-                            delayDepartureTime.toLocalTime().format(timeFormatter), // EXIT = Partida ajustada (Ex: 10:22)
+                            finalExitTime.toLocalTime().format(timeFormatter), // ENTRY = Chegada (Tempo real)
+                            departureFromWaitPoint.toLocalTime().format(timeFormatter), // EXIT = Partida ajustada (Com delay)
                             "0/0"
                     ));
 
-                    // Atualiza o currentSimulatedTime para o tempo de partida ajustado
-                    currentSimulatedTime = delayDepartureTime;
+                    // Atualiza o tempo de entrada para o PRÓXIMO segmento
+                    nextSegmentEntryTime = departureFromWaitPoint;
+                    remainingDelayMinutes = 0; // Delay aplicado
 
-                    // Marca o atraso como aplicado para não repetir a lógica
-                    delayMinutes = 0;
+                    // Se este for o último segmento, a chegada final é a partida ajustada
+                    if (entry == trip.getSegmentEntries().get(trip.getSegmentEntries().size() - 1)) {
+                        finalArrivalTime = departureFromWaitPoint;
+                    }
 
-                } else {
-                    // Sem atraso extra neste ponto, ou o atraso já foi aplicado.
-                    finalExitTime = finalArrivalTime;
-                    currentSimulatedTime = finalExitTime;
+                    continue; // Passa ao próximo segmento
                 }
 
-                String segmentId = entry.getSegmentId().length() > 6 ? entry.getSegmentId().substring(0, 6) : entry.getSegmentId();
-                String startName = entry.getStartFacilityName().substring(0, Math.min(entry.getStartFacilityName().length(), 15));
-                String endName = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), 15));
-
-                output.append(String.format("%-8s | %-16s | %-16s | %-8s | %-8s | %-6s\n",
+                // 2. Imprime o segmento normal (ou segmentos após a espera)
+                output.append(String.format(tableFormat,
                         segmentId,
                         startName,
                         endName,
@@ -384,8 +440,56 @@ public class TrainSimulationController {
                         finalExitTime.toLocalTime().format(timeFormatter),
                         String.format("%.0f/%.0f", entry.getCalculatedSpeedKmh(), entry.getSegment().getVelocidadeMaxima())
                 ));
+
+                nextSegmentEntryTime = finalExitTime; // Atualiza o tempo para o próximo segmento.
+
+                // Se este for o último segmento, esta é a chegada final
+                if (entry == trip.getSegmentEntries().get(trip.getSegmentEntries().size() - 1)) {
+                    finalArrivalTime = finalExitTime;
+                }
             }
-            output.append("\n");
+
+            // --- CÁLCULO FINAL E SUBSTITUIÇÃO DO PLACEHOLDER ---
+
+            // AAT = finalArrivalTime (tempo real com atrasos)
+            // EAT = AAT - Total Delay (tempo sem atrasos)
+
+            String aatString = "N/A";
+            String eatString = "N/A";
+
+            if (finalArrivalTime != null) {
+                // O AAT é o tempo de chegada final (finalExitTime do último segmento)
+                aatString = finalArrivalTime.toLocalTime().format(timeFormatter);
+
+                // Calcula EAT: Final Arrival Time - Atraso Total Imposto
+                // NOTA: O Atraso Total Imposto é o 'currentDelayMinutes' que foi capturado no início.
+                // Se o comboio não foi atrasado, currentDelayMinutes é 0.
+                long totalImposedDelay = result.resolvedConflicts.stream()
+                        .filter(c -> c.tripId2.equals(trip.getTripId()))
+                        .mapToLong(c -> c.delayMinutes)
+                        .sum();
+
+                LocalDateTime eatTime = finalArrivalTime.minusMinutes(totalImposedDelay);
+                eatString = eatTime.toLocalTime().format(timeFormatter);
+            }
+
+
+            // Procura o placeholder " | EAT: %s | AAT: %s" e substitui-o
+            int startOfHeaderLine2 = output.lastIndexOf("Max Calculated Speed:");
+
+            if (startOfHeaderLine2 != -1) {
+                // Encontra a posição exata do placeholder na string grande
+                int placeholderStart = output.indexOf(arrivalPlaceholder, startOfHeaderLine2);
+
+                if (placeholderStart != -1) {
+                    // Constrói a string de substituição
+                    String replacement = String.format(" | EAT: %s | AAT: %s", eatString, aatString);
+                    // O tamanho da string do placeholder é constante, usamos seu comprimento
+                    output.replace(placeholderStart, placeholderStart + arrivalPlaceholder.length(), replacement);
+                }
+            }
+
+            output.append(LINE_BREAK);
         }
 
         return output.toString();

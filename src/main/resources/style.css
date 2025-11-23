@@ -988,3 +988,35 @@
     -fx-background-color: #1A73E8;
     -fx-text-fill: white;
 }
+/* ----------------------------------------------------- */
+/* TEMA ESCURO BASE (Fundo Preto, Letra Branca) */
+/* ----------------------------------------------------- */
+
+#simulationOutputArea {
+    /* Fundo da área de edição */
+    -fx-control-inner-background: #1e1e1e;
+
+    /* Cor do texto geral (Default) */
+    -fx-text-fill: #FFFFFF;
+
+    /* Cor de seleção */
+    -fx-highlight-fill: #4CAF50;
+}
+
+/* Garante que o texto DENTRO do campo de conteúdo também é branco */
+#simulationOutputArea .content {
+    -fx-text-fill: #FFFFFF;
+}
+
+/* ----------------------------------------------------- */
+/* SELETORES GENÉRICOS DE BACKUP */
+/* ----------------------------------------------------- */
+
+.text-area {
+    -fx-control-inner-background: #1e1e1e;
+    -fx-text-fill: #FFFFFF;
+}
+
+.text-area .content {
+    -fx-text-fill: #FFFFFF;
+}
