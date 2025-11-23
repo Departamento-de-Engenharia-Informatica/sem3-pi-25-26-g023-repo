@@ -136,7 +136,6 @@ public class KDTree {
                         Double.compare(s.getLongitude(), medianLon) == 0)
                 .collect(Collectors.toList());
 
-        // CORRECTION (FIX for the size error): Increment the total size by the number of STATIONS in this bucket.
         this.size += nodeStations.size();
 
         Node node = new Node(nodeStations, depth);
@@ -187,8 +186,6 @@ public class KDTree {
 
         return node;
     }
-
-    // --- Access and Analysis Methods (USEI07) ---
 
     /**
      * Returns the total number of EuropeanStation objects stored across all nodes (buckets) in the KD-Tree.

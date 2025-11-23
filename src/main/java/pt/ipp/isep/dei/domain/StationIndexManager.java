@@ -3,30 +3,29 @@ package pt.ipp.isep.dei.domain;
 import java.util.*;
 import java.util.stream.Collectors;
 
-// Assume-se que esta classe de utilidade com as cores existe na UI (como no CargoHandlingUI)
-import static pt.ipp.isep.dei.UI.CargoHandlingUI.*;
-
 /**
- * Gere os índices BST/AVL para as estações europeias (USEI06).
- * <p>
- * ATUALIZADO PARA INCLUIR CAMPOS E MÉTODOS DA USEI07/USEI10.
+ * Manages the BST/AVL indexes (USEI06) and the KD-Tree spatial index (USEI07) for European stations.
+ * This class orchestrates the building of these structures and provides query access points.
  */
 public class StationIndexManager {
 
-    // Os índices pedidos na USEI06
+    // The BST indexes required by USEI06
     private BST<Double, EuropeanStation> bstLatitude;
     private BST<Double, EuropeanStation> bstLongitude;
     private BST<String, EuropeanStation> bstTimeZoneGroup;
 
-    // --- CAMPOS PARA USEI07/08/09/10 ---
+    // --- FIELDS FOR USEI07/08/09/10 ---
     private KDTree station2DTree;
     private List<EuropeanStation> orderedByLat;
     private List<EuropeanStation> orderedByLon;
 
-    // Campo para USEI10
+    // Field for USEI10
     private RadiusSearch radiusSearchEngine;
 
 
+    /**
+     * Initializes the index manager and all data structures.
+     */
     public StationIndexManager() {
         this.bstLatitude = new BST<>();
         this.bstLongitude = new BST<>();
@@ -40,48 +39,48 @@ public class StationIndexManager {
     }
 
     /**
-     * Constrói todos os índices BST/AVL com base na lista de estações (USEI06).
+     * Builds all necessary BST/AVL indexes from the list of stations (USEI06).
+     * This method pre-sorts the list and uses the bulk-build method for balanced trees.
+     *
+     * @param stations The list of all loaded European stations.
      */
     public void buildIndexes(List<EuropeanStation> stations) {
-        System.out.println("Building BST/AVL indexes for " + stations.size() + " stations...");
-
+        // 1. Reset and initialize BSTs
         this.bstLatitude = new BST<>();
         this.bstLongitude = new BST<>();
         this.bstTimeZoneGroup = new BST<>();
 
-        // Pré-ordenar por nome (para o critério de desempate)
+        // Pre-sort by name (for the tiebreaker criterion)
         List<EuropeanStation> sortedStations = stations.stream()
                 .sorted()
                 .collect(Collectors.toList());
 
+        // Build balanced trees
         bstLatitude.buildBalancedTree(sortedStations, EuropeanStation::getLatitude);
         bstLongitude.buildBalancedTree(sortedStations, EuropeanStation::getLongitude);
         bstTimeZoneGroup.buildBalancedTree(sortedStations, EuropeanStation::getTimeZoneGroup);
 
-        System.out.println("✅ All BST/AVL indexes built successfully (USEI06).");
-
-        // Extrai e armazena as listas ordenadas para a KDTree (USEI07)
-        System.out.println("Extracting ordered lists for 2D-Tree...");
-
-        // Nota: inOrderTraversal() é o método na sua BST.java
+        // Extract ordered lists for KDTree construction (USEI07)
         this.orderedByLat = this.bstLatitude.inOrderTraversal();
         this.orderedByLon = this.bstLongitude.inOrderTraversal();
-        System.out.println("✅ All station indexes built.");
     }
 
     // ==========================================================
-    // === MÉTODOS USEI06: QUERY EUROPEAN STATION INDEX (RESTAURADOS) ===
+    // === USEI06 QUERY METHODS ===
     // ==========================================================
 
     /**
-     * Executa a query da USEI06:
-     * Retorna estações num grupo de fuso horário, ordenadas por país e nome.
+     * Executes the USEI06 query: Returns stations within a specific timezone group,
+     * sorted by country (ASC) and then by station name (ASC).
+     *
+     * @param timeZoneGroup The timezone group to search for (e.g., "CET").
+     * @return List of matching stations, sorted.
      */
     public List<EuropeanStation> getStationsByTimeZoneGroup(String timeZoneGroup) {
-        // 1. Encontra todas as estações no grupo
+        // 1. Find all stations in the group (handles duplicate keys)
         List<EuropeanStation> stations = bstTimeZoneGroup.findAll(timeZoneGroup);
 
-        // 2. Ordena-as por País (ASC) e depois por Nome (ASC)
+        // 2. Sort them by Country (ASC) and then by Name (ASC)
         return stations.stream()
                 .sorted(Comparator.comparing(EuropeanStation::getCountry)
                         .thenComparing(EuropeanStation::getStation))
@@ -89,13 +88,17 @@ public class StationIndexManager {
     }
 
     /**
-     * Executa a query "windowed" da USEI06:
-     * Retorna estações num intervalo de fusos horários.
+     * Executes the "windowed" USEI06 query: Returns stations within a range of timezone groups,
+     * sorted by TimeZoneGroup, then Country, then Name (all ASC).
+     *
+     * @param tzgMin The minimum timezone group (inclusive).
+     * @param tzgMax The maximum timezone group (inclusive).
+     * @return List of matching stations, sorted.
      */
     public List<EuropeanStation> getStationsInTimeZoneWindow(String tzgMin, String tzgMax) {
         List<EuropeanStation> stations = bstTimeZoneGroup.findInRange(tzgMin, tzgMax);
 
-        // Ordena a lista final
+        // Sort the final list
         return stations.stream()
                 .sorted(Comparator.comparing(EuropeanStation::getTimeZoneGroup)
                         .thenComparing(EuropeanStation::getCountry)
@@ -103,51 +106,61 @@ public class StationIndexManager {
                 .collect(Collectors.toList());
     }
 
-    // Getters para os índices
+    /**
+     * Gets the BST indexed by Latitude.
+     * @return The BST.
+     */
     public BST<Double, EuropeanStation> getBstLatitude() {
         return bstLatitude;
     }
 
+    /**
+     * Gets the BST indexed by Longitude.
+     * @return The BST.
+     */
     public BST<Double, EuropeanStation> getBstLongitude() {
         return bstLongitude;
     }
 
+    /**
+     * Gets the BST indexed by Time Zone Group.
+     * @return The BST.
+     */
     public BST<String, EuropeanStation> getBstTimeZoneGroup() {
         return bstTimeZoneGroup;
     }
 
 
     // ==========================================================
-    // === MÉTODOS USEI07/USEI08/USEI09/USEI10: KD-TREE & SEARCH ===
+    // === USEI07/08/09/10: KD-TREE & SEARCH METHODS ===
     // ==========================================================
 
     /**
-     * Constrói a 2D-Tree balanceada (se ainda não tiver sido construída) (USEI07).
+     * Constructs the balanced 2D-Tree (KDTree) for spatial queries (USEI07).
+     * The tree is only built once.
+     *
+     * @throws IllegalStateException if the necessary ordered lists are empty.
      */
     public void build2DTree() {
         if (this.station2DTree != null) {
-            System.out.println("ℹ️  2D-Tree (USEI07) was already built.");
+            // Already built, do nothing.
             return;
         }
 
         if (this.orderedByLat.isEmpty() || this.orderedByLon.isEmpty()) {
-            System.err.println(ANSI_RED + "ERROR: Ordered lists (Lat/Lon) are empty. Were USEI06 indexes loaded?" + ANSI_RESET);
-            throw new IllegalStateException("Cannot build 2D-Tree. USEI06 indexes are not ready.");
+            throw new IllegalStateException("Cannot build 2D-Tree. USEI06 indexes are not ready (ordered lists are empty).");
         }
-
-        System.out.println("⚙️  Building balanced KD-Tree for spatial queries (USEI08)...");
-        long startTime = System.nanoTime();
 
         this.station2DTree = new KDTree();
         this.station2DTree.buildBalanced(this.orderedByLat, this.orderedByLon);
-
-        long endTime = System.nanoTime();
-        System.out.printf(ANSI_GREEN + "✅ KD-Tree built: %d nodes, height: %d, bucket distribution: %s%n" + ANSI_RESET,
-                station2DTree.size(), station2DTree.height(), station2DTree.getBucketSizes());
+        // The UI layer (CargoHandlingUI) is responsible for displaying the build time/stats.
     }
 
     /**
-     * Retorna as estatísticas da 2D-Tree (USEI07).
+     * Returns the statistics of the 2D-Tree (Size, Height, Bucket Distribution) (USEI07).
+     * Ensures the tree is built before returning stats.
+     *
+     * @return Map containing tree statistics.
      */
     public Map<String, Object> get2DTreeStats() {
         if (this.station2DTree == null) {
@@ -163,7 +176,10 @@ public class StationIndexManager {
     }
 
     /**
-     * Getter para a 2D-Tree (necessário para USEI08, 09, 10).
+     * Getter for the KD-Tree (required for USEI08, 09, 10).
+     * Ensures the tree is built before access.
+     *
+     * @return The built KDTree instance.
      */
     public KDTree getStation2DTree() {
         if (this.station2DTree == null) {
@@ -173,23 +189,20 @@ public class StationIndexManager {
     }
 
     /**
-     * Getter para o motor de busca por raio (USEI10).
-     * Constrói o RadiusSearch e injeta a KDTree.
-     * @return O serviço RadiusSearch.
+     * Getter for the Radius Search engine (USEI10).
+     * Initializes the engine if it hasn't been already, injecting the KDTree.
+     *
+     * @return The initialized RadiusSearch service.
      */
     public RadiusSearch getRadiusSearchEngine() {
-        // 1. Garante que a KDTree está pronta (dependência)
+        // 1. Ensure the KDTree dependency is ready
         if (this.station2DTree == null) {
             build2DTree();
         }
 
-        // 2. Inicializa o serviço se for a primeira vez
+        // 2. Initialize the service only once
         if (this.radiusSearchEngine == null) {
-            // Cria o serviço, injetando a KDTree
             this.radiusSearchEngine = new RadiusSearch(this.station2DTree);
-            // Simula a mensagem de "ready" que aparece no console
-            System.out.println("⚙️  Initializing Radius Search Engine (USEI10)...");
-            System.out.println("✅ USEI10 Radius Search ready! Complexity: O(sqrt(N) + K log K) average case");
         }
         return this.radiusSearchEngine;
     }
