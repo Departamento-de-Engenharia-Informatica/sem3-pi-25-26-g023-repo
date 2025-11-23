@@ -17,26 +17,31 @@ New functionality focused on high efficiency and advanced data structures.
     * [📜 Requirements](src/doc/ESINF/USEI06/01.requirements-engineering/USEI06-requirements.md)
     * [📊 Analysis](src/doc/ESINF/USEI06/02.analysis/USEI06-analysis.md)
     * [🛠️ Design](src/doc/ESINF/USEI06/03.design/USEI06-design.md)
+    * [📊  Análise de Complexidade](src/doc/ESINF/USEI06/AnaliseComplexidadeUSEI06.pdf)
 * **USEI07: KD-Tree Construction** 🌳
     * *Objective: Build a **balanced KD-Tree** from coordinates to optimize geographical searches.*
     * [📜 Requirements](src/doc/ESINF/USEI07/01.requirements-engineering/USEI07-requirements.md)
     * [📊 Analysis](src/doc/ESINF/USEI07/02.analysis/USEI07-analysis.md)
     * [🛠️ Design](src/doc/ESINF/USEI07/03.design/USEI07-design.md)
+    * [📊  Análise de Complexidade](src/doc/ESINF/USEI07/AnaliseComplexidadeUSEI07.pdf)
 * **USEI08: Range Search (Geographical Area)** 🗺️
     * *Objective: Find all stations within a defined geographical rectangle, leveraging **KD-Tree Pruning**.*
     * [📜 Requirements](src/doc/ESINF/USEI08/01.requirements-engineering/USEI08-requirements.md)
     * [📊 Analysis](src/doc/ESINF/USEI08/02.analysis/USEI08-analysis.md)
     * [🛠️ Design](src/doc/ESINF/USEI08/03.design/USEI08-design.md)
+    *  [📊  Análise de Complexidade](src/doc/ESINF/USEI08/02.analysis/complexity_usei08.pdf)
 * **USEI09: k-Nearest Neighbor Search** 📍
     * *Objective: Find the **N nearest stations** to a point, using **KD-Tree and Max-Heap** for $O(\log n)$ average time.*
     * [📜 Requirements](src/doc/ESINF/USEI09/01.requirements-engineering/USEI09-requirements.md)
     * [📊 Analysis](src/doc/ESINF/USEI09/02.analysis/USEI09-analysis.md)
     * [🛠️ Design](src/doc/ESINF/USEI09/03.design/USEI09-design.md)
+    *  [📊  Análise de Complexidade](src/doc/ESINF/USEI09/Analise_Complexidade_USEI09.pdf)
 * **USEI10: Radius Search & Density Summary** 🌐
     * *Objective: Find stations within a specific radius and generate a statistical summary.*
     * [📜 Requirements](src/doc/ESINF/USEI10/01.requirements-engineering/USEI10-requirements.md)
     * [📊 Analysis](src/doc/ESINF/USEI10/02.analysis/USEI10-analysis.md)
     * [🛠️ Design](src/doc/ESINF/USEI10/03.design/USEI10-design.md)
+    *  [📊  Análise de Complexidade](src/doc/ESINF/USEI10/AnaliseComplexidadeUSEI10.pdf)
 
 ---
 
