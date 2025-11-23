@@ -40,6 +40,7 @@ Other software classes (i.e., Pure Fabrication) identified:
 ---
 
 ### 3.3. Sequence Diagram (SD)
+![Sequence Diagram - Full](svg/USLP07-SD-full.svg)
 
 #### Full Diagram (Conflict Resolution Flow)
 
@@ -62,6 +63,7 @@ This diagram illustrates the process of dispatching trains, calculating times, a
 ---
 
 ### 3.4. Class Diagram (CD)
+![Sequence Diagram - Full](svg/USLP07-SD-full.svg)
 
 This class diagram shows the relationships crucial for performance calculation and conflict detection/storage:
 

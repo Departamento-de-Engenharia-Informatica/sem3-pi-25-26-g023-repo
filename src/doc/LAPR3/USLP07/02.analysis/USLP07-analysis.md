@@ -3,6 +3,7 @@
 ## 2. Analysis
 
 ### 2.1. Relevant Domain Model Excerpt
+![Domain Model](svg/USLP07-DM.svg)
 
 The analysis focuses on the interaction between the scheduled journey (`TrainTrip`), the path segments (`LineSegment`), and the conflict resolution mechanism.
 

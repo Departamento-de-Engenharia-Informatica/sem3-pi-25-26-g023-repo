@@ -55,8 +55,9 @@ The scheduling service relies on the correct implementation of the domain model 
 | **Output (Conflitos)** | `Conflict` DTO | `tripId1`, `tripId2`, `delayMinutes`, `scheduledMeetTime` (safe entry time), `safeWaitFacilityId`. |
 
 ---
+### 1.6. System Sequence Diagram (SSD)
 
-
+![System Sequence Diagram](svg/USLP07-SSD.svg)
 
 ## 2. Technical Implementation Details
 
