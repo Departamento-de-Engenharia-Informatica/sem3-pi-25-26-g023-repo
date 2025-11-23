@@ -99,6 +99,7 @@ public class RadiusSearch {
                 mainStationCount
         );
 
+
         // Retorna a BST e o Sumário encapsulados num array de objetos.
         return new Object[]{resultBST, summary};
     }
