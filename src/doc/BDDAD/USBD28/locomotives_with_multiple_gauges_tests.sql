@@ -18,8 +18,8 @@ v_loc_cursor SYS_REFCURSOR;
 BEGIN
     DBMS_OUTPUT.PUT_LINE('=== TEST USBD28: Multi-Gauge Locomotives for Operator MEDWAY ===');
 
-    -- Call the function with MEDWAY operator
-    v_loc_cursor := getMultiGaugeLocomotives('MEDWAY');
+    -- Call the function
+    v_loc_cursor := getMultiGaugeLocomotives();
 
     -- Loop through all results from the cursor
     LOOP
@@ -41,9 +41,6 @@ END LOOP;
     -- Display summary
     IF v_counter = 0 THEN
         DBMS_OUTPUT.PUT_LINE('No multi-gauge locomotives found for operator MEDWAY.');
-        DBMS_OUTPUT.PUT_LINE('This could mean:');
-        DBMS_OUTPUT.PUT_LINE('1) MEDWAY has no locomotives, OR');
-        DBMS_OUTPUT.PUT_LINE('2) MEDWAY locomotives do not support multiple gauges');
 ELSE
         DBMS_OUTPUT.PUT_LINE('Total multi-gauge locomotives for MEDWAY: ' || v_counter);
 END IF;
@@ -52,13 +49,5 @@ END IF;
 CLOSE v_loc_cursor;
 
 DBMS_OUTPUT.PUT_LINE('--- End of USBD28 Test ---');
-
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error during USBD28 test: ' || SQLERRM);
-        -- Ensure cursor is closed even if error occurs
-        IF v_loc_cursor%ISOPEN THEN
-            CLOSE v_loc_cursor;
-END IF;
 END;
 /

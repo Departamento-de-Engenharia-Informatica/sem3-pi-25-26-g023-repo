@@ -2,9 +2,8 @@
 -- USBD28 - Locomotives with Multiple Gauges
 -- =============================================
 
-CREATE OR REPLACE FUNCTION getMultiGaugeLocomotives(
-    p_operator_id IN OPERATOR.operator_id%TYPE DEFAULT 'MEDWAY'
-) RETURN SYS_REFCURSOR
+CREATE OR REPLACE FUNCTION getMultiGaugeLocomotives
+RETURN SYS_REFCURSOR
 IS
     v_locomotives SYS_REFCURSOR;
 BEGIN
@@ -14,16 +13,12 @@ SELECT
     o.name as "Operator",
     l.locomotive_type as "Type",
     l.power_kw as "Power (kW)",
-    CASE
-        WHEN l.supports_multiple_gauges = 'Y' THEN 'Yes'
-        ELSE 'No'
-        END as "Supports Multiple Gauges"
+    'Yes' as "Supports Multiple Gauges"
 FROM LOCOMOTIVE l
          JOIN ROLLING_STOCK rs ON l.stock_id = rs.stock_id
          JOIN OPERATOR o ON rs.operator_id = o.operator_id
 WHERE l.supports_multiple_gauges = 'Y'
-  AND o.operator_id = p_operator_id;
-
+  AND o.operator_id = 'MEDWAY';
 RETURN v_locomotives;
 END getMultiGaugeLocomotives;
 /
