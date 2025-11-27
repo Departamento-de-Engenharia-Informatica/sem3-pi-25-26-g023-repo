@@ -8,9 +8,9 @@
 # a2 = cmd* (output buffer)
 # Returns: 1 on success, 0 on failure
 format_command:
-    # =============================================
+
     # PROLOGO - SALVAR REGISTOS NA STACK
-    # =============================================
+
     addi sp, sp, -32      # Reserva 32 bytes na stack (8 palavras de 4 bytes)
     sw ra, 28(sp)         # Salva endereço de retorno (ra)
     sw s0, 24(sp)         # Salva s0 - será usado para guardar op pointer
@@ -18,9 +18,8 @@ format_command:
     sw s2, 16(sp)         # Salva s2 - será usado para guardar cmd buffer
     sw s3, 12(sp)         # Salva s3 - será usado para processamento de string
 
-    # =============================================
     # INICIALIZAÇÃO - GUARDAR PARÂMETROS
-    # =============================================
+
     mv s0, a0      # s0 = op pointer (guarda string de input)
     mv s1, a1      # s1 = n value (guarda número inteiro)
     mv s2, a2      # s2 = cmd output buffer (onde escrever resultado)
@@ -28,15 +27,13 @@ format_command:
     # Inicializa cmd como string vazia (por segurança)
     sb zero, 0(s2)  # Coloca byte NULL no início do buffer de output
 
-    # =============================================
     # VERIFICAÇÃO DE INPUT VAZIO
-    # =============================================
+
     lb t0, 0(s0)        # Carrega primeiro caractere da string op
     beqz t0, format_fail # Se for zero (fim de string), falha imediatamente
 
-    # =============================================
-    # SKIP LEADING SPACES - IGNORAR ESPAÇOS INICIAIS
-    # =============================================
+    # IGNORA ESPAÇOS INICIAIS
+
     mv s3, s0      # s3 = ponteiro atual para processamento (copia de s0)
 
 skip_leading_spaces:
@@ -52,9 +49,9 @@ skip_space:
     addi s3, s3, 1       # Avança ponteiro para próximo caractere
     j skip_leading_spaces # Volta a verificar
 
-    # =============================================
+
     # PROCESSAMENTO DO COMANDO - CONVERSÃO PARA MAIÚSCULAS
-    # =============================================
+
 process_command:
     mv t4, s3      # t4 = ponteiro temporário (começa onde paramos os espaços)
     li t5, 0       # t5 = contador de caracteres (inicializa a 0)
@@ -69,9 +66,9 @@ load_and_convert:
     li t1, '\t'
     beq t0, t1, check_loaded_chars # Tab termina o comando
 
-    # =============================================
+
     # CONVERSÃO PARA MAIÚSCULAS
-    # =============================================
+
     li t1, 'a'     # t1 = 'a' (97 em ASCII)
     li t2, 'z'     # t2 = 'z' (122 em ASCII)
     blt t0, t1, store_char  # Se < 'a', não é minúscula, salta
@@ -86,16 +83,14 @@ store_char:
     addi t4, t4, 1   # Avança para próximo caractere na string
     j load_and_convert # Continua loop
 
-    # =============================================
     # VERIFICAÇÃO DOS CARACTERES CARREGADOS
-    # =============================================
+
 check_loaded_chars:
     # Agora temos t5 caracteres na stack, todos em maiúsculas
     beqz t5, format_fail_cleanup # Se não carregou caracteres, falha
 
-    # =============================================
     # VERIFICA COMANDO DE 3 CARACTERES (GTH)
-    # =============================================
+
     li t0, 3
     bne t5, t0, check_2char # Se não tem 3 chars, verifica 2 chars
 
@@ -127,9 +122,8 @@ check_loaded_chars:
     li a0, 1        # Return 1 (sucesso)
     j format_exit   # Salta para fim
 
-    # =============================================
     # VERIFICA COMANDOS DE 2 CARACTERES
-    # =============================================
+
 check_2char:
     li t0, 2
     bne t5, t0, format_fail_cleanup # Se não tem 2 chars, falha
@@ -141,9 +135,9 @@ check_2char:
     addi sp, sp, 1  # Liberta stack
 
 check_2char_after_pop:
-    # =============================================
+
     # VERIFICA TODOS OS COMANDOS VÁLIDOS DE 2 CHARS
-    # =============================================
+
 
     # Verifica "RE"
     li t0, 'R'
@@ -176,9 +170,9 @@ check_rb:
     bne t2, t0, format_fail # Se segundo não é 'B', falha
     # É "RB" - continua para valid_2char
 
-    # =============================================
+
     # COMANDO VÁLIDO - VALIDA PARÂMETRO n
-    # =============================================
+
 valid_2char:
     # Verifica se n está no range [0, 99]
     li t0, 0
@@ -186,9 +180,9 @@ valid_2char:
     li t0, 99
     bgt s1, t0, format_fail # Se n > 99, falha
 
-    # =============================================
+
     # FORMATA OUTPUT: "CMD,XX"
-    # =============================================
+
     sb t1, 0(s2)    # Escreve primeiro caractere do comando
     sb t2, 1(s2)    # Escreve segundo caractere do comando
     li t0, ','
@@ -206,9 +200,8 @@ valid_2char:
     li a0, 1        # Return 1 (sucesso)
     j format_exit   # Salta para fim
 
-    # =============================================
     # TRATAMENTO DE ERROS
-    # =============================================
+
 format_fail_cleanup:
     # Limpa stack se tivermos pushado caracteres
     beqz t5, format_fail # Se não há caracteres, só falha
@@ -222,9 +215,8 @@ format_fail:
     li a0, 0        # Return 0 (falha)
     sb zero, 0(s2)  # Garante que output é string vazia
 
-    # =============================================
     # EPILOGO - RESTAURA REGISTOS E RETORNA
-    # =============================================
+
 format_exit:
     # Restaura registos salvos da stack
     lw ra, 28(sp)   # Restaura endereço de retorno
@@ -235,9 +227,8 @@ format_exit:
     addi sp, sp, 32 # Liberta espaço da stack
     ret             # Retorna para caller
 
-    # =============================================
     # FUNÇÃO HELPER: CONVERSÃO INT PARA 2 DÍGITOS
-    # =============================================
+
 # Helper function: int_to_2digit
 # Converts integer (0-99) to 2-digit ASCII string
 # a0 = integer value (0-99)
