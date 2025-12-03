@@ -1,73 +1,104 @@
-#include <stdio.h>
-#include <string.h>
-#include "usac08_asm.h"
+#include <string.h>  
+#include "unity.h"
+#include "asm.h" 
 
-#define ANSI_GREEN "\x1b[32m"
-#define ANSI_RED "\x1b[31m"
-#define ANSI_RESET "\x1b[0m"
 
-// Função auxiliar para imprimir arrays
-void print_array(int* arr, int len) {
-    printf("[");
-    for (int i = 0; i < len; i++) {
-        printf("%d%s", arr[i], (i < len - 1 ? ", " : ""));
-    }
-    printf("]");
+int callfunc ( int (*f)(int* ptr, int num, char order),int* ptr, int num, char order);  
+
+void setUp(void) {
+    // set stuff up here
 }
 
-void test_usac08(int* vec, int len, char order, int expected_res, const char* description) {
-    // Cria uma cópia para preservar o original (se necessário) e para manipulação
-    int vec_copy[len];
-    memcpy(vec_copy, vec, len * sizeof(int));
-
-    int result = sort_array(vec_copy, len, order);
-
-    const char* order_str = (order == 1) ? "ASC" : (order == 0 ? "DESC" : "INVALID");
-
-    printf("\n--- Test: %s (%s) ---\n", description, order_str);
-    printf("  Input Array: ");
-    print_array(vec, len);
-    printf("\n");
-
-    int success = (result == expected_res);
-    printf("  Result Code: %s%d%s (Expected: %d)\n",
-           (success ? ANSI_GREEN : ANSI_RED), result, ANSI_RESET, expected_res);
-
-    if (result == 1) {
-        printf("  Sorted Array: ");
-        print_array(vec_copy, len);
-        printf("\n");
-        // Nota: A verificação de conteúdo exata deve ser feita manualmente ou noutra função.
-    }
+void tearDown(void) {
+    // clean stuff up here
 }
 
-int main(void) {
-    printf("\n=== USAC08: sort_array (Bubble Sort) ===\n");
-    int vec1[] = {5, 2, 8, 1, 9, 4};
-    int len1 = 6;
-    int vec2[] = {10};
-    int len2 = 1;
-    int vec3[] = {3, 3, 1, 2};
-    int len3 = 4;
 
-    // Teste 1: Ascendente (Order=1)
-    test_usac08(vec1, len1, 1, 1, "Array genérico"); // Espera: [1, 2, 4, 5, 8, 9]
 
-    // Teste 2: Descendente (Order=0)
-    test_usac08(vec1, len1, 0, 1, "Array genérico"); // Espera: [9, 8, 5, 4, 2, 1]
+void run_test(int * vec, int in_num, char order, int exp_res, int * exp_vec)
+{
+    int vec1[100];
+    int res; 
 
-    // Teste 3: Array de um elemento
-    test_usac08(vec2, len2, 1, 1, "Array de 1 elemento"); // Espera: [10]
 
-    // Teste 4: Elementos repetidos
-    test_usac08(vec3, len3, 1, 1, "Elementos repetidos"); // Espera: [1, 2, 3, 3]
-
-    // Teste 5: Falha - Comprimento <= 0
-    int vec_fail[] = {0};
-    test_usac08(vec_fail, 0, 1, 0, "Comprimento zero");
-
-    // Teste 6: Falha - Order inválida (ex: 2)
-    test_usac08(vec1, len1, 2, 0, "Order inválida");
-
-    return 0;
+    // setup 
+        memset(vec1, 0x55, sizeof vec1);
+     
+	memcpy(vec1+1,vec,in_num*sizeof(int));  //   
+	res=callfunc(sort_array,vec1+1,in_num,order);
+    
+    TEST_ASSERT_EQUAL_INT(exp_res,res);    // check result 
+    TEST_ASSERT_EQUAL_INT(0x55555555, vec1[in_num+1]);    // check sentinel 
+    TEST_ASSERT_EQUAL_INT(0x55555555, vec1[0]);    // check sentinel  
+    if ( in_num != 0 ) 
+    TEST_ASSERT_EQUAL_INT_ARRAY(exp_vec, vec1+1, in_num);    // check vec 
+    
 }
+
+
+void test_NullVector()
+{ 
+    run_test((int[]){0},0,1,0,(int[]){0}); 
+}
+void test_One()
+{ 
+    run_test((int[]){1000},1,1,1,(int[]){1000}); 
+}
+void test_Zero()
+{ 
+    run_test((int[]){10,0,1},3,1,1,(int[]){0,1,10}); 
+}
+void test_Three()
+{ 
+    run_test((int[]){-1,-3,-2},3,1,1,(int[]){-3,-2,-1}); 
+}
+void test_Five()
+{ 
+    run_test((int[]){2,1,1,1,1},5,1,1,(int[]){1,1,1,1,2}); 
+}
+
+void test_NullVectorD()
+{ 
+    run_test((int[]){0},0,0,0,(int[]){0}); 
+}
+void test_OneD()
+{ 
+    run_test((int[]){1000},1,0,1,(int[]){1000}); 
+}
+void test_ZeroD()
+{ 
+    run_test((int[]){10,0,1},3,0,1,(int[]){10,1,0}); 
+}
+void test_ThreeD()
+{ 
+    run_test((int[]){-1,-3,-2},3,0,1,(int[]){-1,-2,-3}); 
+}
+void test_FiveD()
+{ 
+    run_test((int[]){1,1,1,1,2},5,0,1,(int[]){2,1,1,1,1}); 
+}
+
+
+int main()
+  { 
+
+    UNITY_BEGIN();
+    RUN_TEST(test_NullVector);
+    RUN_TEST(test_One);
+    RUN_TEST(test_Zero);
+    RUN_TEST(test_Three);
+    RUN_TEST(test_Five);
+    RUN_TEST(test_NullVectorD);
+    RUN_TEST(test_OneD);
+    RUN_TEST(test_ZeroD);
+    RUN_TEST(test_ThreeD);
+    RUN_TEST(test_FiveD);
+    return UNITY_END();  
+
+  } 
+
+
+
+
+
+

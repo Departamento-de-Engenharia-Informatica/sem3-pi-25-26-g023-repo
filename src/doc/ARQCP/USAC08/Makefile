@@ -1,26 +1,18 @@
+# Makefile para USAC08
 CC = riscv32-linux-gcc
-CFLAGS = -Wall -Wextra -fanalyzer -g
-ARCHFLAGS = -march=rv32imd -mabi=ilp32d
+CFLAGS = -Wall -Wextra -g -O0 -static
 LIBRV32 = ${HOME}/bin/bootlin/riscv32-buildroot-linux-gnu/sysroot
+TARGET = usac08.elf
 
-.PHONY: clean run debug
+.PHONY: all run clean
 
-program_usac08.elf: usac08_main.o usac08_asm.o
-	$(CC) $(CFLAGS) $(ARCHFLAGS) usac08_main.o usac08_asm.o -o program_usac08.elf
+all: $(TARGET)
 
-usac08_main.o: usac08_main.c usac08_asm.h
-	$(CC) $(CFLAGS) $(ARCHFLAGS) -c usac08_main.c -o usac08_main.o
+$(TARGET): main.c callfunc.s asm.s unity.c
+	$(CC) $(CFLAGS) main.c callfunc.s asm.s unity.c -o $(TARGET)
 
-usac08_asm.o: usac08_asm.s usac08_asm.h
-	$(CC) $(CFLAGS) $(ARCHFLAGS) -c usac08_asm.s -o usac08_asm.o
+run: $(TARGET)
+	qemu-riscv32 -L $(LIBRV32) ./$(TARGET)
 
 clean:
-	rm -f *.o *.elf
-
-run: clean program_usac08.elf
-	qemu-riscv32 -L $(LIBRV32) ./program_usac08.elf
-
-debug: program_usac08.elf
-	@echo "On other terminal window do:"
-	@echo "riscv32-linux-gdb-tui ./program_usac08.elf "
-	qemu-riscv32 -L $(LIBRV32) -g 1234 program_usac08.elf -S
+	rm -f *.o $(TARGET)
