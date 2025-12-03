@@ -1,7 +1,5 @@
-#ifndef ASM_H
-#define ASM_H
+#ifndef ASM_H 
+#define ASM_H 
+int  enqueue_value(int* array, int length, int *nelem, int* read, int* write, int value);
+#endif 
 
-int enqueue_value(int* buffer, int length, int *nelem,
-                  int* tail, int* head, int value);
-
-#endif
