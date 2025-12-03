@@ -1,120 +1,106 @@
-.text
+    .text
+    .globl dequeue_value
+    .globl enqueue_value
 
-
-.globl dequeue_value
-
-
-# int dequeue_value(int* buffer, int length, int *nelem,
-#                   int* tail, int* head, int *value)
-# a0 = buffer
-# a1 = length
-# a2 = nelem*
-# a3 = tail*
-# a4 = head*  (não usado no dequeue)
-# a5 = value*
-# retorna: 1 se removeu com sucesso, 0 se buffer vazio
-
+# int dequeue_value(int* array, int length, int* nelem, int* read, int* write, int* value)
 dequeue_value:
-    addi sp, sp, -32
-    # Reserva 32 bytes na stack para guardar registos
+    # a0 = array
+    # a1 = length
+    # a2 = *nelem
+    # a3 = *read
+    # a4 = *write
+    # a5 = *value
 
-    sw ra, 28(sp)
-    # Guarda return address
+    # Verificar se a fila está vazia (read == write)
+    lw t0, 0(a3)          # t0 = *read
+    lw t1, 0(a4)          # t1 = *write
+    beq t0, t1, empty     # se read == write, fila vazia
 
-    sw s0, 24(sp)
-    sw s1, 20(sp)
-    sw s2, 16(sp)
-    sw s3, 12(sp)
-    # Guarda registos callee-saved s0..s3
+    # FILA NÃO VAZIA - remover elemento
+    # 1. Ler valor na posição read
+    slli t2, t0, 2        # t2 = read * 4
+    add t2, a0, t2        # t2 = &array[read]
+    lw t3, 0(t2)          # t3 = array[read]
 
-    mv s0, a0      # buffer
-    # Copia pointer do buffer para s0
+    # 2. Guardar valor no ponteiro fornecido
+    sw t3, 0(a5)          # *value = array[read]
 
-    mv s1, a1      # length
-    # Guarda o tamanho (número de posições do buffer)
+    # 3. Atualizar read: (read + 1) % length
+    addi t0, t0, 1        # read++
+    blt t0, a1, no_wrap_r
+    li t0, 0              # read = 0
+no_wrap_r:
+    sw t0, 0(a3)          # *read = t0
 
-    mv s2, a2      # nelem*
-    # Guarda pointer para número de elementos
+    # 4. Atualizar nelem: nelem - 1
+    lw t0, 0(a2)          # t0 = *nelem
+    addi t0, t0, -1       # nelem--
+    sw t0, 0(a2)          # *nelem = t0
 
-    mv s3, a3      # tail*
-    # Guarda pointer para tail (índice do elemento mais antigo)
-
-    # a4 = head* (não é necessário no dequeue, ignorado)
-
-    mv s4, a5      # value*
-    # Guarda pointer onde escrever o valor removido
-
-    # Verificar se buffer está vazio
-    lw t0, 0(s2)           # t0 = *nelem
-    # Carrega número de elementos; se 0, está vazio
-
-    beq t0, zero, empty_case
-    # Se nelem == 0 → saltar para o caso vazio
-
-    # Ler da posição TAIL atual
-    lw t1, 0(s3)           # t1 = *tail
-    # Carrega índice do elemento mais antigo (tail)
-
-    # Calcular endereço correto
-    slli t2, t1, 2         # t2 = tail * 4
-    # Multiplica índice por 4 para obter offset em bytes (int = 4 bytes)
-
-    add t2, s0, t2         # t2 = &buffer[tail]
-    # Soma endereço base do buffer com offset -> &buffer[tail]
-
-    lw t3, 0(t2)           # t3 = buffer[tail]
-    # Lê o valor armazenado nessa posição
-
-    # Escrever valor no ponteiro de saída
-    sw t3, 0(s4)           # *value = buffer[tail]
-    # Escreve o valor removido para o pointer passado pela função
-
-    # Avançar TAIL circularmente
-    addi t1, t1, 1         # tail++
-    # Incrementa índice do elemento mais antigo
-
-    blt t1, s1, tail_ok    # if (tail < length) goto tail_ok
-    # Se ainda dentro do limite, mantém; caso contrário faz wrap
-
-    li t1, 0               # tail = 0 (wrap around)
-    # Se passou do fim, volta a 0
-
-tail_ok:
-    sw t1, 0(s3)           # *tail = novo tail
-    # Guarda novo tail
-
-    # Decrementar nelem
-    lw t0, 0(s2)           # recarregar nelem
-    # Recarrega *nelem
-
-    addi t0, t0, -1
-    # Decrementa número de elementos no buffer
-
-    sw t0, 0(s2)           # *nelem = nelem - 1
-    # Guarda novo número de elementos
-
-    li a0, 1               # return 1 (sucesso)
-    # Coloca 1 em a0 → operação bem-sucedida
-
-    j finish
-    # Salta para restauração da stack e return
-
-empty_case:
-    li a0, 0               # return 0 (buffer vazio)
-    # Se nelem era 0 → retorna 0 a indicar falha
-
-finish:
-    lw ra, 28(sp)
-    # Restaura return address
-
-    lw s0, 24(sp)
-    lw s1, 20(sp)
-    lw s2, 16(sp)
-    lw s3, 12(sp)
-    # Restaura registos callee-saved
-
-    addi sp, sp, 32
-    # Liberta frame da stack
-
+    # 5. Retornar 1 (sucesso)
+    li a0, 1
     ret
-    # Retorna ao chamador
+
+empty:
+    # Fila vazia - retornar 0
+    li a0, 0
+    ret
+
+# int enqueue_value(int* array, int length, int* nelem, int* read, int* write, int value)
+enqueue_value:
+    # a0 = array
+    # a1 = length
+    # a2 = *nelem
+    # a3 = *read
+    # a4 = *write
+    # a5 = value
+
+    # 1. Carregar write atual
+    lw t0, 0(a4)          # t0 = *write
+
+    # 2. Inserir valor na posição write
+    slli t1, t0, 2        # t1 = write * 4
+    add t1, a0, t1        # t1 = &array[write]
+    sw a5, 0(t1)          # array[write] = value
+
+    # 3. Atualizar write: (write + 1) % length
+    addi t0, t0, 1        # write++
+    blt t0, a1, no_wrap_w
+    li t0, 0              # write = 0
+no_wrap_w:
+    sw t0, 0(a4)          # *write = t0
+
+    # 4. Verificar se read == write (buffer cheio)
+    lw t1, 0(a3)          # t1 = *read
+    bne t0, t1, not_full  # se write != read, não está cheio
+
+    # BUFFER CHEIO - atualizar read também
+    addi t1, t1, 1        # read++
+    blt t1, a1, no_wrap_r2
+    li t1, 0              # read = 0
+no_wrap_r2:
+    sw t1, 0(a3)          # *read = t1
+
+    # NELEM mantém-se igual
+    li a0, 1              # retornar 1
+    ret
+
+not_full:
+    # Buffer não está cheio - atualizar nelem
+    lw t0, 0(a2)          # t0 = *nelem
+    addi t0, t0, 1        # nelem++
+    sw t0, 0(a2)          # *nelem = t0
+
+    # Verificar se agora ficou cheio
+    bne t0, a1, not_full_now
+
+    # Ficou cheio agora - retornar 1
+    li a0, 1
+    ret
+
+not_full_now:
+    # Não está cheio - retornar 0
+    li a0, 0
+    ret
+
+# Newline no final para evitar warning

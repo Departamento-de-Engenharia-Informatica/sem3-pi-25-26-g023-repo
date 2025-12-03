@@ -1,21 +1,18 @@
+# Makefile para USAC03
 CC = riscv32-linux-gcc
-CFLAGS = -Wall -Wextra -g -O0
-ARCHFLAGS = -march=rv32imd -mabi=ilp32d
+CFLAGS = -Wall -Wextra -g -O0 -static
 LIBRV32 = ${HOME}/bin/bootlin/riscv32-buildroot-linux-gnu/sysroot
+TARGET = usac03.elf
 
-.PHONY: clean run debug
+.PHONY: all run clean
 
-program.elf: main.o asm.o
-	$(CC) $(CFLAGS) $(ARCHFLAGS) main.o asm.o -o program.elf
+all: $(TARGET)
 
-main.o: main.c asm.h
-	$(CC) $(CFLAGS) $(ARCHFLAGS) -c main.c -o main.o
+$(TARGET): main.c callfunc.s asm.s
+	$(CC) $(CFLAGS) main.c callfunc.s asm.s -o $(TARGET)
 
-asm.o: asm.s
-	$(CC) $(CFLAGS) $(ARCHFLAGS) -c asm.s -o asm.o
+run: $(TARGET)
+	qemu-riscv32 -L $(LIBRV32) ./$(TARGET)
 
 clean:
-	rm -f *.o *.elf
-
-run: program.elf
-	qemu-riscv32 -L $(LIBRV32) ./program.elf
+	rm -f *.o $(TARGET)
