@@ -8,7 +8,7 @@ import java.util.List;
  * Implements range search in KD-Tree for European railway stations with optional filters.
  * Provides efficient spatial queries using KD-Tree pruning to avoid full dataset scans.
  */
-public record SpatialSearch(KDTree kdTree) {
+public record SpatialSearch(KDTree kdTree) { // RECORD: classe imutável que automaticamente gera getters, equals, hashCode
 
     /**
      * Constructs a SpatialSearch instance with the specified KD-Tree.
@@ -17,8 +17,8 @@ public record SpatialSearch(KDTree kdTree) {
      * @throws IllegalArgumentException if kdTree is null
      */
     public SpatialSearch {
-        if (kdTree == null) {
-            throw new IllegalArgumentException("KD-Tree cannot be null");
+        if (kdTree == null) { // VALIDAÇÃO: garante que a KD-Tree não é nula
+            throw new IllegalArgumentException("KD-Tree cannot be null"); // EXCEÇÃO: se for nula, lança erro
         }
     }
 
@@ -39,12 +39,12 @@ public record SpatialSearch(KDTree kdTree) {
     public List<EuropeanStation> searchByGeographicalArea(double latMin, double latMax, double lonMin, double lonMax,
                                                           String countryFilter, Boolean isCityFilter, Boolean isMainStationFilter) {
 
-        validateCoordinates(latMin, latMax, lonMin, lonMax);
+        validateCoordinates(latMin, latMax, lonMin, lonMax); // VALIDAÇÃO: verifica se coordenadas estão dentro dos limites geográficos
 
-        List<EuropeanStation> results = new ArrayList<>();
-        searchInRangeRecursive(kdTree.getRoot(), latMin, latMax, lonMin, lonMax,
+        List<EuropeanStation> results = new ArrayList<>(); // INICIALIZAÇÃO: cria lista vazia para armazenar resultados
+        searchInRangeRecursive(kdTree.getRoot(), latMin, latMax, lonMin, lonMax, // CHAMADA RECURSIVA: inicia busca a partir da raiz da KD-Tree
                 countryFilter, isCityFilter, isMainStationFilter, 0, results);
-        return results;
+        return results; // RETORNO: devolve lista com todas as estações encontradas
     }
 
     /**
@@ -57,10 +57,10 @@ public record SpatialSearch(KDTree kdTree) {
      * @throws IllegalArgumentException if coordinates are outside valid ranges
      */
     private void validateCoordinates(double latMin, double latMax, double lonMin, double lonMax) {
-        if (latMin < -90.0 || latMax > 90.0) {
+        if (latMin < -90.0 || latMax > 90.0) { // VALIDA LATITUDE: deve estar entre -90 e 90 graus
             throw new IllegalArgumentException("Invalid latitude range: [" + latMin + "," + latMax + "]");
         }
-        if (lonMin < -180.0 || lonMax > 180.0) {
+        if (lonMin < -180.0 || lonMax > 180.0) { // VALIDA LONGITUDE: deve estar entre -180 e 180 graus
             throw new IllegalArgumentException("Invalid longitude range: [" + lonMin + ", " + lonMax + "]");
         }
     }
@@ -84,41 +84,42 @@ public record SpatialSearch(KDTree kdTree) {
                                         String countryFilter, Boolean isCityFilter, Boolean isMainStationFilter,
                                         int depth, List<EuropeanStation> results) {
 
-        if (node == null) {
+        if (node == null) { // CASO BASE: se o nó é nulo, termina a recursão nesta ramificação
             return;
         }
 
-        double currentLat = node.getLatitude();
-        double currentLon = node.getLongitude();
-        int currentDimension = depth % 2;
+        double currentLat = node.getLatitude(); // OBTÉM: latitude do nó atual
+        double currentLon = node.getLongitude(); // OBTÉM: longitude do nó atual
+        int currentDimension = depth % 2; // CALCULA: dimensão atual (0 = latitude, 1 = longitude) - alterna a cada nível
 
-        boolean inLatRange = (currentLat >= latMin && currentLat <= latMax);
-        boolean inLonRange = (currentLon >= lonMin && currentLon <= lonMax);
+        boolean inLatRange = (currentLat >= latMin && currentLat <= latMax); // VERIFICA: se nó está dentro do intervalo de latitude
+        boolean inLonRange = (currentLon >= lonMin && currentLon <= lonMax); // VERIFICA: se nó está dentro do intervalo de longitude
 
-        if (inLatRange && inLonRange) {
-            for (EuropeanStation station : node.getStations()) {
-                if (matchesFilters(station, countryFilter, isCityFilter, isMainStationFilter)) {
-                    results.add(station);
+        if (inLatRange && inLonRange) { // SE: nó está dentro da área retangular de busca
+            for (EuropeanStation station : node.getStations()) { // PERCORRE: todas as estações neste nó (pode haver múltiplas com mesma coordenada)
+                if (matchesFilters(station, countryFilter, isCityFilter, isMainStationFilter)) { // APLICA FILTROS: verifica se estação atende aos critérios
+                    results.add(station); // ADICIONA: estação à lista de resultados se passar nos filtros
                 }
             }
         }
 
-        if (currentDimension == 0) {
-            if (latMin <= currentLat) {
-                searchInRangeRecursive(node.getLeft(), latMin, latMax, lonMin, lonMax,
+        // PODA DA KD-TREE: decide quais subárvores visitar baseado na dimensão atual e limites de busca
+        if (currentDimension == 0) { // DIMENSÃO ATUAL: latitude (nível par da árvore)
+            if (latMin <= currentLat) { // SE: área de busca inclui valores menores que latitude atual
+                searchInRangeRecursive(node.getLeft(), latMin, latMax, lonMin, lonMax, // VISITA: subárvore ESQUERDA (valores menores)
                         countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
             }
-            if (latMax >= currentLat) {
-                searchInRangeRecursive(node.getRight(), latMin, latMax, lonMin, lonMax,
+            if (latMax >= currentLat) { // SE: área de busca inclui valores maiores que latitude atual
+                searchInRangeRecursive(node.getRight(), latMin, latMax, lonMin, lonMax, // VISITA: subárvore DIREITA (valores maiores)
                         countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
             }
-        } else {
-            if (lonMin <= currentLon) {
-                searchInRangeRecursive(node.getLeft(), latMin, latMax, lonMin, lonMax,
+        } else { // DIMENSÃO ATUAL: longitude (nível ímpar da árvore)
+            if (lonMin <= currentLon) { // SE: área de busca inclui valores menores que longitude atual
+                searchInRangeRecursive(node.getLeft(), latMin, latMax, lonMin, lonMax, // VISITA: subárvore ESQUERDA (valores menores)
                         countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
             }
-            if (lonMax >= currentLon) {
-                searchInRangeRecursive(node.getRight(), latMin, latMax, lonMin, lonMax,
+            if (lonMax >= currentLon) { // SE: área de busca inclui valores maiores que longitude atual
+                searchInRangeRecursive(node.getRight(), latMin, latMax, lonMin, lonMax, // VISITA: subárvore DIREITA (valores maiores)
                         countryFilter, isCityFilter, isMainStationFilter, depth + 1, results);
             }
         }
@@ -136,21 +137,21 @@ public record SpatialSearch(KDTree kdTree) {
     private boolean matchesFilters(EuropeanStation station, String countryFilter,
                                    Boolean isCityFilter, Boolean isMainStationFilter) {
 
-        if (countryFilter != null && !countryFilter.equals("all")) {
-            if (!countryFilter.equalsIgnoreCase(station.getCountry())) {
-                return false;
+        if (countryFilter != null && !countryFilter.equals("all")) { // FILTRO PAÍS: se especificado e não é "all"
+            if (!countryFilter.equalsIgnoreCase(station.getCountry())) { // COMPARA: código do país (case insensitive)
+                return false; // REJEITA: estação se país não corresponder
             }
         }
 
-        if (isCityFilter != null && isCityFilter != station.isCity()) {
-            return false;
+        if (isCityFilter != null && isCityFilter != station.isCity()) { // FILTRO CIDADE: se especificado
+            return false; // REJEITA: estação se tipo cidade não corresponder
         }
 
-        if (isMainStationFilter != null && isMainStationFilter != station.isMainStation()) {
-            return false;
+        if (isMainStationFilter != null && isMainStationFilter != station.isMainStation()) { // FILTRO ESTAÇÃO PRINCIPAL: se especificado
+            return false; // REJEITA: estação se tipo estação principal não corresponder
         }
 
-        return true;
+        return true; // ACEITA: estação passou em todos os filtros aplicados
     }
 
     /**
@@ -175,8 +176,8 @@ public record SpatialSearch(KDTree kdTree) {
                          - Auxiliary: O(1)
                          - Recursion stack: O(log n)
                         """,
-                kdTree.height(),
-                kdTree.size(),
-                kdTree.height() <= 2 * Math.log(kdTree.size()) / Math.log(2) ? "Good" : "Could be improved");
+                kdTree.height(), // ALTURA: número de níveis da KD-Tree
+                kdTree.size(), // TAMANHO: número total de nós na KD-Tree
+                kdTree.height() <= 2 * Math.log(kdTree.size()) / Math.log(2) ? "Good" : "Could be improved"); // OPERADOR TERNÁRIO: avalia balanceamento da árvore
     }
 }
