@@ -10,7 +10,12 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 2. INSERT STATION DATA (27 Stations)
+-- 2. INSERT GAUGE DATA
+INSERT INTO GAUGE (gauge_mm, gauge_name, description)
+VALUES (1668, 'IBERIAN', 'Iberian gauge (Spain/Portugal)');
+
+---
+-- 3. INSERT STATION DATA (27 Stations)
 INSERT ALL
   INTO STATION (station_id, name, latitude, longitude) VALUES ('ST001', 'São Romão', 41.468, -8.539)
   INTO STATION (station_id, name, latitude, longitude) VALUES ('ST002', 'Tamel', 41.521, -8.487)
@@ -42,7 +47,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 3. INSERT RAILWAY_LINE DATA (13 Lines)
+-- 4. INSERT RAILWAY_LINE DATA (13 Lines)
 INSERT ALL
   INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L001', 'Ramal São Bento - Campanhã', 'IP')
   INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L002', 'Ramal Camapanhã - Contumil', 'IP')
@@ -60,7 +65,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 4. INSERT FACILITY DATA
+-- 5. INSERT FACILITY DATA
 INSERT ALL
   INTO FACILITY (facility_id, name, station_id) VALUES (1, 'São Romão', 'ST001')
   INTO FACILITY (facility_id, name, station_id) VALUES (2, 'Tamel', 'ST002')
@@ -92,7 +97,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 5. INSERT WAGON_MODEL DATA
+-- 6. INSERT WAGON_MODEL DATA
 INSERT ALL
   INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1245, 'Tadgs 32 94 082 3', 'Metalsines', 'Cereal wagon', 1668, 15)
   INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1278, 'Tdgs 41 94 074 1', 'Equimetal', 'Cereal wagon', 1668, 14)
@@ -102,7 +107,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 6. INSERT ROLLING_STOCK DATA (8 Locomotives + 41 Wagons)
+-- 7. INSERT ROLLING_STOCK DATA (8 Locomotives + 41 Wagons)
 INSERT ALL
 -- Locomotives (8)
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('5621', 'MEDWAY', 'Eurosprinter', 1668)
@@ -162,7 +167,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 7. INSERT LOCOMOTIVE DATA
+-- 8. INSERT LOCOMOTIVE DATA
 INSERT ALL
   INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, supports_multiple_gauges, length_m) VALUES ('5621', 'Electric', 5600, 'Y', 20)
   INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, supports_multiple_gauges, length_m) VALUES ('5623', 'Electric', 5600, 'Y', 20)
@@ -175,7 +180,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 8. INSERT WAGON DATA (41 Wagons)
+-- 9. INSERT WAGON DATA (41 Wagons)
 INSERT ALL
 -- Container Wagons Regmms (16)
   INTO WAGON (stock_id, model_id, operator_id, service_year) VALUES ('356 3 077', 1104, 'MEDWAY', 1987)
@@ -226,14 +231,14 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 9. INSERT TRAIN_ROUTE DATA
+-- 10. INSERT TRAIN_ROUTE DATA
 INSERT ALL
   INTO TRAIN_ROUTE (route_id, route_name, description) VALUES ('R001', 'Rota Leixões-Valença', 'Rota do comboio 5421 - Leixões para Valença')
   INTO TRAIN_ROUTE (route_id, route_name, description) VALUES ('R002', 'Rota Valença-Leixões', 'Rota dos comboios 5435 e 5437 - Valença para Leixões')
 SELECT * FROM DUAL;
 
 ---
--- 10. INSERT ROUTE_SEGMENT DATA
+-- 11. INSERT ROUTE_SEGMENT DATA
 INSERT ALL
   INTO ROUTE_SEGMENT (route_id, segment_order, facility_id, is_stop) VALUES ('R001', 1, 50, 'Y')
   INTO ROUTE_SEGMENT (route_id, segment_order, facility_id, is_stop) VALUES ('R001', 2, 48, 'Y')
@@ -262,7 +267,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 11. INSERT TRAIN DATA
+-- 12. INSERT TRAIN DATA
 INSERT ALL
   INTO TRAIN (train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id, max_length_m) VALUES ('5421', 'MEDWAY', DATE '2025-10-03', '09:45:00', 50, 11, '5621', 'R001', 500)
   INTO TRAIN (train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id, max_length_m) VALUES ('5435', 'MEDWAY', DATE '2025-10-03', '18:00:00', 11, 50, '5623', 'R002', 500)
@@ -270,7 +275,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 12. INSERT TRAIN_PASSAGE DATA
+-- 13. INSERT TRAIN_PASSAGE DATA
 INSERT ALL
   INTO TRAIN_PASSAGE (passage_id, train_id, facility_id, planned_arrival, planned_departure) VALUES ('P001', '5421', 50, TIMESTAMP '2025-10-03 09:45:00', TIMESTAMP '2025-10-03 10:00:00')
   INTO TRAIN_PASSAGE (passage_id, train_id, facility_id, planned_arrival, planned_departure) VALUES ('P002', '5421', 13, TIMESTAMP '2025-10-03 11:30:00', TIMESTAMP '2025-10-03 11:45:00')
@@ -281,7 +286,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 13. INSERT FREIGHT DATA
+-- 14. INSERT FREIGHT DATA
 INSERT ALL
   INTO FREIGHT (freight_id, freight_date, origin_facility_id, destination_facility_id) VALUES (2001, DATE '2025-10-03', 50, 12)
   INTO FREIGHT (freight_id, freight_date, origin_facility_id, destination_facility_id) VALUES (2002, DATE '2025-10-03', 13, 11)
@@ -295,7 +300,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 14. INSERT FREIGHT_WAGON DATA
+-- 15. INSERT FREIGHT_WAGON DATA
 INSERT ALL
   INTO FREIGHT_WAGON (freight_id, wagon_id) VALUES (2001, '333 0 001')
   INTO FREIGHT_WAGON (freight_id, wagon_id) VALUES (2001, '333 0 002')
@@ -329,7 +334,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 15. INSERT TRAIN_WAGON_USAGE DATA
+-- 16. INSERT TRAIN_WAGON_USAGE DATA
 INSERT ALL
   INTO TRAIN_WAGON_USAGE (usage_id, train_id, wagon_id, usage_date) VALUES ('USG001', '5421', '082 3 045', DATE '2025-10-03')
   INTO TRAIN_WAGON_USAGE (usage_id, train_id, wagon_id, usage_date) VALUES ('USG002', '5421', '082 3 046', DATE '2025-10-03')
@@ -347,7 +352,7 @@ INSERT ALL
 SELECT * FROM DUAL;
 
 ---
--- 16. INSERT LINE_SEGMENT DATA
+-- 17. INSERT LINE_SEGMENT DATA
 INSERT ALL
   INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (1, 'L001', 1, 'Yes', 8000, 2618, 4, NULL, NULL)
   INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (3, 'L002', 1, 'Yes', 8000, 2443, 4, NULL, NULL)
