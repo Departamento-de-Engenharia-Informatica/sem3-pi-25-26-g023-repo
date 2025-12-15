@@ -1,0 +1,29 @@
+@startuml
+
+title USEI15 - Risk-Aware Shortest Paths
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor RoutePlanner
+participant System
+
+RoutePlanner -> System: requestRiskAwareRoutingModule()
+activate System
+    System --> RoutePlanner: displayRoutingUI()
+deactivate System
+
+RoutePlanner -> System: computeShortestPath(departStid, targetStid)
+activate System
+    System --> RoutePlanner: displayRoutingResult(pathOrNegativeCycle)
+deactivate System
+
+RoutePlanner -> System: requestAnalysisReport()
+activate System
+    System --> RoutePlanner: displayTemporalComplexityReport(report)
+deactivate System
+
+@enduml
