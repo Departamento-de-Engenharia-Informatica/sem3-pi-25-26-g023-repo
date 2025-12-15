@@ -1,21 +1,22 @@
 -- =============================================
--- USBD32 - Relational Model Data Population
+-- USBD32 - Relational Model Data Population (COMPLETO)
 -- =============================================
 
 -- 1. INSERT OPERATOR DATA
 INSERT ALL
-  INTO OPERATOR (operator_id, name) VALUES ('IP', 'Infraestruturas de Portugal, SA')
-  INTO OPERATOR (operator_id, name) VALUES ('MEDWAY', 'Medway - Operador Ferroviário de Mercadorias, S.A')
-  INTO OPERATOR (operator_id, name) VALUES ('CAPTRAIN', 'Captrain Portugal S.A.')
+  INTO OPERATOR (operator_id, name, vat_number) VALUES ('IP', 'Infraestruturas de Portugal, SA', 'PT503933813')
+  INTO OPERATOR (operator_id, name, vat_number) VALUES ('MEDWAY', 'Medway - Operador Ferroviário de Mercadorias, S.A', 'PT509017800')
+  INTO OPERATOR (operator_id, name, vat_number) VALUES ('CAPTRAIN', 'Captrain Portugal S.A.', 'PT507832388')
 SELECT * FROM DUAL;
 
----
 -- 2. INSERT GAUGE DATA
 INSERT INTO GAUGE (gauge_mm, gauge_name, description)
 VALUES (1668, 'IBERIAN', 'Iberian gauge (Spain/Portugal)');
 
----
--- 3. INSERT STATION DATA (27 Stations)
+INSERT INTO GAUGE (gauge_mm, gauge_name, description)
+VALUES (1435, 'STANDARD', 'Standard European gauge');
+
+-- 3. INSERT STATION DATA
 INSERT ALL
   INTO STATION (station_id, name, latitude, longitude) VALUES ('ST001', 'São Romão', 41.468, -8.539)
   INTO STATION (station_id, name, latitude, longitude) VALUES ('ST002', 'Tamel', 41.521, -8.487)
@@ -44,10 +45,14 @@ INSERT ALL
   INTO STATION (station_id, name, latitude, longitude) VALUES ('ST025', 'São Mamede de Infesta', 41.183, -8.602)
   INTO STATION (station_id, name, latitude, longitude) VALUES ('ST026', 'Leça do Balio', 41.212, -8.635)
   INTO STATION (station_id, name, latitude, longitude) VALUES ('ST027', 'São Gemil', 41.176, -8.589)
+  INTO STATION (station_id, name, latitude, longitude) VALUES ('ST030', 'Braga', 41.550, -8.420)
+  INTO STATION (station_id, name, latitude, longitude) VALUES ('ST031', 'Manzagão', 41.500, -8.380)
+  INTO STATION (station_id, name, latitude, longitude) VALUES ('ST032', 'Cerqueiral', 41.520, -8.350)
+  INTO STATION (station_id, name, latitude, longitude) VALUES ('ST033', 'Gemieira', 41.580, -8.330)
+  INTO STATION (station_id, name, latitude, longitude) VALUES ('ST035', 'Paredes de Coura', 41.910, -8.560)
 SELECT * FROM DUAL;
 
----
--- 4. INSERT RAILWAY_LINE DATA (13 Lines)
+-- 4. INSERT RAILWAY_LINE DATA
 INSERT ALL
   INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L001', 'Ramal São Bento - Campanhã', 'IP')
   INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L002', 'Ramal Camapanhã - Contumil', 'IP')
@@ -62,9 +67,15 @@ INSERT ALL
   INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L011', 'Ramal São Gemil - São Mamede de Infesta', 'IP')
   INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L012', 'Ramal São Mamede de Infesta - Leça do Balio', 'IP')
   INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L013', 'Ramal Leça do Balio - Leixões', 'IP')
+  -- NOVAS LINHAS DO DATASET
+  INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L030', 'Ramal Braga', 'IP')
+  INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L031', 'Ramal Nine - Manzagão', 'IP')
+  INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L032', 'Ramal Manzagão - Cerqueiral', 'IP')
+  INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L035', 'Ramal Cerqueiral - Gemieira', 'IP')
+  INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L036', 'Ramal Gemieira - Paredes de Coura', 'IP')
+  INTO RAILWAY_LINE (line_id, name, owner_operator_id) VALUES ('L037', 'Ramal Paredes de Coura - Valença', 'IP')
 SELECT * FROM DUAL;
 
----
 -- 5. INSERT FACILITY DATA
 INSERT ALL
   INTO FACILITY (facility_id, name, station_id) VALUES (1, 'São Romão', 'ST001')
@@ -94,22 +105,33 @@ INSERT ALL
   INTO FACILITY (facility_id, name, station_id) VALUES (45, 'São Mamede de Infesta', 'ST025')
   INTO FACILITY (facility_id, name, station_id) VALUES (48, 'Leça do Balio', 'ST026')
   INTO FACILITY (facility_id, name, station_id) VALUES (43, 'São Gemil', 'ST027')
+  INTO FACILITY (facility_id, name, station_id) VALUES (30, 'Braga', 'ST030')
+  INTO FACILITY (facility_id, name, station_id) VALUES (31, 'Manzagão', 'ST031')
+  INTO FACILITY (facility_id, name, station_id) VALUES (32, 'Cerqueiral', 'ST032')
+  INTO FACILITY (facility_id, name, station_id) VALUES (33, 'Gemieira', 'ST033')
+  INTO FACILITY (facility_id, name, station_id) VALUES (35, 'Paredes de Coura', 'ST035')
 SELECT * FROM DUAL;
 
----
 -- 6. INSERT WAGON_MODEL DATA
 INSERT ALL
+  -- ORIGINAIS (1668mm)
   INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1245, 'Tadgs 32 94 082 3', 'Metalsines', 'Cereal wagon', 1668, 15)
   INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1278, 'Tdgs 41 94 074 1', 'Equimetal', 'Cereal wagon', 1668, 14)
   INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1325, 'Gabs 81 94 181 1', 'Sepsa Cometna', 'Covered wagon with sliding door', 1668, 18)
   INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1104, 'Regmms 32 94 356 3', 'Metalsines', 'Container wagon (max 40'' HC)', 1668, 20)
   INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1212, 'Kbs 41 94 333', 'Simmering', 'Wood wagon', 1668, 16)
+  -- NOVOS DO DATASET (1435mm)
+  INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (988, 'Sgnss 12 94 455 2', 'Emef', 'Container wagon (max 40'' HC)', 1435, 18.116)
+  INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1523, 'Zaes 81 94 788', 'Equimetal', 'Biodiesel wagaon', 1435, 13.8)
+  -- OUTROS NOVOS (1668mm)
+  INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (985, 'Lgs 22 94 441 6', 'Metalsines', 'Container wagon (max 40'' HC)', 1668, 13.86)
+  INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (987, 'Sgnss 12 94 455 2', 'Emef', 'Container wagon (max 40'' HC)', 1668, 18.116)
+  INTO WAGON_MODEL (model_id, model_name, maker, wagon_type, gauge_mm, length_m) VALUES (1525, 'Zaes 81 94 788', 'Equimetal', 'Biodiesel wagaon', 1668, 13.8)
 SELECT * FROM DUAL;
 
----
--- 7. INSERT ROLLING_STOCK DATA (8 Locomotives + 41 Wagons)
+-- 7. INSERT ROLLING_STOCK DATA
 INSERT ALL
--- Locomotives (8)
+-- Locomotives (8) - Iberian gauge
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('5621', 'MEDWAY', 'Eurosprinter', 1668)
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('5623', 'MEDWAY', 'Eurosprinter', 1668)
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('5630', 'MEDWAY', 'Eurosprinter', 1668)
@@ -118,7 +140,7 @@ INSERT ALL
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('5036', 'MEDWAY', 'E4000', 1668)
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('335.001', 'CAPTRAIN', 'E4000', 1668)
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('335.003', 'CAPTRAIN', 'E4000', 1668)
--- Container Wagons Regmms (16)
+-- Container Wagons Regmms (16) - Iberian gauge
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('356 3 077', 'MEDWAY', 'Regmms 32 94 356 3', 1668)
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('356 3 078', 'MEDWAY', 'Regmms 32 94 356 3', 1668)
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('356 3 079', 'MEDWAY', 'Regmms 32 94 356 3', 1668)
@@ -166,7 +188,6 @@ INSERT ALL
   INTO ROLLING_STOCK (stock_id, operator_id, model, gauge_mm) VALUES ('333 0 010', 'MEDWAY', 'Kbs 41 94 333', 1668)
 SELECT * FROM DUAL;
 
----
 -- 8. INSERT LOCOMOTIVE DATA
 INSERT ALL
   INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, supports_multiple_gauges, length_m) VALUES ('5621', 'Electric', 5600, 'Y', 20)
@@ -179,7 +200,6 @@ INSERT ALL
   INTO LOCOMOTIVE (stock_id, locomotive_type, power_kw, supports_multiple_gauges, length_m) VALUES ('335.003', 'Diesel', 3178, 'N', 19)
 SELECT * FROM DUAL;
 
----
 -- 9. INSERT WAGON DATA (41 Wagons)
 INSERT ALL
 -- Container Wagons Regmms (16)
@@ -230,14 +250,12 @@ INSERT ALL
   INTO WAGON (stock_id, model_id, operator_id, service_year) VALUES ('333 0 010', 1212, 'MEDWAY', 2005)
 SELECT * FROM DUAL;
 
----
 -- 10. INSERT TRAIN_ROUTE DATA
 INSERT ALL
   INTO TRAIN_ROUTE (route_id, route_name, description) VALUES ('R001', 'Rota Leixões-Valença', 'Rota do comboio 5421 - Leixões para Valença')
   INTO TRAIN_ROUTE (route_id, route_name, description) VALUES ('R002', 'Rota Valença-Leixões', 'Rota dos comboios 5435 e 5437 - Valença para Leixões')
 SELECT * FROM DUAL;
 
----
 -- 11. INSERT ROUTE_SEGMENT DATA
 INSERT ALL
   INTO ROUTE_SEGMENT (route_id, segment_order, facility_id, is_stop) VALUES ('R001', 1, 50, 'Y')
@@ -266,7 +284,6 @@ INSERT ALL
   INTO ROUTE_SEGMENT (route_id, segment_order, facility_id, is_stop) VALUES ('R002', 12, 50, 'Y')
 SELECT * FROM DUAL;
 
----
 -- 12. INSERT TRAIN DATA
 INSERT ALL
   INTO TRAIN (train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id, max_length_m) VALUES ('5421', 'MEDWAY', DATE '2025-10-03', '09:45:00', 50, 11, '5621', 'R001', 500)
@@ -274,7 +291,6 @@ INSERT ALL
   INTO TRAIN (train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id, max_length_m) VALUES ('5437', 'MEDWAY', DATE '2025-10-06', '10:00:00', 11, 50, '5621', 'R002', 500)
 SELECT * FROM DUAL;
 
----
 -- 13. INSERT TRAIN_PASSAGE DATA
 INSERT ALL
   INTO TRAIN_PASSAGE (passage_id, train_id, facility_id, planned_arrival, planned_departure) VALUES ('P001', '5421', 50, TIMESTAMP '2025-10-03 09:45:00', TIMESTAMP '2025-10-03 10:00:00')
@@ -285,7 +301,6 @@ INSERT ALL
   INTO TRAIN_PASSAGE (passage_id, train_id, facility_id, planned_arrival, planned_departure) VALUES ('P006', '5435', 50, TIMESTAMP '2025-10-03 22:00:00', TIMESTAMP '2025-10-03 22:00:00')
 SELECT * FROM DUAL;
 
----
 -- 14. INSERT FREIGHT DATA
 INSERT ALL
   INTO FREIGHT (freight_id, freight_date, origin_facility_id, destination_facility_id) VALUES (2001, DATE '2025-10-03', 50, 12)
@@ -299,7 +314,6 @@ INSERT ALL
   INTO FREIGHT (freight_id, freight_date, origin_facility_id, destination_facility_id) VALUES (2051, DATE '2025-10-06', 11, 50)
 SELECT * FROM DUAL;
 
----
 -- 15. INSERT FREIGHT_WAGON DATA
 INSERT ALL
   INTO FREIGHT_WAGON (freight_id, wagon_id) VALUES (2001, '333 0 001')
@@ -333,7 +347,6 @@ INSERT ALL
   INTO FREIGHT_WAGON (freight_id, wagon_id) VALUES (2051, '356 3 080')
 SELECT * FROM DUAL;
 
----
 -- 16. INSERT TRAIN_WAGON_USAGE DATA
 INSERT ALL
   INTO TRAIN_WAGON_USAGE (usage_id, train_id, wagon_id, usage_date) VALUES ('USG001', '5421', '082 3 045', DATE '2025-10-03')
@@ -354,31 +367,41 @@ SELECT * FROM DUAL;
 ---
 -- 17. INSERT LINE_SEGMENT DATA
 INSERT ALL
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (1, 'L001', 1, 'Yes', 8000, 2618, 4, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (3, 'L002', 1, 'Yes', 8000, 2443, 4, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (10, 'L003', 1, 'Yes', 8000, 26560, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (11, 'L003', 2, 'Yes', 8000, 10000, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (15, 'L004', 1, 'Yes', 8000, 5286, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (16, 'L004', 2, 'Yes', 8000, 6000, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (14, 'L005', 1, 'Yes', 8000, 10387, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (12, 'L005', 2, 'Yes', 8000, 12000, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (13, 'L005', 3, 'Yes', 8000, 3100, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (20, 'L006', 1, 'Yes', 6400, 4890, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (18, 'L007', 1, 'Yes', 8000, 6000, 1, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (21, 'L007', 2, 'Yes', 8000, 5000, 1, 2000, 864)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (22, 'L007', 3, 'Yes', 8000, 12000, 1, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (25, 'L008', 1, 'Yes', 8000, 20829, 1, 11000, 266)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (26, 'L009', 1, 'Yes', 8000, 4264, 1, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (30, 'L010', 1, 'Yes', 8000, 3883, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (31, 'L011', 1, 'Yes', 8400, 1174, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (32, 'L011', 2, 'Yes', 8000, 2534, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (33, 'L012', 1, 'Yes', 8000, 1566, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (34, 'L012', 2, 'Yes', 8000, 1453, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (35, 'L013', 1, 'Yes', 8100, 3597, 2, NULL, NULL)
-  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES (36, 'L013', 2, 'Yes', 8000, 4334, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('1', 'L001', 1, 'Yes', 8000, 2618, 4, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('3', 'L002', 1, 'Yes', 8000, 2443, 4, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('10', 'L003', 1, 'Yes', 8000, 26560, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('11', 'L003', 2, 'Yes', 8000, 10000, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('15', 'L004', 1, 'Yes', 8000, 5286, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('16', 'L004', 2, 'Yes', 8000, 6000, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('14', 'L005', 1, 'Yes', 8000, 10387, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('12', 'L005', 2, 'Yes', 8000, 12000, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('13', 'L005', 3, 'Yes', 8000, 3100, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('20', 'L006', 1, 'Yes', 6400, 4890, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('18', 'L007', 1, 'Yes', 8000, 6000, 1, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('21', 'L007', 2, 'Yes', 8000, 5000, 1, 2000, 864)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('22', 'L007', 3, 'Yes', 8000, 12000, 1, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('25', 'L008', 1, 'Yes', 8000, 20829, 1, 11000, 266)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('26', 'L009', 1, 'Yes', 8000, 4264, 1, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('30', 'L010', 1, 'Yes', 8000, 3883, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('31', 'L011', 1, 'Yes', 8400, 1174, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('32', 'L011', 2, 'Yes', 8000, 2534, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('33', 'L012', 1, 'Yes', 8000, 1566, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('34', 'L012', 2, 'Yes', 8000, 1453, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('35', 'L013', 1, 'Yes', 8100, 3597, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('36', 'L013', 2, 'Yes', 8000, 4334, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('50', 'L030', 1, 'Yes', 8000, 3555, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('51', 'L031', 5, 'Yes', 8000, 1222, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('52', 'L031', 4, 'Yes', 8000, 1760, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('53', 'L031', 3, 'Yes', 8000, 1720, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('54', 'L031', 2, 'Yes', 8000, 3350, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('55', 'L031', 1, 'Yes', 8000, 3470, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('58', 'L032', 1, 'Yes', 8000, 8050, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('59', 'L035', 1, 'Yes', 8000, 22320, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('60', 'L036', 1, 'Yes', 8000, 16310, 2, NULL, NULL)
+  INTO LINE_SEGMENT (segment_id, line_id, segment_order, is_electrified, max_weight_kg_m, length_m, number_tracks, siding_position, siding_length) VALUES ('61', 'L037', 1, 'Yes', 8000, 15200, 2, NULL, NULL)
 SELECT * FROM DUAL;
 
----
+
 COMMIT;
 
 -- Verification
