@@ -1,0 +1,29 @@
+@startuml
+
+title USEI13 - Hub Centrality Analysis & HubScore Ranking
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor MaintenancePlanner
+participant System
+
+MaintenancePlanner -> System: requestHubCentralityModule()
+activate System
+    System --> MaintenancePlanner: displayHubCentralityUI()
+deactivate System
+
+MaintenancePlanner -> System: computeHubCentralityMetrics()
+activate System
+    System --> MaintenancePlanner: displayHubRanking(stationMetricsList)
+deactivate System
+
+MaintenancePlanner -> System: requestAnalysisReport()
+activate System
+    System --> MaintenancePlanner: displayTemporalComplexityReport(report)
+deactivate System
+
+@enduml

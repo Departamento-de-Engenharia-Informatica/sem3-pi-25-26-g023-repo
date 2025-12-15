@@ -63,7 +63,7 @@ As a maintenance planner, I want to compute centrality measures for each station
 
 ### 1.6. System Sequence Diagram (SSD)
 
-![System Sequence Diagram](svg/USEI10-SSD.svg)
+![System Sequence Diagram](svg/USEI13-SSD.svg)
 
 ### 1.7. Other Relevant Remarks
 
