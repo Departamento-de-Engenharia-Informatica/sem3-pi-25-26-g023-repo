@@ -1,6 +1,6 @@
 @startuml
 
-title USEI13 - Hub Centrality Analysis & HubScore Ranking
+title USEI15 - Risk-Aware Shortest Paths
 
 skinparam monochrome true
 skinparam packageStyle rectangle
@@ -8,22 +8,22 @@ skinparam shadowing false
 
 autonumber
 
-actor MaintenancePlanner
+actor RoutePlanner
 participant System
 
-MaintenancePlanner -> System: requestHubCentralityModule()
+RoutePlanner -> System: requestRiskAwareRoutingModule()
 activate System
-    System --> MaintenancePlanner: displayHubCentralityUI()
+    System --> RoutePlanner: displayRoutingUI()
 deactivate System
 
-MaintenancePlanner -> System: computeHubCentralityMetrics()
+RoutePlanner -> System: computeShortestPath(departStid, targetStid)
 activate System
-    System --> MaintenancePlanner: displayHubRanking(stationMetricsList)
+    System --> RoutePlanner: displayRoutingResult(pathOrNegativeCycle)
 deactivate System
 
-MaintenancePlanner -> System: requestAnalysisReport()
+RoutePlanner -> System: requestAnalysisReport()
 activate System
-    System --> MaintenancePlanner: displayTemporalComplexityReport(report)
+    System --> RoutePlanner: displayTemporalComplexityReport(report)
 deactivate System
 
 @enduml
