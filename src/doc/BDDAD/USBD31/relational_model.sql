@@ -15,16 +15,17 @@ END;
 /
 
 -- =============================================
--- CREATE TABLES (ORDERED BY DEPENDENCIES)
+-- CREATE TABLES
 -- =============================================
 
--- 1. OPERATOR (independente)
+-- 1. OPERATOR
 CREATE TABLE OPERATOR (
                           operator_id VARCHAR2(10) PRIMARY KEY,
-                          name VARCHAR2(100)
+                          name VARCHAR2(100),
+                          vat_number VARCHAR2(20)
 );
 
--- 2. STATION (independente)
+-- 2. STATION
 CREATE TABLE STATION (
                          station_id VARCHAR2(10) PRIMARY KEY,
                          name VARCHAR2(100),
@@ -32,28 +33,28 @@ CREATE TABLE STATION (
                          longitude NUMBER(10,6)
 );
 
--- 3. GAUGE (independente)
+-- 3. GAUGE
 CREATE TABLE GAUGE (
                        gauge_mm NUMBER(5,1) PRIMARY KEY,
                        gauge_name VARCHAR2(50) NOT NULL UNIQUE,
                        description VARCHAR2(200)
 );
 
--- 4. RAILWAY_LINE (depende de OPERATOR)
+-- 4. RAILWAY_LINE
 CREATE TABLE RAILWAY_LINE (
                               line_id VARCHAR2(10) PRIMARY KEY,
                               name VARCHAR2(100),
                               owner_operator_id VARCHAR2(10)
 );
 
--- 5. FACILITY (depende de STATION)
+-- 5. FACILITY
 CREATE TABLE FACILITY (
                           facility_id NUMBER PRIMARY KEY,
                           name VARCHAR2(100),
                           station_id VARCHAR2(10)
 );
 
--- 6. LINE_SEGMENT (depende de RAILWAY_LINE)
+-- 6. LINE_SEGMENT
 CREATE TABLE LINE_SEGMENT (
                               segment_id VARCHAR2(10) PRIMARY KEY,
                               line_id VARCHAR2(10),
@@ -66,7 +67,7 @@ CREATE TABLE LINE_SEGMENT (
                               siding_length NUMBER
 );
 
--- 7. WAGON_MODEL (depende de GAUGE)
+-- 7. WAGON_MODEL
 CREATE TABLE WAGON_MODEL (
                              model_id NUMBER PRIMARY KEY,
                              model_name VARCHAR2(50),
@@ -81,19 +82,19 @@ CREATE TABLE WAGON_MODEL (
                              payload_t NUMBER,
                              volume_m3 NUMBER,
                              wagon_type VARCHAR2(50),
-                             gauge_mm NUMBER(5,1),  -- ALTERADO para NUMBER(5,1)
+                             gauge_mm NUMBER(5,1),
                              length_m NUMBER
 );
 
--- 8. ROLLING_STOCK (depende de OPERATOR e GAUGE)
+-- 8. ROLLING_STOCK
 CREATE TABLE ROLLING_STOCK (
                                stock_id VARCHAR2(20) PRIMARY KEY,
                                operator_id VARCHAR2(10),
                                model VARCHAR2(50),
-                               gauge_mm NUMBER(5,1)  -- ALTERADO para NUMBER(5,1)
+                               gauge_mm NUMBER(5,1)
 );
 
--- 9. LOCOMOTIVE (depende de ROLLING_STOCK)
+-- 9. LOCOMOTIVE
 CREATE TABLE LOCOMOTIVE (
                             stock_id VARCHAR2(20) PRIMARY KEY,
                             locomotive_type VARCHAR2(20),
@@ -102,7 +103,7 @@ CREATE TABLE LOCOMOTIVE (
                             length_m NUMBER
 );
 
--- 10. WAGON (depende de ROLLING_STOCK, WAGON_MODEL e OPERATOR)
+-- 10. WAGON
 CREATE TABLE WAGON (
                        stock_id VARCHAR2(20) PRIMARY KEY,
                        model_id NUMBER,
@@ -110,14 +111,14 @@ CREATE TABLE WAGON (
                        service_year NUMBER
 );
 
--- 11. TRAIN_ROUTE (independente)
+-- 11. TRAIN_ROUTE
 CREATE TABLE TRAIN_ROUTE (
                              route_id VARCHAR2(10) PRIMARY KEY,
                              route_name VARCHAR2(100),
                              description VARCHAR2(500)
 );
 
--- 12. FREIGHT (depende de FACILITY)
+-- 12. FREIGHT
 CREATE TABLE FREIGHT (
                          freight_id NUMBER PRIMARY KEY,
                          freight_date DATE,
@@ -125,7 +126,7 @@ CREATE TABLE FREIGHT (
                          destination_facility_id NUMBER
 );
 
--- 13. ROUTE_SEGMENT (depende de TRAIN_ROUTE e FACILITY)
+-- 13. ROUTE_SEGMENT
 CREATE TABLE ROUTE_SEGMENT (
                                route_id VARCHAR2(10),
                                segment_order NUMBER,
@@ -135,7 +136,7 @@ CREATE TABLE ROUTE_SEGMENT (
                                PRIMARY KEY (route_id, segment_order)
 );
 
--- 14. TRAIN (depende de OPERATOR, FACILITY, LOCOMOTIVE, TRAIN_ROUTE)
+-- 14. TRAIN
 CREATE TABLE TRAIN (
                        train_id VARCHAR2(10) PRIMARY KEY,
                        operator_id VARCHAR2(10),
@@ -148,7 +149,7 @@ CREATE TABLE TRAIN (
                        max_length_m NUMBER
 );
 
--- 15. TRAIN_PASSAGE (depende de TRAIN e FACILITY)
+-- 15. TRAIN_PASSAGE
 CREATE TABLE TRAIN_PASSAGE (
                                passage_id VARCHAR2(15) PRIMARY KEY,
                                train_id VARCHAR2(10),
@@ -159,14 +160,14 @@ CREATE TABLE TRAIN_PASSAGE (
                                actual_departure TIMESTAMP
 );
 
--- 16. FREIGHT_WAGON (depende de FREIGHT e WAGON)
+-- 16. FREIGHT_WAGON
 CREATE TABLE FREIGHT_WAGON (
                                freight_id NUMBER,
                                wagon_id VARCHAR2(20),
                                PRIMARY KEY (freight_id, wagon_id)
 );
 
--- 17. TRAIN_WAGON_USAGE (depende de TRAIN e WAGON)
+-- 17. TRAIN_WAGON_USAGE
 CREATE TABLE TRAIN_WAGON_USAGE (
                                    usage_id VARCHAR2(12) PRIMARY KEY,
                                    train_id VARCHAR2(10),
@@ -175,7 +176,7 @@ CREATE TABLE TRAIN_WAGON_USAGE (
 );
 
 -- =============================================
--- FOREIGN KEY CONSTRAINTS
+-- FOREIGN KEY CONSTRAINTS (IGUAL)
 -- =============================================
 
 ALTER TABLE RAILWAY_LINE ADD CONSTRAINT FK_RAILWAY_LINE_OPERATOR
@@ -188,8 +189,7 @@ ALTER TABLE ROLLING_STOCK ADD CONSTRAINT FK_ROLLING_STOCK_OPERATOR
     FOREIGN KEY (operator_id) REFERENCES OPERATOR(operator_id);
 
 ALTER TABLE ROLLING_STOCK ADD CONSTRAINT FK_ROLLING_STOCK_GAUGE
-    FOREIGN KEY (gauge_mm) REFERENCES GAUGE(gauge_mm)
-        ON DELETE SET NULL;
+    FOREIGN KEY (gauge_mm) REFERENCES GAUGE(gauge_mm);
 
 ALTER TABLE LOCOMOTIVE ADD CONSTRAINT FK_LOCOMOTIVE_ROLLING_STOCK
     FOREIGN KEY (stock_id) REFERENCES ROLLING_STOCK(stock_id);
@@ -204,8 +204,7 @@ ALTER TABLE WAGON ADD CONSTRAINT FK_WAGON_OPERATOR
     FOREIGN KEY (operator_id) REFERENCES OPERATOR(operator_id);
 
 ALTER TABLE WAGON_MODEL ADD CONSTRAINT FK_WAGON_MODEL_GAUGE
-    FOREIGN KEY (gauge_mm) REFERENCES GAUGE(gauge_mm)
-        ON DELETE SET NULL;
+    FOREIGN KEY (gauge_mm) REFERENCES GAUGE(gauge_mm);
 
 ALTER TABLE FREIGHT ADD CONSTRAINT FK_FREIGHT_ORIGIN
     FOREIGN KEY (origin_facility_id) REFERENCES FACILITY(facility_id);
@@ -254,8 +253,6 @@ ALTER TABLE TRAIN_WAGON_USAGE ADD CONSTRAINT FK_USAGE_TRAIN
 
 ALTER TABLE TRAIN_WAGON_USAGE ADD CONSTRAINT FK_USAGE_WAGON
     FOREIGN KEY (wagon_id) REFERENCES WAGON(stock_id);
-
-COMMIT;
 
 -- =============================================
 -- VERIFICATION
