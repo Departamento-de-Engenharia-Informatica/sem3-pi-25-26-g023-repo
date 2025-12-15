@@ -1,6 +1,6 @@
 @startuml
 
-title USEI10 - Radius Search & Density Summary
+title USEI13 - Hub Centrality Analysis & HubScore Ranking
 
 skinparam monochrome true
 skinparam packageStyle rectangle
@@ -8,22 +8,22 @@ skinparam shadowing false
 
 autonumber
 
-actor OperationsPlanner
+actor MaintenancePlanner
 participant System
 
-OperationsPlanner -> System: requestRadiusSearchModule()
+MaintenancePlanner -> System: requestHubCentralityModule()
 activate System
-    System --> OperationsPlanner: displayRadiusSearchUI()
+    System --> MaintenancePlanner: displayHubCentralityUI()
 deactivate System
 
-OperationsPlanner -> System: findStationsByRadius(lat, lon, radius)
+MaintenancePlanner -> System: computeHubCentralityMetrics()
 activate System
-    System --> OperationsPlanner: displayRadiusSearchResults(stationResultsTree, densitySummary)
+    System --> MaintenancePlanner: displayHubRanking(stationMetricsList)
 deactivate System
 
-OperationsPlanner -> System: requestAnalysisReport()
+MaintenancePlanner -> System: requestAnalysisReport()
 activate System
-    System --> OperationsPlanner: displayAnalysisReport(report)
+    System --> MaintenancePlanner: displayTemporalComplexityReport(report)
 deactivate System
 
 @enduml
