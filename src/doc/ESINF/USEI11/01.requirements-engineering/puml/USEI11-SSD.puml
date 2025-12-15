@@ -1,0 +1,35 @@
+@startuml
+
+title USEI11 - Directed Line Upgrade Plan
+
+
+actor "Infrastructure Planner" as Planner
+participant System
+
+autonumber
+
+activate Planner
+Planner -> System: requestUpgradePlanningUI()
+activate System
+
+System --> Planner: displayUpgradePlanningUI()
+
+deactivate System
+Planner -> System: runDependencyAnalysis(TrackDependencies)
+activate System
+
+alt Graph with NO Cycles
+    System --> Planner: displayFinalSchedule(UpgradeOrder: List<Station>)
+else Graph with Cycles Detected
+    System --> Planner: displayAnalysisError(Error: Cycles Detected)
+deactivate System
+
+    Planner -> System: requestCycleDetails()
+activate System
+    System --> Planner: displayCycleStations(StationsInvolved, LinksInvolved)
+end
+
+deactivate System
+deactivate System
+
+@enduml

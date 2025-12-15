@@ -1,0 +1,46 @@
+@startuml DomainModel
+
+title USEI11 - Directed Line Upgrade Plan
+
+hide circle
+hide methods
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class Station {
+     String stationId (PK)
+     String name
+     int inDegree
+}
+
+class DependencyGraph {
+     Map<String, Station> stations
+     List<DependencyLink> links
+     List<Station> getTopologicalOrder()
+     List<Station> detectCycles()
+     int getTemporalComplexity()
+}
+
+class DependencyLink {
+     String linkId
+     String sourceStationId
+     String targetStationId
+     String trackType
+}
+
+class UpgradeScheduleResult {
+     boolean hasCycles
+     List<Station> orderedStations
+     List<Station> stationsInCycles
+     String complexityAnalysis
+}
+
+Station "1" <-- "0..*" DependencyGraph : contains >
+DependencyLink "0..*" -- "1" Station : source >
+DependencyLink "0..*" -- "1" Station : target >
+
+DependencyGraph "1" -- "1" UpgradeScheduleResult : computes and generates >
+
+@enduml
