@@ -1,0 +1,79 @@
+@startuml DomainModel
+
+title USEI12 - Minimal Backbone Network (DM)
+
+hide circle
+hide methods
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+' Core Domain Entities
+class Station {
+    stationId
+    stationName
+    xCoord
+    yCoord
+    country
+}
+
+class RailConnection {
+    fromStation
+    toStation
+    distance
+    capacity
+    cost
+}
+
+class RailNetwork {
+    stations
+    connections
+    totalDistance
+}
+
+' Result Structures
+class MinimalBackboneNetwork {
+    mstEdges
+    totalLength
+    connectedComponents
+    stationCount
+}
+
+class DOTFile {
+    dotContent
+    nodeDefinitions
+    edgeDefinitions
+    layoutEngine
+}
+
+class SVGVisualization {
+    svgFilePath
+    mapScale
+    boundingBox
+}
+
+' Algorithm Components
+class MSTAlgorithm {
+    algorithmType
+    totalWeight
+    executionTime
+}
+
+' Relationships
+RailNetwork "1" *-- "1..*" Station : contains
+RailNetwork "1" *-- "1..*" RailConnection : contains
+Station "1" -- "0..*" RailConnection : connects to
+MinimalBackboneNetwork "1" *-- "1..*" RailConnection : includes
+MinimalBackboneNetwork "1" *-- "1..*" Station : connects
+MinimalBackboneNetwork "1" *-- "1" MSTAlgorithm : computed by
+DOTFile "1" *-- "1" MinimalBackboneNetwork : represents
+SVGVisualization "1" *-- "1" DOTFile : generated from
+
+' Note for MST
+note top of MSTAlgorithm : Can be Prim or Kruskal\nalgorithm
+
+' Note for visualization
+note right of SVGVisualization : Uses GraphViz "neato"\nfor layout
+
+@enduml
