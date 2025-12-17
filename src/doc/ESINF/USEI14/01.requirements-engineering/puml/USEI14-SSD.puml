@@ -1,0 +1,29 @@
+@startuml
+
+title USEI14 - Maximum Throughput (Max Flow)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor OperationsAnalyst
+participant System
+
+OperationsAnalyst -> System: requestMaxFlowComputation()
+activate System
+    System --> OperationsAnalyst: displayMaxFlowUI()
+deactivate System
+
+OperationsAnalyst -> System: computeMaxFlow(sourceStation, sinkStation)
+activate System
+    System --> OperationsAnalyst: displayMaxFlowSummary(sourceId, targetId, maxFlowValue)
+deactivate System
+
+OperationsAnalyst -> System: requestAnalysisReport()
+activate System
+    System --> OperationsAnalyst: displayAnalysisReport(complexityAnalysis)
+deactivate System
+
+@enduml

@@ -1,0 +1,66 @@
+@startuml USEI14_SequenceDiagram
+
+title USEI14 - Maximum Throughput (SD)
+
+actor "OperationsAnalyst" as A
+participant "MaxFlowUI" as UI
+participant "MaxFlowController" as CTRL
+participant "RailwayNetworkManager" as MGR
+participant "GraphAlgorithms" as ALGO
+participant "RailwayGraph" as GRAPH
+participant "MaxFlowSummary" as SUMMARY
+
+' --- User Query Flow ---
+' Assumes RailwayGraph is already built/loaded by MGR
+
+activate A
+A -> UI: 1. requestMaxFlowComputation()
+activate UI
+UI --> A: Shows prompt for Source and Sink stations
+deactivate UI
+
+A -> UI: 2. submitComputation("StationA", "StationB")
+activate UI
+UI -> CTRL: 3. computeMaxFlow("StationA", "StationB")
+activate CTRL
+
+CTRL -> MGR: 4. calculateMaxFlow("StationA", "StationB")
+activate MGR
+
+' The Manager delegates the complex algorithm to the helper/utility
+MGR -> ALGO: 5. edmondsKarp(railNetwork, source, sink)
+activate ALGO
+
+' The Algorithm interacts with the Graph structure
+loop while augmenting path exists (BFS)
+    ' AC2: Utilizing per-edge capacities
+    ALGO -> GRAPH: 6. getEdgeCapacity(u, v)
+    ALGO -> GRAPH: 7. getResidualCapacity(u, v)
+
+    ' Logic to find bottleneck and update flow
+    ALGO -> GRAPH: 8. updateResidualFlow(u, v, pathFlow)
+end
+
+' Returns the calculated double value
+ALGO --> MGR: maxFlowValue
+deactivate ALGO
+
+' The Manager creates the Summary DTO (AC3)
+MGR -> SUMMARY: 9. new("StationA", "StationB", maxFlowValue)
+activate SUMMARY
+deactivate SUMMARY
+
+' The Manager returns the summary object
+MGR --> CTRL: summary
+deactivate MGR
+
+CTRL --> UI: summary
+deactivate CTRL
+
+UI -> UI: 10. displayMaxFlowSummary(summary)
+activate UI
+UI --> A: Shows Source, Target, and Max Flow Value
+deactivate UI
+deactivate A
+
+@enduml

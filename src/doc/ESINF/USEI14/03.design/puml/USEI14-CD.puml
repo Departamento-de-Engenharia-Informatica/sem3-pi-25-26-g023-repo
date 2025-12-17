@@ -1,0 +1,73 @@
+@startuml ClassDiagram
+
+title USEI14 - Class Diagram
+
+hide method
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class MaxFlowUI {
+  ' Handles user interaction for max flow requests
+}
+
+class MaxFlowController {
+  ' Coordinates max flow calculation requests
+}
+
+class RailwayNetworkManager {
+  ' Holds the network data structure
+  - railNetwork: RailwayGraph
+}
+
+class Station {
+  - stationId: String
+  - stationName: String
+}
+
+' The Edge class containing the specific measure (Capacity)
+class TrackSegment {
+  - capacity: double
+  - distance: double
+}
+
+' The Graph data structure studied in class
+class RailwayGraph {
+  ' (Directed Graph implementation)
+}
+
+' DTO for the summary (AC3)
+class MaxFlowSummary {
+  - sourceStationId: String
+  - targetStationId: String
+  - maxFlowValue: double
+}
+
+' Helper for Algorithm Logic (Edmonds-Karp)
+class GraphAlgorithms {
+  ' Static utility for max flow logic
+}
+
+' Relationships
+MaxFlowUI ..> MaxFlowController : uses
+
+MaxFlowController --> RailwayNetworkManager : uses 1
+
+' Manager holds the Graph
+RailwayNetworkManager "1" *-- "1" RailwayGraph : composes
+
+' Graph structure relationships
+RailwayGraph o-- "1..*" Station : contains
+RailwayGraph o-- "0..*" TrackSegment : contains
+
+' Edges connect stations
+TrackSegment "1" --> "2" Station : connects (source/target)
+
+' Manager uses the algorithm utility
+RailwayNetworkManager ..> GraphAlgorithms : uses
+
+' Manager creates the result DTO
+RailwayNetworkManager ..> MaxFlowSummary : creates
+
+@enduml

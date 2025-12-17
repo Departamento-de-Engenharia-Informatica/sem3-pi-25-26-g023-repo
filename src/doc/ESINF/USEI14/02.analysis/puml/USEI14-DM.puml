@@ -1,0 +1,59 @@
+@startuml DomainModel
+
+title USEI14 - Maximum Throughput (Max Flow)
+
+hide circle
+hide methods
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+class NetworkOptimizationService {
+  ' Orchestrates max flow calculations
+}
+
+' The manager holding the graph data structure
+class RailwayNetworkManager {
+}
+
+' The core data structure for the network
+class RailwayGraph {
+  ' (Directed Graph with Capacities)
+}
+
+' The Node Entity
+class Station {
+  stationId
+  stationName
+  coordinates
+}
+
+' The Edge Entity (Critical for this US)
+class TrackSegment {
+    capacity (max flow constraint)
+    distance
+}
+
+' The specified output summary (AC3)
+class MaxFlowSummary {
+    sourceStationId
+    targetStationId
+    maxFlowValue
+}
+
+' Relationships
+NetworkOptimizationService --> RailwayNetworkManager : uses
+RailwayNetworkManager "1" *-- "1" RailwayGraph : holds
+
+' Graph composition
+RailwayGraph o-- "1..*" Station : nodes
+RailwayGraph o-- "0..*" TrackSegment : edges
+
+' Edge connection
+TrackSegment "1" --> "2" Station : connects (source/target)
+
+' The service returns the summary
+NetworkOptimizationService ..> MaxFlowSummary : returns
+
+@enduml
