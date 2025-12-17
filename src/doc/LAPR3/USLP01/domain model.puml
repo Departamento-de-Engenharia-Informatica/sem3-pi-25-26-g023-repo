@@ -1,248 +1,240 @@
 @startuml
+'https://plantuml.com/class-diagram
+
+' --- GERAL SETTINGS ---
 skinparam monochrome true
-skinparam packageStyle rectangle
 skinparam shadowing true
-
-hide methods
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+hide empty methods
 hide circles
-left to right direction
 
-' --- ACTORS (MANTIDOS DO SPRINT 2) ---
-class TrainDriver {
-    id
-    name
-}
-class FreightManager {
-    id
-    name
-}
-class StationManager {
-    id
-    name
-    contactNumber
-}
-class Planner {
-    id
-    name
-    department
-}
-class TrainOperator {
-    id
-    name
-}
-class LineOwner {
-    id
-    name
-}
+' --- DOMAIN MODEL - CLASSES PURAS (Agrupamentos removidos para evitar erro) ---
 
-' --- INFRASTRUCTURE ---
-class RailwayNetwork {
-    totalLength
-    country
-    maxSpeed
-}
+    class RailwayNetwork {
+        name
+    }
+    class RailwayLine {
+        lineId
+        name
+    }
+    class LineSegment {
+        segmentId
+        gauge
+        isElectrified
+        length_km
+        maxSpeed_kmh
+        maxWeight_kg_m
+        trackType
+        startFacilityId : int
+        endFacilityId : int
+    }
+    class Station {
+        stationId
+        name
+        type
+        latitude
+        longitude
+        hasWarehouse
+        hasRefrigerated
+    }
+    abstract class Facility {
+        name
+        facilityId : int
+    }
+    class FreightYard {
+        typeOfCargo
+    }
+    class Terminal {
+        type
+    }
+    class Siding {
+        purpose
+    }
+    abstract class Building {}
+    class RefrigeratedArea {}
+    class GrainSilo {}
 
-class Station {
-    name
-    location (lat, lon)
-    capacity
-    openingDate
-}
+    Facility <|-- Station
+    Facility <|-- FreightYard
+    Facility <|-- Terminal
+    Facility <|-- Siding
 
-class FreightYard {
-    id
-    area
-    capacity
-    typeOfCargo
-}
+    Building <|-- RefrigeratedArea
+    Building <|-- GrainSilo
 
-class Terminal {
-    id
-    type
-}
+    RailwayNetwork "1" -- "1..*" RailwayLine : "is composed of"
+    RailwayLine "1" -- "1..*" LineSegment : "is composed of"
+    RailwayNetwork "1" -- "2..*" Station : connects >
 
-class Siding {
-    id
-    length
-}
+    Station "1" -- "0..*" RefrigeratedArea : "can have"
+    Station "1" -- "0..*" GrainSilo : "can have"
 
-' Herança de Station (Mantido)
-Station <|-- FreightYard
-Station <|-- Terminal
+    class TrainOperator {
+        id
+        name
+    }
+    class LineOwner {
+        id
+        name
+    }
+    abstract class RollingStock {
+        stockId
+        make
+        model
+        yearOfService
+        gauge
+        length_m
+        tareWeight_kg
+    }
+    class Locomotive {
+        locomotiveType
+        power_kw
+        acceleration
+        maxTotalWeight_kg
+        fuelCapacity_L (diesel)
+        voltage_V (electric)
+        frequency_Hz (electric)
+    }
+    class Wagon {
+        wagonType
+        payloadCapacity_kg
+        volumeCapacity_m3
+        isRefrigerated
+        maxPressure_bar (for tank)
+        containerSupported
+    }
 
-' --- TRACKS & LINES ---
-class LineSegment {
-    id
-    name
-    gauge
-    isElectrified
-    totalLength
-    length
-    maxSpeed
-    condition
-    capacity
-}
-' Nota: Capacity adicionado em LineSegment para a US de MaxFlow (Sprint 3)
+    RollingStock <|-- Locomotive
+    RollingStock <|-- Wagon
+    TrainOperator "1" -- "0..*" RollingStock : owns
+    LineOwner "1" -- "0..*" RailwayLine : owns
 
-class SingleRailway {
-}
-class DoubleRailway {
-}
+    class Freight {
+        freightId
+        status
+    }
 
-LineSegment <|-- SingleRailway
-LineSegment <|-- DoubleRailway
+    class PlannedRoute {
+        routeId
+        name
+        totalDistance
+    }
 
-' Relations Infra
-RailwayNetwork "1" -- "1..*" Station : connects
-RailwayNetwork "1" -- "1..*" LineSegment : composed by
-Station "1" -- "0..*" LineSegment : connects endpoints
-Station "1" -- "0..*" Siding : has
-LineSegment "1" -- "0..*" Siding : includes
-LineOwner "1" -- "0..*" LineSegment : owns
-StationManager "1" -- "0..*" Station : oversees
+    class RouteStop {
+        sequenceNumber
+        isStop (Y/N)
+    }
 
-' --- BUILDINGS & WAREHOUSE (EXPANDIDO PARA SPRINT 3) ---
-class Building {
-    id
-}
+    class TrainTrip {
+        journeyId
+        startDateTime
+        status
+    }
 
-class RefrigeratedArea {
-}
-class GrainSilo {
-}
+    class TrainEvent {
+        timestamp
+        eventType (arrival, departure)
+    }
 
-class Warehouse {
-    capacityBoxes
-    aislesCount
-    bayCount
-}
+    TrainTrip "1" -- "1" PlannedRoute : follows >
+    TrainTrip "1" -- "1..*" TrainEvent : records >
 
-' --- NOVO: Detalhe obrigatório para ESINF (Sprint 3) ---
-class Aisle {
-    id
-    direction
-}
-class Bay {
-    id
-    maxCapacity
-}
-class Box {
-    id
-    sku
-    quantity
-    expiryDate
-    receivedAt
-}
-class Item {
-    sku
-    description
-    unitWeight
-}
+    class Warehouse extends Building {
+        warehouseId
+        name
+    }
+    class Aisle {
+        aisleId
+    }
+    class Bay {
+        bayId
+        capacityBoxes
+    }
+    class Box {
+        boxId
+        sku
+        qtyAvailable
+        expiryDate
+        receivedAt
+        aisle : int
+        bay : int
+    }
+    class Item {
+        sku
+        name
+        category
+        unitWeight
+    }
+    class CustomerOrder {
+        orderId
+        priority
+        dueDate
+    }
+    class OrderLine {
+        lineNo
+        requestedQty
+    }
+    class Return {
+        returnId
+        reason
+        timestamp
+        isRestockable()
+    }
+    class Quarantine {
+        stack<Return>
+        LIFO_processing()
+    }
 
-' Relations Buildings
-Station "1" -- "0..*" Building : has
-Building <|-- RefrigeratedArea
-Building <|-- GrainSilo
-Building <|-- Warehouse
+    Warehouse "1" -- "1..*" Aisle : has >
+    Aisle "1" -- "1..*" Bay : has >
+    Bay "1" -- "0..*" Box : stores >
+    Box "*" -- "1" Item : contains >
+    CustomerOrder "1" -- "1..*" OrderLine : "is composed of"
+    OrderLine "*" -- "1" Item : requests >
+    Return "*" -- "1" Item : concerns >
+    Quarantine "1" -- "0..*" Return : holds >
 
-' Warehouse Composition (ESINF)
-Warehouse "1" *-- "1..*" Aisle : contains
-Aisle "1" *-- "1..*" Bay : contains
-Bay "1" *-- "0..*" Box : stores
-Box "0..*" -- "1" Item : defines type
+    class StationMngtSystem {
+        manageStation()
+    }
+    class Track {
+        trackNumber (1-99)
+    }
+    class StationLog {
+        timestamp
+        message
+    }
 
-' --- ROLLING STOCK (MANTIDO) ---
-class Train {
-    id
-    model
-    buildYear
-    maxSpeed
-    status
-    composition
-}
+    StationMngtSystem "1" -- "1" StationLog : writes to >
 
-abstract class RollingStock {
-    id
-    type
-    manufacturer
-    yearBuilt
-    status
-}
+    class StationIndex {
+        searchByArea()
+        searchByRadius()
+        searchNearestN()
+    }
+    class EuropeanStationDataset {
+        (64k records)
+    }
+    class "BST/AVL" as TreeIndex
+    class "2DTree" as SpatialIndex
 
-class Locomotive {
-    serialNumber
-    id
-    make
-    model
-    entryYear
-    type
-    power
-    acceleration
-    fuelCapacity
-    gauge
-}
+    StationIndex "1" -- "1" EuropeanStationDataset : is built from >
+    StationIndex "1" -- "*" TreeIndex : uses >
+    StationIndex "1" -- "1" SpatialIndex : uses >
 
-class Wagon {
-    id
-    type
-    payloadCapacity
-    volumeCapacity
-    tareWeight
-    gauge
-}
+' --- GLOBAL RELATIONSHIPS ---
 
-' Relations Rolling Stock
-TrainOperator "1" -- "0..*" RollingStock : owns
-Train "1" *-- "1..*" RollingStock : composed of
-RollingStock <|-- Locomotive
-RollingStock <|-- Wagon
-TrainDriver "1" -- "0..*" Train : drives
+Station "1" -- "0..*" Warehouse : "can have"
 
-' --- LOGISTICS & OPERATIONS (ATUALIZADO PARA SPRINT 3) ---
-class Freight {
-    id
-    originStationId
-    destinationStationId
-    status
-    weight
-    volume
-}
+RouteStop "1" -- "1" Station : "is at"
+RouteStop "1" -- "1" LineSegment : "is reached via"
+TrainEvent "1" -- "1" Station : "occurs at"
 
-class Route {
-    id
-    name
-    totalDistance
-    estimatedTime
-}
+StationMngtSystem "1" -- "1" Station : manages >
+Station "1" -- "1..99" Track : has >
 
-class Path {
-    id
-    sequenceNumber
-    distance
-    estimatedDuration
-}
-
-' --- NOVO: Agendamento para LAPR3 (Sprint 3) ---
-class ScheduledTrip {
-    departureDate
-    arrivalDate
-    status
-}
-
-' Relations Logistics
-FreightManager "1" -- "0..*" Freight : manages
-Planner "1" -- "0..*" Route : plans
-
-Freight "0..*" -- "1..*" Wagon : transported in
-Freight "1" -- "1" Route : has assigned
-Freight "1" -- "1" Station : origin/dest
-
-Route "1" -- "1..*" Path : includes
-Path "1" -- "1" Station : passes through
-Path "1" -- "1" LineSegment : uses
-
-' Ligação do Comboio à Rota via Viagem Agendada (Sprint 3)
-Train "1" -- "0..*" ScheduledTrip : assigned to
-ScheduledTrip "1" -- "1" Route : executes
+TrainTrip "1" -- "1..*" Locomotive : "is pulled by"
+Freight "1" -- "1..*" Wagon : "is composed of"
 
 @enduml
