@@ -1,0 +1,50 @@
+@startuml
+skinparam packageStyle rect
+skinparam shadowing false
+
+title Domain Model - Rail Hub Centrality Analysis (USEI13)
+
+class RailwayNetwork {
+    name
+}
+
+class Station {
+    stationCode
+    name
+    gpsCoordinates
+}
+
+class LineSegment {
+    distance
+    isElectrified
+    maxWeight
+}
+
+class HubAnalysis {
+    calculationDate
+    compositeHubScore
+    rank
+}
+
+class CentralityMetric {
+    betweenness
+    harmonicCloseness
+    strength
+}
+
+RailwayNetwork "1" *-- "many" Station : includes
+RailwayNetwork "1" *-- "many" LineSegment : consists of
+
+Station "1" -- "0..*" LineSegment : serves as origin
+Station "1" -- "0..*" LineSegment : serves as destination
+
+Station "1" -- "0..1" HubAnalysis : is evaluated in
+HubAnalysis "1" *-- "1" CentralityMetric : contains
+
+note bottom of HubAnalysis
+  HubScore = (0.35 * betw) +
+  (0.35 * closeness) +
+  (0.30 * strength)
+end note
+
+@enduml
