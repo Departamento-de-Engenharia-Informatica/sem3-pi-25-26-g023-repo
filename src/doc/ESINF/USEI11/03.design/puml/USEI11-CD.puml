@@ -2,77 +2,63 @@
 
 title USEI11 - Class Diagram
 
-hide method
-skinparam packageStyle rectangle
-skinparam shadowing false
-skinparam linetype polyline
-skinparam classAttributeIconSize 0
 
-class StationSpatialQueryUI {
-  ' Handles user interaction for spatial queries
+' Entidades Principais
+class UpgradePlanningUI {
+    runAnalysis()
+    displayResults(result: AnalysisResult)
 }
 
-class StationSpatialQueryController {
-  ' Coordinates spatial search requests
+class UpgradeController {
+    getUpgradeOrder(graphId: String): AnalysisResult
 }
 
-class StationIndexManager {
-  ' Holds the spatial index (from USEI07)
-  - spatialIndex: TwoDTree
+class Station {
+    String id
+    String name
+    int inDegree
+    getId(): String
 }
 
-class EuropeanStation {
-  - stationName: String
-  - latitude: double
-  - longitude: double
-  - country: String
-  - isCity: boolean
+class TrackDependency {
+    String sourceId
+    String targetId
+    double weight
+    getSource(): Station
+    getTarget(): Station
 }
 
-' Index from USEI07
-class TwoDTree {
+class RailwayGraph {
+    Map<String, Station> vertices
+    List<TrackDependency> edges
+    topologicalSort(): List<Station>
+    findCycles(): List<Cycle>
+    isDAG(): boolean
 }
 
-' Result Tree (AC3)
-class AVLTree<StationDistanceResult> {
+class AnalysisResult {
+    List<Station> schedule
+    List<Cycle> detectedCycles
+    String complexityReport
+    hasCycles(): boolean
 }
 
-' DTO for sorted results (AC4)
-' Implements Comparable to sort by dist ASC, name DESC
-class StationDistanceResult {
-  - distance: double
-  - station: EuropeanStation
+class Cycle {
+    List<Station> involvedStations
+    List<TrackDependency> involvedLinks
 }
 
-' DTO for summary (AC5)
-class DensitySummary {
-  - countsByCountry: Map
-  - countsByIsCity: Map
-}
+' Relacionamentos
+UpgradePlanningUI ..> UpgradeController
+UpgradeController ..> RailwayGraph
+UpgradeController ..> AnalysisResult
 
-' Helper for distance (AC1)
-class HaversineCalculator {
-}
+RailwayGraph "1" *-- "many" Station : contains >
+RailwayGraph "1" *-- "many" TrackDependency : consists of >
+TrackDependency "many" --> "1" Station : starts at >
+TrackDependency "many" --> "1" Station : ends at >
 
-' Relationships
-StationSpatialQueryUI ..> StationSpatialQueryController : uses
-
-StationSpatialQueryController --> StationIndexManager : uses 1
-
-' Manager holds the 2D-Tree built in USEI07
-StationIndexManager "1" *-- "1" TwoDTree : composes
-TwoDTree o-- "0..*" EuropeanStation : indexes
-
-' Manager uses the calculator
-StationIndexManager ..> HaversineCalculator : uses
-
-' The manager creates these DTOs and the result tree
-StationIndexManager ..> StationDistanceResult : creates
-StationIndexManager ..> DensitySummary : creates
-StationIndexManager ..> AVLTree : creates
-
-' The result tree stores the sorted DTOs
-AVLTree o-- "0..*" StationDistanceResult : stores
-StationDistanceResult "1" -- "1" EuropeanStation : references
+RailwayGraph ..> AnalysisResult : creates >
+AnalysisResult "1" *-- "0..*" Cycle : identifies >
 
 @enduml
