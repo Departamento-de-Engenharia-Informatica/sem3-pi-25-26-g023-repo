@@ -1,0 +1,54 @@
+@startuml
+
+title USEI12 - Minimal Backbone Network (SSD)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Infrastructure Planner" as Planner
+participant "BackboneNetworkController" as Controller
+participant "RailNetworkLoader" as Loader
+participant "MSTAlgorithm" as MST
+participant "DOTFileGenerator" as DOTGen
+participant "GraphVizExecutor" as GraphViz
+
+Planner -> Controller: computeMinimalBackbone()
+activate Controller
+    Controller -> Loader: loadRailNetworkData()
+    activate Loader
+        Loader -> Loader: readStationData()
+        Loader -> Loader: validateConnections()
+        Loader --> Controller: RailNetworkGraph
+    deactivate Loader
+
+    Controller -> MST: computeMinimumSpanningTree(networkGraph)
+    activate MST
+        MST -> MST: applyPrimAlgorithm()
+        MST -> MST: calculateTotalDistance()
+        MST --> Controller: MinimalBackboneNetwork
+    deactivate MST
+
+    Controller -> DOTGen: generateDOTFile(backboneNetwork)
+    activate DOTGen
+        DOTGen -> DOTGen: createNodeDefinitions()
+        DOTGen -> DOTGen: createEdgeDefinitions()
+        DOTGen --> Controller: DOT file content
+    deactivate DOTGen
+
+    Controller -> GraphViz: generateSVG(dotContent)
+    activate GraphViz
+        GraphViz -> GraphViz: executeNeatoCommand()
+        GraphViz -> GraphViz: readSVGOutput()
+        GraphViz --> Controller: SVG file
+    deactivate GraphViz
+
+    Controller -> Controller: analyzePerformance()
+    Controller -> Controller: calculateTotalLength()
+
+    Controller --> Planner: displayResults(backboneNetwork, totalLength, performanceMetrics, dotFile, svgFile)
+deactivate Controller
+
+@enduml
