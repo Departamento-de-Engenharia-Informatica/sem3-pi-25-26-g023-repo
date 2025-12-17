@@ -1,209 +1,248 @@
 @startuml
-'https://plantuml.com/class-diagram
-
-
 skinparam monochrome true
 skinparam packageStyle rectangle
 skinparam shadowing true
 
 hide methods
 hide circles
+left to right direction
 
-
-TrainOperators --> RollingStocks : owns
-
-Trains --> TrainOperators : operated by
-Trains --> Routes : follows
-Trains --> Wagons : pulls
-Trains --> Locomotives : pulls
-
-
-TrainDriver --> Trains : drives
-FreightManager ---> Freight : manages
-StationManager --> Stations : oversees
-
-LineSegment --> Sidings : includes
-
-RollingStocks <|-- Locomotives
-RollingStocks <|-- Wagons
-Freight --> Wagons : transported in
-
-LineSegment --> SingleRailway
-LineSegment --> DoubleRailway
-RailwayNetwork --> LineSegment : is composed by
-
-Stations --> FreightYards : includes
-Stations --> Terminals : includes
-
-RailwayNetwork --> Stations : connects
-
-Planner --> Routes : plans
-Routes --> Path : includes
-Path --> RailwayNetwork : uses
-Path --> Stations : passes through
-
-LineOwners --> LineSegment : owns
-
-Stations --> Buildings : has
-
-Buildings <|-- RefrigeratedAreas
-Buildings <|-- GrainSilos
-Buildings <|-- Warehouses
-
-Freight --> Stations : delivered to
-Freight <-- Stations : picked up from
-Freight --> Routes : has assigned
-
-class RailwayNetwork{
-totalLength
-country
-maxSpeed
+' --- ACTORS (MANTIDOS DO SPRINT 2) ---
+class TrainDriver {
+    id
+    name
+}
+class FreightManager {
+    id
+    name
+}
+class StationManager {
+    id
+    name
+    contactNumber
+}
+class Planner {
+    id
+    name
+    department
+}
+class TrainOperator {
+    id
+    name
+}
+class LineOwner {
+    id
+    name
 }
 
-class TrainOperators{
-id
-name
+' --- INFRASTRUCTURE ---
+class RailwayNetwork {
+    totalLength
+    country
+    maxSpeed
 }
 
-class RollingStocks{
-id
-type
-manufacturer
-yearBuilt
-status
-}
-class Trains{
-id
-}
-class Locomotives{
-serialNumber
-id
-make
-model
-entryYear
-type (“diesel”, “electric”)
-power
-acceleration
-fuelCapacity (nullable)
-gauge
-}
-class Wagons{
-id
-type (“boxcar”, “tank”, “flat”, “hopper”, “refrigerated”)
-payloadCapacity
-volumeCapacity
-tareWeight
-gauge
-}
-class Freight{
-id
-originStationId
-destinationStationId
-status
-weight
-volume
+class Station {
+    name
+    location (lat, lon)
+    capacity
+    openingDate
 }
 
-class LineSegment{
-id
-name
-gauge
-isElectrified (boolean)
-totalLength
-ownerId
-length
-maxSpeed
-condition
+class FreightYard {
+    id
+    area
+    capacity
+    typeOfCargo
 }
 
-
-
-class Routes{
-id
-name
-totalDistance
-estimatedTime
-}
-class Path{
-id
-sequenceNumber
-distance
-estimatedDuration
+class Terminal {
+    id
+    type
 }
 
-class SingleRailway{
-}
-class DoubleRailway{
-}
-
-
-
-class Stations{
-name
-location
-capacity
-openingDate
-}
-class Buildings{
-id
-}
-class Terminals{
-id
-type
-}
-class Trains{
-id
-model
-buildYear
-maxSpeed
-status
-composition
+class Siding {
+    id
+    length
 }
 
-class Warehouses{
-capacityBoxes
-aislesCount
-bayCount
+' Herança de Station (Mantido)
+Station <|-- FreightYard
+Station <|-- Terminal
+
+' --- TRACKS & LINES ---
+class LineSegment {
+    id
+    name
+    gauge
+    isElectrified
+    totalLength
+    length
+    maxSpeed
+    condition
+    capacity
 }
-class RefrigeratedAreas{
+' Nota: Capacity adicionado em LineSegment para a US de MaxFlow (Sprint 3)
+
+class SingleRailway {
 }
-class GrainSilos{
+class DoubleRailway {
 }
 
-class Planner{
-id
-name
-department
-}
-class TrainDriver{
-id
-name
-}
-class FreightManager{
-id
-name
-}
-class StationManager{
-id
-name
-contactNumber
+LineSegment <|-- SingleRailway
+LineSegment <|-- DoubleRailway
+
+' Relations Infra
+RailwayNetwork "1" -- "1..*" Station : connects
+RailwayNetwork "1" -- "1..*" LineSegment : composed by
+Station "1" -- "0..*" LineSegment : connects endpoints
+Station "1" -- "0..*" Siding : has
+LineSegment "1" -- "0..*" Siding : includes
+LineOwner "1" -- "0..*" LineSegment : owns
+StationManager "1" -- "0..*" Station : oversees
+
+' --- BUILDINGS & WAREHOUSE (EXPANDIDO PARA SPRINT 3) ---
+class Building {
+    id
 }
 
-class LineOwners{
-id
-name
+class RefrigeratedArea {
+}
+class GrainSilo {
 }
 
-class FreightYards{
-id
-area
-capacity
-typeOfCargo
-}
-class Sidings{
-id
+class Warehouse {
+    capacityBoxes
+    aislesCount
+    bayCount
 }
 
+' --- NOVO: Detalhe obrigatório para ESINF (Sprint 3) ---
+class Aisle {
+    id
+    direction
+}
+class Bay {
+    id
+    maxCapacity
+}
+class Box {
+    id
+    sku
+    quantity
+    expiryDate
+    receivedAt
+}
+class Item {
+    sku
+    description
+    unitWeight
+}
 
+' Relations Buildings
+Station "1" -- "0..*" Building : has
+Building <|-- RefrigeratedArea
+Building <|-- GrainSilo
+Building <|-- Warehouse
+
+' Warehouse Composition (ESINF)
+Warehouse "1" *-- "1..*" Aisle : contains
+Aisle "1" *-- "1..*" Bay : contains
+Bay "1" *-- "0..*" Box : stores
+Box "0..*" -- "1" Item : defines type
+
+' --- ROLLING STOCK (MANTIDO) ---
+class Train {
+    id
+    model
+    buildYear
+    maxSpeed
+    status
+    composition
+}
+
+abstract class RollingStock {
+    id
+    type
+    manufacturer
+    yearBuilt
+    status
+}
+
+class Locomotive {
+    serialNumber
+    id
+    make
+    model
+    entryYear
+    type
+    power
+    acceleration
+    fuelCapacity
+    gauge
+}
+
+class Wagon {
+    id
+    type
+    payloadCapacity
+    volumeCapacity
+    tareWeight
+    gauge
+}
+
+' Relations Rolling Stock
+TrainOperator "1" -- "0..*" RollingStock : owns
+Train "1" *-- "1..*" RollingStock : composed of
+RollingStock <|-- Locomotive
+RollingStock <|-- Wagon
+TrainDriver "1" -- "0..*" Train : drives
+
+' --- LOGISTICS & OPERATIONS (ATUALIZADO PARA SPRINT 3) ---
+class Freight {
+    id
+    originStationId
+    destinationStationId
+    status
+    weight
+    volume
+}
+
+class Route {
+    id
+    name
+    totalDistance
+    estimatedTime
+}
+
+class Path {
+    id
+    sequenceNumber
+    distance
+    estimatedDuration
+}
+
+' --- NOVO: Agendamento para LAPR3 (Sprint 3) ---
+class ScheduledTrip {
+    departureDate
+    arrivalDate
+    status
+}
+
+' Relations Logistics
+FreightManager "1" -- "0..*" Freight : manages
+Planner "1" -- "0..*" Route : plans
+
+Freight "0..*" -- "1..*" Wagon : transported in
+Freight "1" -- "1" Route : has assigned
+Freight "1" -- "1" Station : origin/dest
+
+Route "1" -- "1..*" Path : includes
+Path "1" -- "1" Station : passes through
+Path "1" -- "1" LineSegment : uses
+
+' Ligação do Comboio à Rota via Viagem Agendada (Sprint 3)
+Train "1" -- "0..*" ScheduledTrip : assigned to
+ScheduledTrip "1" -- "1" Route : executes
 
 @enduml
