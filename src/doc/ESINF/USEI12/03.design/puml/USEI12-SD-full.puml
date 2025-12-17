@@ -1,0 +1,120 @@
+@startuml
+
+title USEI12 - Minimal Backbone Network (SD)
+
+skinparam monochrome true
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Infrastructure Planner" as Planner
+participant ":BackboneNetworkController" as Controller
+participant "loader:RailNetworkLoader" as Loader
+participant "graph:RailNetworkGraph" as Graph
+participant "algorithm:PrimAlgorithm" as Prim
+participant "result:MinimalBackboneNetwork" as Backbone
+participant "generator:DOTFileGenerator" as DOTGen
+participant "executor:GraphVizExecutor" as GVExecutor
+participant "analyzer:AlgorithmAnalyzer" as Analyzer
+
+Planner -> Controller: computeMinimalBackbone()
+activate Controller
+
+    Controller -> Analyzer: startMeasurement()
+    activate Analyzer
+
+    Controller -> Loader: loadNetworkFromCSV("station_to_station.csv")
+    activate Loader
+        Loader -> Loader: readCSVFile()
+
+        loop for each station record
+            Loader -> Graph: addStation(stationId, name, xCoord, yCoord)
+            activate Graph
+            return stationAdded
+        end
+
+        loop for each connection record
+            Loader -> Loader: validateConnection(fromStationId, toStationId, distance)
+            Loader -> Graph: addConnection(fromStationId, toStationId, distance)
+            activate Graph
+            return connectionAdded
+        end
+
+        Loader -> Graph: buildAdjacencyList()
+        activate Graph
+        return adjacencyBuilt
+
+        Loader --> Controller: RailNetworkGraph
+    deactivate Loader
+
+    Controller -> Prim: computeMST(graph)
+    activate Prim
+
+        Prim -> Graph: getStations()
+        activate Graph
+        return stationList
+
+        Prim -> Prim: initializePriorityQueue(stationList.first())
+
+        loop while visitedStations < totalStations
+            Prim -> Prim: getMinimumEdgeFromQueue()
+            Prim -> Prim: addEdgeToMST()
+
+            alt edge connects new station
+                Prim -> Graph: getAdjacentEdges(newStation)
+                activate Graph
+                return adjacentEdges
+
+                loop for each adjacent edge
+                    Prim -> Prim: addToPriorityQueueIfNotVisited(edge)
+                end
+            end
+        end
+
+        Prim -> Prim: calculateTotalDistance()
+        Prim -> Backbone: new MinimalBackboneNetwork(mstEdges, totalDistance)
+        activate Backbone
+        return backboneNetwork
+
+        Prim --> Controller: MinimalBackboneNetwork
+    deactivate Prim
+
+    Controller -> Analyzer: stopMeasurement()
+    activate Analyzer
+        Analyzer -> Analyzer: calculatePerformanceMetrics()
+        Analyzer --> Controller: PerformanceMetrics
+    deactivate Analyzer
+
+    Controller -> DOTGen: generateDOT(backboneNetwork, stationCoordinates)
+    activate DOTGen
+        DOTGen -> Backbone: getEdges()
+        activate Backbone
+        return edgeList
+
+        DOTGen -> Graph: getStationCoordinates()
+        activate Graph
+        return coordinates
+
+        DOTGen -> DOTGen: createDOTHeader()
+        DOTGen -> DOTGen: createDOTNodes(coordinates)
+        DOTGen -> DOTGen: createDOTEdges(edgeList)
+        DOTGen -> DOTGen: createDOTFooter()
+
+        DOTGen -> DOTGen: saveToFile("backbone.dot")
+        DOTGen --> Controller: "backbone.dot"
+    deactivate DOTGen
+
+    Controller -> GVExecutor: generateSVG("backbone.dot", "backbone.svg")
+    activate GVExecutor
+        GVExecutor -> GVExecutor: executeCommand("neato -Tsvg backbone.dot -o backbone.svg")
+        GVExecutor -> GVExecutor: validateSVGOutput()
+        GVExecutor --> Controller: true
+    deactivate GVExecutor
+
+    Controller -> Controller: compileResults()
+    Controller --> Planner: displayResults(backboneNetwork, performanceMetrics, svgFile)
+
+deactivate Controller
+
+@enduml

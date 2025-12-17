@@ -1,0 +1,176 @@
+@startuml
+
+title USEI12 - Minimal Backbone Network Class Diagram
+
+hide circle
+hide empty members
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+skinparam classAttributeIconSize 0
+
+' Controller and Orchestration
+class BackboneNetworkController {
+    + computeMinimalBackbone() : MinimalBackboneNetwork
+    + generateVisualization() : SVGVisualization
+    + getPerformanceMetrics() : PerformanceMetrics
+    - railNetworkLoader : RailNetworkLoader
+    - mstAlgorithm : MSTAlgorithm
+    - dotGenerator : DOTFileGenerator
+}
+
+' Data Loading
+class RailNetworkLoader {
+    + loadNetworkFromCSV(filePath) : RailNetworkGraph
+    + validateData() : boolean
+    + getStationCoordinates() : Map<String, Point2D>
+    - stationData : List<Station>
+    - connectionData : List<RailConnection>
+}
+
+' Graph Representation
+class RailNetworkGraph {
+    + getStations() : List<Station>
+    + getConnections() : List<RailConnection>
+    + getAdjacencyList() : Map<String, List<Edge>>
+    + getTotalStations() : int
+    + getTotalConnections() : int
+    - stations : Map<String, Station>
+    - adjacencyList : Map<String, List<Edge>>
+}
+
+class Station {
+    - stationId : String
+    - name : String
+    - xCoord : double
+    - yCoord : double
+    + getName() : String
+    + getCoordinates() : Point2D
+    + toString() : String
+}
+
+class RailConnection {
+    - fromStationId : String
+    - toStationId : String
+    - distance : double
+    - capacity : int
+    + getFromStation() : String
+    + getToStation() : String
+    + getDistance() : double
+    + toString() : String
+}
+
+' MST Algorithm (Strategy Pattern)
+interface MSTAlgorithm {
+    + computeMST(graph) : List<Edge>
+    + getTotalWeight() : double
+    + getExecutionTime() : long
+}
+
+class PrimAlgorithm {
+    - priorityQueue : PriorityQueue<Edge>
+    - visited : Set<String>
+    + computeMST(graph) : List<Edge>
+    - initializeQueue(startStation)
+}
+
+class KruskalAlgorithm {
+    - unionFind : UnionFind
+    - edgeList : List<Edge>
+    + computeMST(graph) : List<Edge>
+    - sortEdgesByWeight()
+}
+
+' Result Structures
+class MinimalBackboneNetwork {
+    - mstEdges : List<Edge>
+    - totalLength : double
+    - connectedComponents : int
+    + getEdges() : List<Edge>
+    + getTotalLength() : double
+    + getConnectedComponents() : int
+    + toGraph() : RailNetworkGraph
+}
+
+class Edge {
+    - source : String
+    - destination : String
+    - weight : double
+    + getSource() : String
+    + getDestination() : String
+    + getWeight() : double
+    + toString() : String
+}
+
+' Visualization Components
+class DOTFileGenerator {
+    + generateDOT(backboneNetwork, coordinates) : String
+    + saveToFile(content, filename) : void
+    - createHeader() : String
+    - createNodes(stations, coordinates) : String
+    - createEdges(edges) : String
+    - createFooter() : String
+}
+
+class GraphVizExecutor {
+    + generateSVG(dotContent, outputFile) : boolean
+    + getSVGContent() : String
+    - executeCommand(cmd) : boolean
+    - readSVGFile(file) : String
+}
+
+class SVGVisualization {
+    - svgFilePath : String
+    - creationTime : Date
+    + getSVGPath() : String
+    + getCreationTime() : Date
+    + display() : void
+}
+
+' Performance Analysis
+class AlgorithmAnalyzer {
+    + analyzeComplexity(graphSize) : String
+    + measureExecutionTime(algorithm) : PerformanceMetrics
+    + generateReport() : String
+    - startTime : long
+    - endTime : long
+}
+
+class PerformanceMetrics {
+    - algorithmName : String
+    - executionTimeMs : long
+    - memoryUsageMB : double
+    - stationsProcessed : int
+    + getSummary() : String
+}
+
+' Relationships (Composition/Aggregation)
+BackboneNetworkController "1" *-- "1" RailNetworkLoader : uses
+BackboneNetworkController "1" *-- "1" MSTAlgorithm : uses
+BackboneNetworkController "1" *-- "1" DOTFileGenerator : uses
+BackboneNetworkController "1" *-- "1" GraphVizExecutor : uses
+BackboneNetworkController "1" *-- "1" AlgorithmAnalyzer : uses
+
+RailNetworkGraph "1" *-- "1..*" Station : contains
+RailNetworkGraph "1" *-- "1..*" RailConnection : contains
+RailNetworkLoader "1" *-- "1" RailNetworkGraph : creates
+
+MSTAlgorithm <|-- PrimAlgorithm
+MSTAlgorithm <|-- KruskalAlgorithm
+MinimalBackboneNetwork "1" *-- "1..*" Edge : contains
+
+DOTFileGenerator "1" *-- "1" MinimalBackboneNetwork : processes
+GraphVizExecutor "1" *-- "1" DOTFileGenerator : uses
+SVGVisualization "1" *-- "1" GraphVizExecutor : created by
+
+AlgorithmAnalyzer "1" *-- "1..*" PerformanceMetrics : generates
+
+' Dependency relationships
+BackboneNetworkController ..> MinimalBackboneNetwork : creates
+BackboneNetworkController ..> SVGVisualization : creates
+PrimAlgorithm ..> RailNetworkGraph : processes
+KruskalAlgorithm ..> RailNetworkGraph : processes
+DOTFileGenerator ..> Station : references
+DOTFileGenerator ..> Edge : references
+
+@enduml
