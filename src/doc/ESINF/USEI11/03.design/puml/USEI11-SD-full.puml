@@ -1,0 +1,67 @@
+@startuml USEI11_SequenceDiagram
+
+title USEI11 - Directed Line Upgrade Plan
+
+
+autonumber
+
+' Entidades/Objetos
+actor "Planner" as PL
+participant "UI : UpgradePlanningUI" as UI
+participant "ctrl : UpgradeController" as CTRL
+participant "graph : RailwayGraph" as GRAPH
+participant "result : AnalysisResult" as RESULT
+
+
+activate PL
+' Início da Interação
+PL -> UI : clicksRunAnalysis()
+activate UI
+
+UI -> CTRL : getUpgradeOrder()
+activate CTRL
+
+CTRL -> GRAPH : topologicalSort()
+activate GRAPH
+
+alt No Cycles Detected
+    GRAPH -> GRAPH : processKahnAlgorithm()
+
+    create RESULT
+    GRAPH -> RESULT : create(scheduleList, null)
+    activate RESULT
+    RESULT --> GRAPH : resultObject
+    deactivate RESULT
+
+    GRAPH --> CTRL : resultObject
+else Cycles Detected
+    GRAPH -> GRAPH : detectCycleComponents()
+
+    create RESULT
+    GRAPH -> RESULT : create(null, cycleDetails)
+    activate RESULT
+    RESULT --> GRAPH : resultObject
+    deactivate RESULT
+
+    GRAPH --> CTRL : resultObject
+end
+deactivate GRAPH
+
+CTRL --> UI : resultObject
+deactivate CTRL
+
+UI -> RESULT : hasCycles()
+activate RESULT
+RESULT --> UI : status
+deactivate RESULT
+
+alt status == false
+    UI -> PL : displaySchedule(schedule)
+else status == true
+    UI -> PL : displayCycleError(details)
+end
+
+deactivate UI
+deactivate PL
+
+@enduml
