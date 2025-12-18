@@ -1,0 +1,78 @@
+@startuml
+autonumber
+
+actor "Traffic Manager" as Manager
+participant "TrainComposition UI" as UI
+participant "TrainComposition Controller" as Ctrl
+participant "TrainComposition Service" as Service
+participant "RollingStock Repository" as RepoRS
+participant "Route Repository" as RepoRoute
+participant "Train (Aggregate)" as Train
+participant "Route" as Route
+participant "Trip Repository" as RepoTrip
+
+== Start Assembly & Assignment (USLP09) ==
+
+activate Manager
+Manager -> UI : Selects Loco, Wagons, Route & Date
+activate UI
+
+UI -> Ctrl : createAndAssignTrain(locoId, wagonIds, routeId, date)
+activate Ctrl
+
+Ctrl -> Service : assembleTrain(locoId, wagonIds, routeId, date)
+activate Service
+
+note over Service : 1. Fetch Domain Entities (AC1)
+Service -> RepoRS : findLocomotive(locoId)
+Service -> RepoRS : findWagons(wagonIds)
+Service -> RepoRoute : findRoute(routeId)
+
+note over Service : 2. Create Train Aggregate
+Service -> Train : create(locomotive, wagonsList)
+activate Train
+    Train -> Train : calculateTotalMass()
+    Train -> Train : calculateTotalLength()
+    Train --> Service : trainInstance
+deactivate Train
+
+note over Service : 3. Validate Physics (AC2)
+Service -> Train : validateTractiveEffort()
+activate Train
+    Train -> Train : check(loco.effort >= totalMass)
+    Train --> Service : isPhysicsValid
+deactivate Train
+
+alt Physics Invalid
+    Service --> Ctrl : error("Locomotive insufficient power")
+    Ctrl --> UI : Display Physics Error
+else Physics Valid
+
+    note over Service : 4. Validate Infrastructure (AC3)
+    Service -> Route : validateCapacity(train.length)
+    activate Route
+        Route -> Route : check(maxSidingLength >= train.length)
+        Route --> Service : isLengthValid
+    deactivate Route
+
+    alt Length Invalid
+        Service --> Ctrl : error("Train too long for route")
+        Ctrl --> UI : Display Route Capacity Error
+    else All Valid
+
+        note over Service : 5. Assign & Persist (AC4, AC5)
+        Service -> RepoTrip : save(new ScheduledTrip(train, route, date))
+        Service -> RepoRS : updateStatus(locoId, wagonIds, "ASSIGNED")
+
+        Service --> Ctrl : success(trainDetails)
+        Ctrl --> UI : Display Success Message
+
+    end
+end
+
+deactivate Service
+deactivate Ctrl
+deactivate UI
+deactivate Manager
+
+@enduml

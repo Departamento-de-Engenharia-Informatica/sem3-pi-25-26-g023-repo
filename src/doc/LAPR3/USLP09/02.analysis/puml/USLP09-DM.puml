@@ -1,0 +1,78 @@
+@startuml
+hide circle
+hide empty methods
+
+' title Class Diagram - USLP09: Assemble and Assign Train
+
+class TrainCompositionService {
+    +assembleTrain(locoId, wagonIds, routeId, date)
+    -validatePhysics(Train)
+    -validateInfrastructure(Train, Route)
+    -persistAssignment(Train, Route, Date)
+}
+
+class Train {
+    trainId
+    totalMass_kg
+    totalLength_m
+    +calculateTotalMass()
+    +calculateTotalLength()
+    +validateTractiveEffort() : boolean
+}
+
+class Locomotive {
+    locomotiveId
+    tractiveEffort_N
+    power_kw
+    tareWeight_kg
+}
+
+class Wagon {
+    wagonId
+    tareWeight_kg
+    payloadCapacity_kg
+    grossWeight_kg
+}
+
+class Route {
+    routeId
+    maxSidingLength_m
+    +validateCapacity(Train) : boolean
+}
+
+class ScheduledTrip {
+    tripId
+    departureDate
+    status
+}
+
+class RollingStockRepository {
+    +findLocomotive(id)
+    +findWagons(listIds)
+    +updateStatus(id, newStatus)
+}
+
+class TripRepository {
+    +save(ScheduledTrip)
+}
+
+' Relationships
+TrainCompositionService ..> RollingStockRepository : uses
+TrainCompositionService ..> TripRepository : uses
+
+TrainCompositionService ..> Train : creates aggregate
+TrainCompositionService ..> ScheduledTrip : creates assignment
+
+' Aggregate Composition
+Train "1" *-- "1" Locomotive : powered by
+Train "1" *-- "1..*" Wagon : composed of
+
+' Validation Logic (Dependency)
+Train ..> Locomotive : checks power against weight
+Route ..> Train : checks length
+
+' Assignment Logic
+ScheduledTrip "1" --> "1" Train : assigns physical asset
+ScheduledTrip "1" --> "1" Route : executes logical path
+
+@enduml
