@@ -1,0 +1,67 @@
+@startuml
+autonumber
+
+actor "Freight Manager" as Manager
+participant "Dispatcher Service" as Dispatcher
+participant "Scheduler Service" as Scheduler
+participant "TrainTrip A (Priority)" as TripA
+participant "TrainTrip B (Subsequent)" as TripB
+participant "LineSegment" as Segment
+participant "Scheduler Result" as Result
+
+== Start Dispatching (USLP07) ==
+
+activate Manager
+Manager -> Dispatcher : Request to dispatch trains(List<TrainTrip>)
+
+activate Dispatcher
+Dispatcher -> Scheduler : dispatchTrains(Trip List)
+activate Scheduler
+
+note over Scheduler : 1. Sort all trips by Departure Time (AC1)
+
+loop For each Trip Pair (TripA, TripB)
+
+    note over Scheduler : 2. Calculate initial times for Trip A & B
+    Scheduler -> TripA : calculateTravelTimes()
+    Scheduler -> TripB : calculateTravelTimes()
+
+    TripA -> Scheduler : return calculated segment entries (SimEntry)
+    TripB -> Scheduler : return calculated segment entries (SimEntry)
+
+    Scheduler -> Scheduler : resolveFirstConflict(TripA, TripB)
+
+    loop For each Segment Entry (i)
+        Scheduler -> TripA : getSegmentEntry(i)
+        Scheduler -> TripB : getSegmentEntry(i)
+
+        alt Conflict detected (Single Track & ExitTimeA > EntryTimeB)
+
+            note over Scheduler : 3. Conflict found in segment i
+
+            Scheduler -> TripB : findLastSafeWaitingPointId(i)
+            TripB --> Scheduler : return SafeFacilityId
+
+            Scheduler -> Scheduler : Calculate delayMinutes
+
+            Scheduler -> Result : addConflict(Conflict DTO)
+
+            note over Scheduler : 4. Recalculate Trip B with Delay (AC4)
+            Scheduler -> TripB : newTripWithDelay(delayMinutes)
+            TripB -> TripB : calculateTravelTimes() // Recalc from new start
+
+            break loop // Stop after first conflict resolved
+        end
+    end
+end
+
+Scheduler -> Result : addTrip(Final Trip Schedules)
+Scheduler --> Dispatcher : return SchedulerResult
+deactivate Scheduler
+
+Dispatcher -> Manager : Display SchedulerResult (Schedules, Conflicts)
+deactivate Dispatcher
+
+deactivate Manager
+
+@enduml
