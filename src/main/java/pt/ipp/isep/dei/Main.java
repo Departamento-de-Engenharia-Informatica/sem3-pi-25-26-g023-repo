@@ -16,17 +16,8 @@ import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 
-/**
- * Main entry point for the Logistics on Rails application.
- * Integrates all components from ESINF, LAPR3, and BDDAD modules.
- * Provides comprehensive railway logistics management including warehouse operations,
- * spatial queries, and train scheduling simulations.
- *
- * @version 2.3
- */
 public class Main {
 
-    // ANSI Color Codes for console output formatting
     private static final String ANSI_RESET = "\u001B[0m";
     private static final String ANSI_RED = "\u001B[31m";
     private static final String ANSI_GREEN = "\u001B[32m";
@@ -35,25 +26,15 @@ public class Main {
     private static final String ANSI_CYAN = "\u001B[36m";
     private static final String ANSI_BOLD = "\u001B[1m";
 
-    /**
-     * Main method that initializes and starts the Logistics on Rails application.
-     * Coordinates the loading of all system components and data repositories.
-     * Handles the complete startup sequence including error management.
-     *
-     * @param args command line arguments (not used)
-     */
     public static void main(String[] args) {
         try {
-            // Initialize core components
             InventoryManager manager = new InventoryManager();
             Inventory inventory = manager.getInventory();
             Quarantine quarantine = new Quarantine();
             AuditLog auditLog = new AuditLog("audit.log");
 
-            // Data loading sequence
             System.out.println(ANSI_BOLD + "Loading system data... Please wait." + ANSI_RESET);
 
-            // Load ESINF Sprint 1 data
             printLoadStep("Loading ESINF (Sprint 1) data...");
             manager.loadItems("src/main/java/pt/ipp/isep/dei/FicheirosCSV/items.csv");
             printLoadStep(String.format("  > Loaded %d items", manager.getItemsCount()), true);
@@ -64,7 +45,6 @@ public class Main {
             List<Wagon> wagons = manager.loadWagons("src/main/java/pt/ipp/isep/dei/FicheirosCSV/wagons.csv");
             printLoadStep(String.format("  > Loaded %d wagons", manager.getWagonsCount()), true);
 
-            // Initialize Warehouse Management System
             WMS wms = new WMS(quarantine, inventory, auditLog, manager.getWarehouses());
 
             printLoadStep("Unloading wagons into inventory...");
@@ -73,21 +53,18 @@ public class Main {
                     unloadResult.totalProcessed, unloadResult.totalBoxes,
                     unloadResult.fullyUnloaded, unloadResult.partiallyUnloaded, unloadResult.notUnloaded), true);
 
-            // Load returns data
             List<Return> returns = manager.loadReturns("src/main/java/pt/ipp/isep/dei/FicheirosCSV/returns.csv");
             for (Return r : returns) {
                 quarantine.addReturn(r);
             }
             printLoadStep(String.format("  > Loaded %d returns into quarantine", manager.getReturnsCount()), true);
 
-            // Load orders data
             List<Order> orders = manager.loadOrders(
                     "src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv",
                     "src/main/java/pt/ipp/isep/dei/FicheirosCSV/order_lines.csv"
             );
             printLoadStep(String.format("  > Loaded %d orders with lines", manager.getOrdersCount()), true);
 
-            // Initialize LAPR3 components and USLP07 scheduler
             printLoadStep("Loading LAPR3 (Sprint 1) components...");
             StationRepository estacaoRepo = new StationRepository();
             LocomotiveRepository locomotivaRepo = new LocomotiveRepository();
@@ -98,13 +75,11 @@ public class Main {
             );
             printLoadStep("  > LAPR3 components initialized.", true);
 
-            // Initialize high-level repositories
             printLoadStep("Initializing Dispatcher dependencies...");
             WagonRepository wagonRepo = new WagonRepository();
             TrainRepository trainRepo = new TrainRepository();
             FacilityRepository facilityRepo = new FacilityRepository();
 
-            // Initialize scheduler components
             printLoadStep("Initializing Scheduler components (USLP07)...");
             SchedulerService schedulerService = new SchedulerService(estacaoRepo, facilityRepo);
 
@@ -117,7 +92,6 @@ public class Main {
             );
             printLoadStep("  > USLP07 Scheduler controller ready.", true);
 
-            // Initialize dispatcher service
             printLoadStep("Initializing Dispatcher Service (USLP07 Simulation)...");
             DispatcherService dispatcherService = new DispatcherService(
                     trainRepo,
@@ -128,7 +102,6 @@ public class Main {
             );
             printLoadStep("  > USLP07 Dispatcher Service ready.", true);
 
-            // Load ESINF Sprint 2 components
             printLoadStep("Loading ESINF (Sprint 2) components...");
             StationIndexManager stationIndexManager = new StationIndexManager();
 
@@ -145,7 +118,6 @@ public class Main {
             stationIndexManager.buildIndexes(europeanStations);
             printLoadStep("  > All station indexes built.", true);
 
-            // Initialize KD-Tree for spatial queries
             printLoadStep("Building balanced KD-Tree for spatial queries (USEI08)...");
             KDTree spatialKDTree = buildSpatialKDTree(europeanStations);
             String bucketInfo = spatialKDTree.getBucketSizes().toString();
@@ -159,7 +131,9 @@ public class Main {
             printLoadStep("Initializing Radius Search Engine (USEI10)...");
             printLoadStep("  > USEI10 Radius Search ready! Complexity: O(sqrt(N) + K log K) average case", true);
 
-            // Launch user interface
+            printLoadStep("Initializing USEI12 - Minimal Backbone Network...");
+            printLoadStep("  > USEI12 components ready for Belgian railway network", true);
+
             System.out.println(ANSI_BOLD + "\nSystem loaded successfully. Launching UI..." + ANSI_RESET);
             Thread.sleep(1000);
 
@@ -184,13 +158,6 @@ public class Main {
         }
     }
 
-    /**
-     * Builds a balanced KD-Tree for spatial queries from European station data.
-     * Uses pre-sorted lists by latitude and longitude for optimal tree construction.
-     *
-     * @param stations list of European stations to build the tree from
-     * @return balanced KD-Tree instance
-     */
     private static KDTree buildSpatialKDTree(List<EuropeanStation> stations) {
         List<EuropeanStation> stationsByLat = new ArrayList<>(stations);
         List<EuropeanStation> stationsByLon = new ArrayList<>(stations);
@@ -203,23 +170,12 @@ public class Main {
         return tree;
     }
 
-    /**
-     * Prints a loading step message with success/failure indication.
-     *
-     * @param message the message to display
-     * @param success true for success indication, false for failure
-     */
     private static void printLoadStep(String message, boolean success) {
         String color = success ? ANSI_GREEN : ANSI_RED;
         String symbol = success ? "✅" : "❌";
         System.out.println(color + " " + symbol + " " + message + ANSI_RESET);
     }
 
-    /**
-     * Prints a loading step message without success/failure indication.
-     *
-     * @param message the message to display
-     */
     private static void printLoadStep(String message) {
         System.out.println(ANSI_CYAN + " ⚙️  " + message + ANSI_RESET);
     }

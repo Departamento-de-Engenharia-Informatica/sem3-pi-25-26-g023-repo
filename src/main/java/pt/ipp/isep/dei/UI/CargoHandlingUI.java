@@ -15,7 +15,11 @@ import pt.ipp.isep.dei.domain.StationDistance;
 import pt.ipp.isep.dei.domain.DensitySummary;
 import pt.ipp.isep.dei.domain.SchedulerResult;
 import pt.ipp.isep.dei.domain.TrainTrip;
+import pt.ipp.isep.dei.domain.BackboneNetwork;
 
+import java.io.BufferedReader;
+import java.io.FileReader;
+import java.io.PrintWriter;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -24,19 +28,12 @@ import java.util.InputMismatchException;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
-import java.time.Duration;
 import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.stream.Collectors;
 
-/**
- * Main User Interface for the Logistics on Rails application.
- * Provides a comprehensive menu system for accessing all functionality
- * including warehouse operations, spatial queries, and train scheduling.
- */
 public class CargoHandlingUI implements Runnable {
 
-    // ANSI Color Codes for console output formatting
     public static final String ANSI_RESET = "\u001B[0m";
     public static final String ANSI_RED = "\u001B[31m";
     public static final String ANSI_GREEN = "\u001B[32m";
@@ -47,7 +44,6 @@ public class CargoHandlingUI implements Runnable {
     public static final String ANSI_BOLD = "\u001B[1m";
     public static final String ANSI_ITALIC = "\u001B[3m";
 
-    // Core application components
     private final WMS wms;
     private final InventoryManager manager;
     private final List<Wagon> wagons;
@@ -62,14 +58,10 @@ public class CargoHandlingUI implements Runnable {
     private final FacilityRepository facilityRepo;
     private final TrainRepository trainRepo = new TrainRepository();
 
-    // State management for workflow operations
     private AllocationResult lastAllocationResult = null;
     private PickingPlan lastPickingPlan = null;
     private final Scanner scanner;
 
-    /**
-     * Constructs a new CargoHandlingUI with all required dependencies.
-     */
     public CargoHandlingUI(WMS wms, InventoryManager manager, List<Wagon> wagons,
                            TravelTimeController travelTimeController, StationRepository estacaoRepo,
                            LocomotiveRepository locomotivaRepo,
@@ -94,9 +86,6 @@ public class CargoHandlingUI implements Runnable {
         this.scanner = new Scanner(System.in);
     }
 
-    /**
-     * Main execution loop for the user interface.
-     */
     @Override
     public void run() {
         int option = -1;
@@ -104,7 +93,7 @@ public class CargoHandlingUI implements Runnable {
         do {
             showMenu();
             try {
-                option = readInt(0, 14, ANSI_BOLD + "Option: " + ANSI_RESET);
+                option = readInt(0, 15, ANSI_BOLD + "Option: " + ANSI_RESET);
 
                 try {
                     handleOption(option);
@@ -133,9 +122,6 @@ public class CargoHandlingUI implements Runnable {
         scanner.close();
     }
 
-    /**
-     * Displays the main menu with all available options organized by functionality.
-     */
     private void showMenu() {
         System.out.print("\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n");
 
@@ -159,11 +145,12 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)");
         System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "[USEI09] Proximity Search - Nearest N (S2)");
         System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "[USEI10] Radius Search & Density Summary (S2)");
-        System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "[USLP07] Run Full Simulation & Conflicts (S3)");
+        System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "[USEI12] Minimal Backbone Network (S3)");
+        System.out.println(ANSI_GREEN + "13. " + ANSI_RESET + "[USLP07] Run Full Simulation & Conflicts (S3)");
 
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
-        System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "View Current Inventory");
-        System.out.println(ANSI_GREEN + "13. " + ANSI_RESET + "View Warehouse Info");
+        System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "View Current Inventory");
+        System.out.println(ANSI_GREEN + "15. " + ANSI_RESET + "View Warehouse Info");
 
         System.out.println("\n" + ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
 
@@ -177,9 +164,6 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_BOLD + "----------------------------------------------------------" + ANSI_RESET);
     }
 
-    /**
-     * Handles the menu option selected by the user.
-     */
     private void handleOption(int option) {
         switch (option) {
             case 1:
@@ -216,13 +200,16 @@ public class CargoHandlingUI implements Runnable {
                 handleRadiusSearch();
                 break;
             case 12:
-                handleViewInventory();
+                handleUSEI12();
                 break;
             case 13:
-                handleViewWarehouseInfo();
+                handleRunFullSimulation();
                 break;
             case 14:
-                handleRunFullSimulation();
+                handleViewInventory();
+                break;
+            case 15:
+                handleViewWarehouseInfo();
                 break;
             case 0:
                 System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET);
@@ -233,9 +220,56 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles the full train simulation with conflict analysis.
-     */
+    private void handleUSEI12() {
+        showInfo("--- [USEI12] Minimal Backbone Network (Belgian Railway) ---");
+
+        try {
+            BackboneNetwork backboneNetwork = new BackboneNetwork();
+
+            System.out.println("1️⃣  Loading Belgian railway data...");
+
+            String stationsFile = "src/main/resources/stations.csv";
+            String connectionsFile = "src/main/resources/lines.csv";
+
+            try (BufferedReader br = new BufferedReader(new FileReader(stationsFile))) {
+                String line = br.readLine();
+                int count = 0;
+                while ((line = br.readLine()) != null) {
+                    count++;
+                }
+                System.out.println("   Found " + count + " stations in file");
+            }
+
+            backboneNetwork.loadNetwork(stationsFile, connectionsFile);
+
+            System.out.println("2️⃣  Computing Minimum Spanning Tree...");
+            backboneNetwork.computeMinimalBackbone();
+
+            System.out.println("3️⃣  Generating visualization...");
+            backboneNetwork.generateDOTFile("belgian_backbone.dot");
+
+            boolean svgGenerated = backboneNetwork.generateSVG(
+                    "belgian_backbone.dot",
+                    "belgian_backbone.svg"
+            );
+
+            if (svgGenerated) {
+                showSuccess("✅ SVG visualization generated: belgian_backbone.svg");
+            } else {
+                showInfo("📝 GraphViz not installed. To generate SVG manually:");
+                System.out.println("   neato -Tsvg belgian_backbone.dot -o belgian_backbone.svg");
+            }
+
+            backboneNetwork.printReport();
+
+            showSuccess("✅ USEI12 completed successfully!");
+
+        } catch (Exception e) {
+            showError("❌ Error in USEI12: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private void handleRunFullSimulation() {
         showInfo("--- [USLP07] Full Simulation & Conflict Analysis ---");
 
@@ -307,9 +341,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Prints detailed segment timetables for all simulated trains.
-     */
     private void printSimulationTimetables(Map<String, TrainTrip> scheduledTripsMap, List<Conflict> conflicts) {
         System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
         System.out.println(ANSI_BOLD + "                            DETAILED SEGMENT TIMETABLE (SIMULATION OUTPUT) " + ANSI_RESET);
@@ -417,9 +448,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Prints conflict analysis report showing resolved scheduling conflicts.
-     */
     private void printConflictReport(List<String> conflictReport) {
         System.out.println("\n" + ANSI_BOLD + ANSI_RED + "==========================================================" + ANSI_RESET);
         System.out.println(ANSI_BOLD + "           CONFLICT & CROSSING ANALYSIS " + ANSI_RESET);
@@ -436,9 +464,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles spatial queries menu and operations.
-     */
     private void handleSpatialQueries() {
         showInfo("--- [USEI08] Spatial Queries - Search by Geographical Area ---");
 
@@ -471,9 +496,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles nearest neighbor proximity search.
-     */
     private void handleNearestNQuery() {
         showInfo("--- [USEI09] Proximity Search (Nearest-N with Filters) ---");
 
@@ -517,9 +539,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Reads a double value from user input with validation.
-     */
     private double readDouble(String prompt, double min, double max) {
         System.out.print(prompt);
         while (true) {
@@ -540,9 +559,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Executes spatial search based on user input parameters.
-     */
     private void executeSpatialSearch() {
         try {
             System.out.println("\n" + ANSI_BOLD + "--- Search Stations in Geographical Area ---" + ANSI_RESET);
@@ -603,9 +619,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Executes the 5 required demo queries using SpatialSearchQueries class.
-     */
     private void executeDemoQueries() {
         System.out.println("\n" + ANSI_BOLD + "--- USEI08 - 5 Required Demo Queries ---" + ANSI_RESET);
 
@@ -633,9 +646,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Displays KD-Tree statistics and performance information.
-     */
     private void showKDTreeStats() {
         System.out.println("\n" + ANSI_BOLD + "--- KD-Tree & USEI08 Statistics ---" + ANSI_RESET);
 
@@ -650,9 +660,6 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(spatialSearchEngine.getComplexityAnalysis());
     }
 
-    /**
-     * Handles wagon unloading operations.
-     */
     private void handleUnloadWagons() {
         showInfo("--- [USEI01] Unload Wagons ---");
         System.out.println(" 1. Unload ALL wagons");
@@ -692,9 +699,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles quarantine returns processing.
-     */
     private void handleProcessReturns() {
         showInfo("--- [USEI05] Process Quarantine Returns (LIFO) ---");
         wms.processReturns();
@@ -702,9 +706,6 @@ public class CargoHandlingUI implements Runnable {
         showInfo("Check 'audit.log' for details.");
     }
 
-    /**
-     * Handles order allocation operations.
-     */
     private void handleAllocateOrders() {
         showInfo("--- [USEI02] Allocate Open Orders ---");
 
@@ -756,9 +757,6 @@ public class CargoHandlingUI implements Runnable {
                 lastAllocationResult.allocations.size(), lastAllocationResult.eligibilityList.size());
     }
 
-    /**
-     * Handles trolley packing operations.
-     */
     private void handlePackTrolleys() {
         showInfo("--- [USEI03] Pack Allocations into Trolleys ---");
 
@@ -810,9 +808,6 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(lastPickingPlan.getSummary());
     }
 
-    /**
-     * Handles picking path calculation.
-     */
     private void handleCalculatePickingPath() {
         showInfo("--- [USEI04] Calculate Picking Path ---");
 
@@ -849,9 +844,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles travel time calculation.
-     */
     private void handleCalculateTravelTime() {
         showInfo("--- [USLP03] Calculate TravelTime ---");
         TravelTimeUI travelTimeUI = new TravelTimeUI(travelTimeController, estacaoRepo, locomotivaRepo, this.scanner);
@@ -859,9 +851,6 @@ public class CargoHandlingUI implements Runnable {
         showSuccess("Module [USLP03] complete.");
     }
 
-    /**
-     * Handles European station index queries.
-     */
     private void handleQueryStationIndex() {
         showInfo("--- [USEI06] Advanced European Station Query ---");
 
@@ -968,9 +957,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles 2D-Tree building and analysis.
-     */
     private void handleBuild2DTree() {
         showInfo("--- [USEI07] Build & Analyze 2D-Tree ---");
 
@@ -1007,9 +993,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles inventory viewing.
-     */
     private void handleViewInventory() {
         showInfo("--- Current Inventory Contents ---");
         List<Box> boxes = manager.getInventory().getBoxes();
@@ -1033,9 +1016,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles warehouse information display.
-     */
     private void handleViewWarehouseInfo() {
         showInfo("--- Warehouse Information ---");
         List<Warehouse> warehouses = manager.getWarehouses();
@@ -1069,9 +1049,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Handles Radius Search and Density Summary operations.
-     */
     private void handleRadiusSearch() {
         showInfo("--- [USEI10] Radius Search & Density Summary ---");
 
@@ -1144,9 +1121,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Executes predefined demo queries for radius search.
-     */
     private void executeUSEI10DemoQueries(RadiusSearch radiusSearch) {
         showInfo("--- USEI10 Demo Queries ---");
 
@@ -1199,38 +1173,23 @@ public class CargoHandlingUI implements Runnable {
         showSuccess("USEI10 demo queries completed!");
     }
 
-    /**
-     * Displays a success message.
-     */
     private void showSuccess(String message) {
         System.out.println(ANSI_GREEN + ANSI_BOLD + "\nSUCCESS: " + ANSI_RESET + ANSI_GREEN + message + ANSI_RESET);
     }
 
-    /**
-     * Displays an error message.
-     */
     private void showError(String message) {
         System.out.println(ANSI_RED + ANSI_BOLD + "\nERROR: " + ANSI_RESET + ANSI_RED + message + ANSI_RESET);
     }
 
-    /**
-     * Displays an informational message.
-     */
     private void showInfo(String message) {
         System.out.println(ANSI_CYAN + "\n " + message + ANSI_RESET);
     }
 
-    /**
-     * Prompts user to press ENTER to continue.
-     */
     private void promptEnterKey() {
         System.out.print(ANSI_ITALIC + "\n(Press ENTER to return to the menu...)" + ANSI_RESET);
         scanner.nextLine();
     }
 
-    /**
-     * Formats a station for display with icons and coordinates.
-     */
     private String formatStationDisplay(EuropeanStation station) {
         return station.getStation() +
                 " [" + station.getCountry() + "] " +
@@ -1240,9 +1199,6 @@ public class CargoHandlingUI implements Runnable {
                 (station.isMainStation() ? " " : "");
     }
 
-    /**
-     * Parses optional boolean input from user.
-     */
     private Boolean parseOptionalBoolean(String input) {
         if (input == null || input.trim().isEmpty() || input.equalsIgnoreCase("any")) {
             return null;
@@ -1250,9 +1206,6 @@ public class CargoHandlingUI implements Runnable {
         return input.trim().equalsIgnoreCase("true") || input.trim().equalsIgnoreCase("t");
     }
 
-    /**
-     * Prints a detailed table of bay details for a warehouse.
-     */
     private void printBayDetails(Warehouse wh) {
         System.out.println(ANSI_BOLD + "\n   --- Bay Details for Warehouse " + wh.getWarehouseId() + " ---" + ANSI_RESET);
 
@@ -1287,9 +1240,6 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_PURPLE + "   " + "-".repeat(60) + ANSI_RESET);
     }
 
-    /**
-     * Helper method to filter a list of stations based on the advanced filters.
-     */
     private List<EuropeanStation> applyAdvancedFilters(List<EuropeanStation> stations, Map<String, String> filters) {
         if (filters.isEmpty()) {
             return stations;
@@ -1320,9 +1270,6 @@ public class CargoHandlingUI implements Runnable {
                 .toList();
     }
 
-    /**
-     * Displays a list of stations in a user-friendly, paginated view.
-     */
     private void showPaginatedResults(List<EuropeanStation> results) {
         int pageSize = 10;
         int totalResults = results.size();
@@ -1360,9 +1307,9 @@ public class CargoHandlingUI implements Runnable {
             System.out.println(ANSI_BOLD + ANSI_PURPLE + "-".repeat(82) + ANSI_RESET);
 
             System.out.println("\n" + ANSI_BOLD + "Controls:" + ANSI_RESET);
-            String prev = (currentPage > 0) ? "[P]rev Page" : "           ";
-            String next = (currentPage < totalPages - 1) ? "[N]ext Page" : "           ";
-            System.out.printf("  %s   |   %s   |   [E]xit Query%n", prev, next);
+            String prev = (currentPage > 0) ? "[P]prev Page" : "           ";
+            String next = (currentPage < totalPages - 1) ? "[N]next Page" : "           ";
+            System.out.printf("  %s   |   %s   |   [E]exit Query%n", prev, next);
 
             input = readString(ANSI_BOLD + "Choose an option: " + ANSI_RESET).toUpperCase();
 
@@ -1377,17 +1324,11 @@ public class CargoHandlingUI implements Runnable {
         showInfo("Exited query view.");
     }
 
-    /**
-     * Reads a string input from the user.
-     */
     private String readString(String prompt) {
         System.out.print(prompt);
         return scanner.nextLine();
     }
 
-    /**
-     * Reads an integer input from the user within a specified range.
-     */
     private int readInt(int min, int max, String prompt) {
         System.out.print(prompt);
         while (true) {
@@ -1408,9 +1349,6 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Reads a double input from the user within a specified range.
-     */
     private double readDouble(double min, double max, String prompt) {
         System.out.print(prompt);
         while (true) {
@@ -1431,16 +1369,10 @@ public class CargoHandlingUI implements Runnable {
         }
     }
 
-    /**
-     * Overloaded version of readDouble with default range for coordinates.
-     */
     private double readDouble(String prompt) {
         return readDouble(-Double.MAX_VALUE, Double.MAX_VALUE, prompt);
     }
 
-    /**
-     * Checks if the input indicates cancellation.
-     */
     private boolean isCancel(String input) {
         return input.trim().equals("0") || input.trim().equalsIgnoreCase("c");
     }
