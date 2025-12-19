@@ -3,6 +3,10 @@ package pt.ipp.isep.dei.domain;
 import java.io.*;
 import java.util.*;
 
+/**
+ * Represents a minimal backbone network for railway infrastructure
+ * using Minimum Spanning Tree (MST) algorithm.
+ */
 public class BackboneNetwork {
     private final Map<Integer, Station> stations = new HashMap<>();
     private final List<Connection> allConnections = new ArrayList<>();
@@ -10,6 +14,13 @@ public class BackboneNetwork {
     private double totalMSTDistance = 0;
     private long computationTimeMs = 0;
 
+    /**
+     * Loads railway network data from CSV files.
+     *
+     * @param stationsFile    Path to stations CSV file
+     * @param connectionsFile Path to connections CSV file
+     * @throws IOException If file reading fails
+     */
     public void loadNetwork(String stationsFile, String connectionsFile) throws IOException {
         loadStations(stationsFile);
         loadConnections(connectionsFile);
@@ -18,48 +29,98 @@ public class BackboneNetwork {
     }
 
     private void loadStations(String file) throws IOException {
-        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line = br.readLine();
-            while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length >= 7) {
-                    int id = Integer.parseInt(parts[0].trim());
-                    String name = parts[1].trim();
-                    double lat = Double.parseDouble(parts[2].trim());
-                    double lon = Double.parseDouble(parts[3].trim());
-                    double coordX = Double.parseDouble(parts[4].trim());
-                    double coordY = Double.parseDouble(parts[5].trim());
+        stations.clear();
 
-                    stations.put(id, new Station(id, name, lat, lon, coordX, coordY));
+        try (BufferedReader br = new BufferedReader(new FileReader(file))) {
+            br.readLine();
+
+            int count = 0;
+            int loaded = 0;
+
+            String line;
+            while ((line = br.readLine()) != null) {
+                count++;
+
+                try {
+                    String[] parts = line.split(",");
+
+                    if (parts.length >= 6) {
+                        int id = Integer.parseInt(parts[0].trim());
+                        String name = parts[1].trim();
+                        double lat = Double.parseDouble(parts[2].trim());
+                        double lon = Double.parseDouble(parts[3].trim());
+                        double coordX = Double.parseDouble(parts[4].trim());
+                        double coordY = Double.parseDouble(parts[5].trim());
+
+                        Station station = new Station(id, name, lat, lon, coordX, coordY);
+                        stations.put(id, station);
+                        loaded++;
+
+                    }
+                } catch (NumberFormatException e) {
+                    System.err.println("Erro na linha " + count + ": " + line);
                 }
             }
+
+        } catch (IOException e) {
+            throw e;
         }
     }
 
     private void loadConnections(String file) throws IOException {
+        allConnections.clear();
+
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
-            String line = br.readLine();
+            br.readLine();
+
+            int count = 0;
+            int loaded = 0;
+            int missingStations = 0;
+
+            String line;
             while ((line = br.readLine()) != null) {
-                String[] parts = line.split(",");
-                if (parts.length >= 3) {
-                    int fromId = Integer.parseInt(parts[0].trim());
-                    int toId = Integer.parseInt(parts[1].trim());
-                    double distance = Double.parseDouble(parts[2].trim());
+                count++;
 
-                    Station from = stations.get(fromId);
-                    Station to = stations.get(toId);
+                try {
+                    String[] parts = line.split(",");
 
-                    if (from != null && to != null) {
-                        allConnections.add(new Connection(from, to, distance));
+                    if (parts.length >= 3) {
+                        int fromId = Integer.parseInt(parts[0].trim());
+                        int toId = Integer.parseInt(parts[1].trim());
+                        double distance = Double.parseDouble(parts[2].trim());
+
+                        Station from = stations.get(fromId);
+                        Station to = stations.get(toId);
+
+                        if (from != null && to != null) {
+                            Connection conn = new Connection(from, to, distance);
+                            allConnections.add(conn);
+                            loaded++;
+                        } else {
+                            missingStations++;
+                        }
                     }
+                } catch (NumberFormatException e) {
+                    System.err.println("Erro na linha " + count + ": " + line);
                 }
             }
+
+        } catch (IOException e) {
+            throw e;
         }
     }
 
+    /**
+     * Computes the Minimal Spanning Tree (MST) using Prim's algorithm.
+     */
     public void computeMinimalBackbone() {
         if (stations.isEmpty()) {
             System.out.println("Error: No stations loaded!");
+            return;
+        }
+
+        if (allConnections.isEmpty()) {
+            System.out.println("Error: No connections loaded!");
             return;
         }
 
@@ -113,6 +174,13 @@ public class BackboneNetwork {
                 mstConnections.size(), totalMSTDistance, computationTimeMs);
     }
 
+    /**
+     * Generates a GraphViz DOT file for visualization.
+     * The DOT file can be previewed directly in IntelliJ with the Graphviz plugin.
+     *
+     * @param filename Output DOT filename
+     * @throws IOException If file writing fails
+     */
     public void generateDOTFile(String filename) throws IOException {
         try (PrintWriter writer = new PrintWriter(filename)) {
             writer.println("graph BelgianRailwayMST {");
@@ -127,7 +195,7 @@ public class BackboneNetwork {
                         s.nome().substring(0, 10) + ".." : s.nome();
 
                 writer.printf("    \"%d\" [pos=\"%.2f,%.2f!\", label=\"%s\"];\n",
-                        s.idEstacao(), s.coordX()/1000, s.coordY()/1000,
+                        s.idEstacao(), s.coordX() / 1000, s.coordY() / 1000,
                         label);
             }
 
@@ -153,17 +221,60 @@ public class BackboneNetwork {
         System.out.println("✓ DOT file generated: " + filename);
     }
 
+    /**
+     * Attempts to generate SVG visualization using available Graphviz installation.
+     * First tries the local installation, then falls back to online conversion.
+     *
+     * @param dotFile Input DOT filename
+     * @param svgFile Output SVG filename
+     * @return true if SVG generation succeeded
+     */
     public boolean generateSVG(String dotFile, String svgFile) {
-        try {
-            Process process = Runtime.getRuntime().exec(
-                    new String[]{"neato", "-Tsvg", dotFile, "-o", svgFile}
-            );
-            return process.waitFor() == 0;
-        } catch (Exception e) {
-            return false;
+        boolean localSuccess = tryLocalGraphviz(dotFile, svgFile);
+
+        if (!localSuccess) {
+            System.out.println("📝 Using IntelliJ Graphviz plugin preview instead.");
+            System.out.println("💡 Right-click " + dotFile + " → Open with → Graphviz");
         }
+
+        return localSuccess;
     }
 
+    private boolean tryLocalGraphviz(String dotFile, String svgFile) {
+        String[] possiblePaths = {
+                "dot",
+                "C:\\Program Files\\Graphviz\\bin\\dot.exe",
+                "C:\\Program Files (x86)\\Graphviz\\bin\\dot.exe",
+                System.getProperty("user.home") + "\\Desktop\\Graphviz-14.1.1-win64\\bin\\dot.exe"
+        };
+
+        for (String path : possiblePaths) {
+            try {
+                ProcessBuilder pb = new ProcessBuilder(
+                        path, "-Tsvg", dotFile, "-o", svgFile
+                );
+
+                Process process = pb.start();
+                int exitCode = process.waitFor();
+
+                if (exitCode == 0) {
+                    File svgOutput = new File(svgFile);
+                    if (svgOutput.exists()) {
+                        System.out.println("✅ SVG generated: " + svgFile);
+                        return true;
+                    }
+                }
+            } catch (Exception e) {
+                // Try next path
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Prints a comprehensive report of the backbone network.
+     */
     public void printReport() {
         System.out.println("\n" + "=".repeat(60));
         System.out.println("USEI12 - MINIMAL BACKBONE NETWORK REPORT");
@@ -185,19 +296,20 @@ public class BackboneNetwork {
         System.out.printf("   • For this network: O(%d log %d) operations\n", E, V);
 
         System.out.println("\n🛠️  OUTPUT FILES:");
-        System.out.println("   • belgian_backbone.dot - GraphViz DOT file");
-        System.out.println("   • belgian_backbone.svg - Visual map (requires GraphViz)");
+        System.out.println("   • " + "belgian_backbone.dot" + " - DOT file (open in IntelliJ with Graphviz plugin)");
 
-        System.out.println("\n📋 BACKBONE SAMPLE (first 10 connections):");
-        int limit = Math.min(10, mstConnections.size());
-        for (int i = 0; i < limit; i++) {
-            Connection c = mstConnections.get(i);
-            System.out.printf("   %d. %s ↔ %s (%.1f km)\n",
-                    i+1, c.from().nome(), c.to().nome(), c.distance());
-        }
+        if (!mstConnections.isEmpty()) {
+            System.out.println("\n📋 BACKBONE SAMPLE (first 10 connections):");
+            int limit = Math.min(10, mstConnections.size());
+            for (int i = 0; i < limit; i++) {
+                Connection c = mstConnections.get(i);
+                System.out.printf("   %d. %s ↔ %s (%.1f km)\n",
+                        i + 1, c.from().nome(), c.to().nome(), c.distance());
+            }
 
-        if (mstConnections.size() > 10) {
-            System.out.printf("   ... and %d more connections\n", mstConnections.size() - 10);
+            if (mstConnections.size() > 10) {
+                System.out.printf("   ... and %d more connections\n", mstConnections.size() - 10);
+            }
         }
 
         System.out.println("\n" + "=".repeat(60));

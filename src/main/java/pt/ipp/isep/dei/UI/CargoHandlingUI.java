@@ -228,8 +228,8 @@ public class CargoHandlingUI implements Runnable {
 
             System.out.println("1️⃣  Loading Belgian railway data...");
 
-            String stationsFile = "src/main/resources/stations.csv";
-            String connectionsFile = "src/main/resources/lines.csv";
+            String stationsFile = "src/main/java/pt/ipp/isep/dei/FicheirosCSV/stations.csv";
+            String connectionsFile = "src/main/java/pt/ipp/isep/dei/FicheirosCSV/lines.csv";
 
             try (BufferedReader br = new BufferedReader(new FileReader(stationsFile))) {
                 String line = br.readLine();
