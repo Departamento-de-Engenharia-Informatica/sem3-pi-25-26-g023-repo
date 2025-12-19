@@ -1,0 +1,98 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+hide circle
+hide empty methods
+
+' --- CORE ASSEMBLY CLASSES ---
+
+class TrainCompositionController {
+  +createAndAssignTrain(locoId, wagonIds, routeId, date)
+}
+
+class TrainCompositionService {
+  +assembleTrain(locoId, wagonIds, routeId, date): ScheduledTrip
+  -validatePhysics(train: Train): boolean
+  -validateInfrastructure(train: Train, route: Route): boolean
+}
+
+' --- DOMAIN AGGREGATES ---
+
+class Train {
+  -trainId: UUID
+  -totalMassKg: double
+  -totalLengthM: double
+  +create(loco: Locomotive, wagons: List<Wagon>)
+  +calculateTotalMass()
+  +calculateTotalLength()
+  +validateTractiveEffort(): boolean
+}
+
+class Locomotive {
+  -locomotiveId: String
+  -tractiveEffortNewtons: double
+  -powerKw: double
+  -tareWeightKg: double
+  -lengthM: double
+}
+
+class Wagon {
+  -wagonId: String
+  -tareWeightKg: double
+  -payloadCapacityKg: double
+  -grossWeightKg: double
+  -lengthM: double
+}
+
+class Route {
+  -routeId: String
+  -maxSidingLengthM: double
+  +validateCapacity(trainLength: double): boolean
+}
+
+class ScheduledTrip {
+  -tripId: UUID
+  -departureDate: LocalDateTime
+  -status: String
+}
+
+' --- REPOSITORIES ---
+
+class RollingStockRepository {
+  +findLocomotive(id): Locomotive
+  +findWagons(ids): List<Wagon>
+  +updateStatus(id, status)
+}
+
+class RouteRepository {
+  +findRoute(id): Route
+}
+
+class TripRepository {
+  +save(trip: ScheduledTrip)
+}
+
+' --- RELATIONSHIPS ---
+
+TrainCompositionController --> TrainCompositionService : delegates
+TrainCompositionService --> RollingStockRepository : fetches assets
+TrainCompositionService --> RouteRepository : fetches route
+TrainCompositionService --> TripRepository : persists assignment
+
+TrainCompositionService ..> Train : assembles
+TrainCompositionService ..> ScheduledTrip : creates
+
+' Aggregate Structure
+Train "1" *-- "1" Locomotive : powered by
+Train "1" *-- "1..*" Wagon : composed of
+
+' Assignments
+ScheduledTrip "1" --> "1" Train : uses
+ScheduledTrip "1" --> "1" Route : follows
+
+' Validations
+Train ..> Locomotive : checks power
+Route ..> Train : checks length
+
+@enduml

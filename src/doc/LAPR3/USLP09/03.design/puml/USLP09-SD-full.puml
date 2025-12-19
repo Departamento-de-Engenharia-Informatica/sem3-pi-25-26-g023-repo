@@ -1,0 +1,82 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Traffic Manager" as Manager
+participant ":TrainCompositionUI" as UI
+participant ":TrainCompositionController" as Controller
+participant ":TrainCompositionService" as Service
+participant "RollingStockRepo" as RepoRS
+participant "RouteRepo" as RepoRoute
+participant "Train (Aggregate)" as Train
+participant "Route" as Route
+participant "TripRepo" as RepoTrip
+
+== Start Assembly & Assignment ==
+
+activate UI
+    UI -> Manager : requestData(Loco, Wagons, Route, Date)
+    activate Manager
+    Manager -> UI : submit(locoId, wagonIds, routeId, date)
+    deactivate Manager
+
+    UI -> Controller : createAndAssignTrain(locoId, wagonIds, routeId, date)
+    activate Controller
+        Controller -> Service : assembleTrain(locoId, wagonIds, routeId, date)
+        activate Service
+
+            note over Service : 1. Fetch Domain Entities
+            Service -> RepoRS : findLocomotive(locoId)
+            Service -> RepoRS : findWagons(wagonIds)
+            Service -> RepoRoute : findRoute(routeId)
+
+            note over Service : 2. Create Aggregate & Calculate Properties
+            Service -> Train : create(loco, wagons)
+            activate Train
+                Train -> Train : calculateTotalMass()
+                Train -> Train : calculateTotalLength()
+                Train --> Service : trainInstance
+            deactivate Train
+
+            note over Service : 3. Validate Physics (Loco vs Mass)
+            Service -> Train : validateTractiveEffort()
+            activate Train
+                Train -> Train : check(loco.effort >= totalMass)
+                Train --> Service : isPhysicsValid
+            deactivate Train
+
+            alt Physics Invalid
+                Service --> Controller : error("Locomotive insufficient power")
+            else Physics Valid
+
+                note over Service : 4. Validate Infrastructure (Train vs Route)
+                Service -> Route : validateCapacity(trainInstance.length)
+                activate Route
+                    Route -> Route : check(maxSidingLength >= train.length)
+                    Route --> Service : isLengthValid
+                deactivate Route
+
+                alt Length Invalid
+                    Service --> Controller : error("Train too long for route sidings")
+                else All Valid
+
+                    note over Service : 5. Create Assignment & Persist
+                    Service -> RepoTrip : save(new ScheduledTrip(train, route, date))
+
+                    note over Service : 6. Update Asset Status
+                    Service -> RepoRS : updateStatus(locoId, "ASSIGNED")
+                    Service -> RepoRS : updateStatus(wagonIds, "ASSIGNED")
+
+                    Service --> Controller : success(tripDetails)
+                end
+            end
+
+        Controller --> UI : result
+    deactivate Controller
+
+    UI --> Manager : display success or error message
+deactivate UI
+
+@enduml

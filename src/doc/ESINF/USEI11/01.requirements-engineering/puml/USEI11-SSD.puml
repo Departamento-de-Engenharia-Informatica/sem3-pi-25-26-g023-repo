@@ -30,6 +30,5 @@ activate System
 end
 
 deactivate System
-deactivate System
 
 @enduml
