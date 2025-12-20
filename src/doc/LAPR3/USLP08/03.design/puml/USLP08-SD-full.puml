@@ -1,0 +1,62 @@
+@startuml
+title Sequence Diagram (SD) - USLP08
+
+autonumber
+
+actor "Freight Manager" as FM
+participant "UI : RoutePlanningUI" as UI
+participant "ctrl : RoutePlanningController" as CTRL
+participant "repo : FreightRepository" as REPO
+participant "svc : RoutePlanningService" as SVC
+participant "route : Route" as ROUTE
+
+
+activate FM
+FM -> UI : requestPlanningModule()
+activate UI
+
+UI -> CTRL : getPendingFreights()
+activate CTRL
+
+CTRL -> REPO : findUnassignedFreights()
+activate REPO
+REPO --> CTRL : list<PendingFreight>
+deactivate REPO
+
+CTRL --> UI : list<PendingFreight>
+deactivate CTRL
+
+UI --> FM : showPendingFreights(list)
+
+FM -> UI : selectFreightsAndDefineRoute(selectedList, type)
+UI -> CTRL : createRoutePlan(selectedList, type)
+activate CTRL
+
+CTRL -> SVC : generatePath(selectedList, type)
+activate SVC
+
+note over SVC
+  Type check:
+  If 'Simple' -> 1 Freight, direct path.
+  If 'Complex' -> Multiple stops/cargos.
+end note
+
+create ROUTE
+SVC -> ROUTE : create(path, cargos)
+
+SVC --> CTRL : routeObject
+deactivate SVC
+
+CTRL -> REPO : saveRoute(routeObject)
+activate REPO
+REPO -> REPO : call_fn_register_route_plsql()
+REPO --> CTRL : success
+deactivate REPO
+
+CTRL --> UI : routeObject
+deactivate CTRL
+
+UI -> FM : displayPlannedRoute(stationSequence, cargoOps)
+deactivate UI
+deactivate FM
+@enduml

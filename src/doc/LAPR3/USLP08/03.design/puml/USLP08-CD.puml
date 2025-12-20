@@ -1,0 +1,81 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+
+title Class Diagram (CD) - USLP08
+
+skinparam classAttributeIconSize 0
+
+class RoutePlanningUI {
+    +run()
+    +displayPendingFreights()
+    +inputRouteDetails()
+}
+
+class RoutePlanningController {
+    +getPendingFreights()
+    +createRoutePlan(freightList, type)
+}
+
+class RoutePlanningService {
+    +generatePath(freights, type)
+    -calculateSequence(freights)
+}
+
+class Route {
+    -id
+    -startDate
+    -startTime
+    +getStationSequence()
+    +getCargoOperations()
+}
+
+class SimpleRoute {
+    -targetFreight
+}
+
+class ComplexRoute {
+    -freightList
+}
+
+class Path {
+    -stationList
+    +getOrderedStations()
+}
+
+class PendingFreight {
+    -id
+    -origin
+    -destination
+    -cargoType
+    -status
+}
+
+class CargoOperation {
+    -type
+    -quantity
+    +getDetails()
+}
+
+class FreightRepository {
+    +findUnassigned()
+    +saveRoute(route)
+}
+
+' Relacionamentos
+RoutePlanningUI ..> RoutePlanningController
+RoutePlanningController ..> RoutePlanningService
+RoutePlanningController ..> FreightRepository
+
+Route <|-- SimpleRoute
+Route <|-- ComplexRoute
+
+Route "1" *-- "1" Path
+Path "1" *-- "many" Station
+
+Route "1" *-- "many" CargoOperation
+CargoOperation "many" --> "1" PendingFreight
+
+FreightRepository ..> Route : persists
+@enduml
