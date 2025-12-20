@@ -1,4 +1,4 @@
-# 🚂 USLP07 - Freight Dispatching and Conflict Resolution
+# 🚂 USPL08 - Register Electric Locomotive Model
 
 ## 1. Requirements Engineering
 
