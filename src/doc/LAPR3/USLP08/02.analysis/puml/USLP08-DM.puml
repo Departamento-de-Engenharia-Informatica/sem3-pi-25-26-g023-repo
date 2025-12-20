@@ -1,71 +1,48 @@
 @startuml
+title Domain Model - USLP08 (Route Planning)
+
 hide circle
 hide methods
 
-' title Domain Model - USLP07: Freight Dispatching and Conflict Resolution
 
-class SchedulerService {
-    +calculateTrainPerformance(TrainTrip)
-    +calculateTravelTimes(TrainTrip)
-    +dispatchTrains(List<TrainTrip>)
-    +resolveFirstConflict(...)
+class FreightManager
+class PendingFreight {
+    origin
+    destination
+    cargoDetails
 }
 
-class TrainTrip {
-    tripId
-    departureTime
-    +getRoute() : List<LineSegment>
-    +getLocomotives()
-    +getWagons()
-    +getMaxTrainSpeed()
-    +getTotalWeightKg()
-    +setPassageTime(int facilityId, LocalDateTime time)
+class Route {
+    startDate
+    startTime
 }
 
-class LineSegment {
-    segmentId
-    length_km
-    maxSpeedAllowedKmh
-    numberTracks // Critical for single/double track
-    isViaUnica()
+class SimpleRoute
+class ComplexRoute
+
+class Path {
+    stationSequence
 }
 
-class Locomotive {
-    locomotiveId
-    power_kw
-    tareWeight_kg
+class Station
+class CargoOperation {
+    type (Load/Unload)
+    quantity
 }
 
-class Wagon {
-    wagonId
-    tareWeight_kg
-    loadWeight_kg
-}
+' Relacionamentos
+FreightManager "1" -- "0..*" Route : defines/assigns >
+Route "1" *-- "1" Path : follows >
+Path "1" *-- "2..*" Station : consists of >
 
-class SimulationSegmentEntry {
-    entryTime
-    exitTime
-    calculatedSpeedKmh
-    startFacilityName
-}
+Route <|-- SimpleRoute
+Route <|-- ComplexRoute
 
-class Conflict {
-    tripId1 // Prioritized
-    tripId2 // Delayed
-    delayMinutes
-    safeWaitFacilityId // Location where Trip 2 waits
-}
+SimpleRoute "1" -- "1" PendingFreight : accomplishes >
+ComplexRoute "1" -- "1..*" PendingFreight : accomplishes >
 
-' Relationships
-SchedulerService "1" --> "*" TrainTrip : processes
-SchedulerService "1" --> "*" Conflict : generates
-
-TrainTrip "1" *-- "1..*" LineSegment : defines route
-TrainTrip "1" *-- "1..*" Locomotive : pulls
-TrainTrip "1" *-- "0..*" Wagon : carries freight
-
-TrainTrip "1" *-- "1..*" SimulationSegmentEntry : simulation output
-
-LineSegment "1" --> "1" LineSegment : inverse_segment_id
+Route "1" *-- "1..*" CargoOperation : involves >
+CargoOperation "1" -- "1" Station : occurs at >
+PendingFreight "1" -- "2" CargoOperation : defines >
 
 @enduml

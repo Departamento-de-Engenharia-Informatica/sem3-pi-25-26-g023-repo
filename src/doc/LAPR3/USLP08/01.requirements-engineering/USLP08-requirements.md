@@ -39,11 +39,11 @@ The registration of a locomotive model is a prerequisite for fleet management an
 
 ### 1.5. Input and Output Data
 
-| Data Flow              | Fonte/Estrutura         | Details                                                                                            |
-|:-----------------------|:------------------------|:---------------------------------------------------------------------------------------------------|
-| **Input **             | `ElectricLocomotiveDTO` | Model Name, Power (kW), Max Speed (km/h), Consumption, Voltage (kV).                               |
-| **Output (Success)**   | `Success Message`       | Confirmation that the model was successfully persisted in the database.                            |
-| **Output (Error)**     | `Exception`             | Error message if validation fails (e.g., "Power must be positive") or if the model already exists. |
+| Data Flow            | Fonte/Estrutura         | Details                                                                                            |
+|:---------------------|:------------------------|:---------------------------------------------------------------------------------------------------|
+| **Input**            | `ElectricLocomotiveDTO` | Model Name, Power (kW), Max Speed (km/h), Consumption, Voltage (kV).                               |
+| **Output (Success)** | `Success Message`       | Confirmation that the model was successfully persisted in the database.                            |
+| **Output (Error)**   | `Exception`             | Error message if validation fails (e.g., "Power must be positive") or if the model already exists. |
 
 ---
 ### 1.6. System Sequence Diagram (SSD)
