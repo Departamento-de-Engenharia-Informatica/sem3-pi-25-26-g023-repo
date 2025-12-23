@@ -19,25 +19,27 @@
                     </VBox.margin>
                 </Label>
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowDashboard" styleClass="sidebar-button" text="Dashboard" />
+
                 <Label styleClass="sidebar-section-title" text="Warehouse (S1)" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI01" styleClass="sidebar-button" text="[USEI01] Unload Wagons" />
                 <Button fx:id="btnUsei02" mnemonicParsing="false" onAction="#handleShowUSEI02" prefHeight="40.0" prefWidth="200.0" text="USEI02 - Allocate Orders" styleClass="sidebar-button" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI03" styleClass="sidebar-button" text="[USEI03] Pack Trolleys" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI04" styleClass="sidebar-button" text="[USEI04] Calculate Pick Path" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI05" styleClass="sidebar-button" text="[USEI05] Process Quarantine" />
+
                 <Label styleClass="sidebar-section-title" text="Railway Ops (S1/S2/S3)" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowSimulation" styleClass="sidebar-button" text="[USLP07] Full Simulation (S3)" />
-
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI06" styleClass="sidebar-button" text="[USEI06] Station Index (S2)" />
-
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI07" styleClass="sidebar-button" text="[USEI07] Analyze 2D-Tree (S2)" />
-
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI08" styleClass="sidebar-button" text="[USEI08] Spatial Queries (S2)" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI09" styleClass="sidebar-button" text="[USEI09] Nearest-N Search (S2)" />
-                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI10" styleClass="sidebar-button" text="[USEI010] Radius search and density summary (S2)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI10" styleClass="sidebar-button" text="[USEI10] Radius Search (S2)" />
+
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI12" styleClass="sidebar-button" text="[USEI12] Minimal Backbone (S3)" />
+                <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI14" styleClass="sidebar-button" text="[USEI14] Max Throughput (S3)" />
+
                 <Label styleClass="sidebar-section-title" text="Database (S3)" />
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowBDDAD" styleClass="sidebar-button" text="BDDAD CRUD" />
-
                 <Button maxWidth="1.7976931348623157E308" onAction="#handleShowBDADQueries" styleClass="sidebar-button" text="[USBD26-28] Query Reports" />
             </children>
         </VBox>
