@@ -1,4 +1,3 @@
-// File: pt.ipp.isep.dei.controller.SchedulerController.java
 package pt.ipp.isep.dei.controller;
 
 import pt.ipp.isep.dei.domain.*;
@@ -19,7 +18,7 @@ public class SchedulerController {
     private final SegmentLineRepository segmentRepo;
     private final LocomotiveRepository locoRepo;
     private final WagonRepository wagonRepo;
-    private final RailwayNetworkService networkService; // NOVO: Serviço de Rede Ferroviária
+    private final RailwayNetworkService networkService; // Serviço de Rede Ferroviária
 
     // Construtor atualizado para injeção de dependência
     public SchedulerController(SchedulerService schedulerService,
@@ -101,4 +100,12 @@ public class SchedulerController {
     public List<Wagon> getAllWagons() { return wagonRepo.findAll(); }
     public List<LineSegment> getAllSegments() { return segmentRepo.findAll(); }
     public WagonRepository getWagonRepository() { return this.wagonRepo; }
+
+    /**
+     * Retorna o serviço de rede ferroviária.
+     * Necessário para a UI aceder aos algoritmos de grafo (ex: USEI14).
+     */
+    public RailwayNetworkService getNetworkService() {
+        return this.networkService;
+    }
 }
