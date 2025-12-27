@@ -1,0 +1,118 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam linetype polyline
+hide circle
+hide methods
+
+' --- CORE DISPATCHING & SCHEDULING CLASSES ---
+
+class DispatcherService {
+  +dispatchTrainsWithOptions(trips: List<TrainTrip>, mode: PathMode)
+}
+
+class SchedulerService {
+  +dispatchAdvanced(trips: List<TrainTrip>, mode: PathMode): SchedulerResult
+  +calculateTrainPerformance(trip: TrainTrip)
+  +calculateSpeedProfile(trip: TrainTrip)
+  +calculateTravelTimesWithCrossings(trip: TrainTrip)
+  +resolveAllConflicts(trips: List<TrainTrip>)
+}
+
+class AutoPathCalculator {
+  +calculateOptimalPath(trip: TrainTrip): List<LineSegment>
+}
+
+class TrainTrip {
+  -tripId: String
+  -plannedDepartureTime: LocalDateTime
+  -actualDepartureTime: LocalDateTime
+  +getRoute(): List<LineSegment>
+  +setRoute(route: List<LineSegment>)
+  +getLocomotives(): List<Locomotive>
+  +getWagons(): List<Wagon>
+  +getTotalWeightKg(): double
+  +getCombinedPowerKw(): double
+  +getSegmentEntries(): List<SimulationSegmentEntry>
+}
+
+class LineSegment {
+  -segmentId: String
+  -length_km: double
+  -maxSpeedAllowedKmh: double
+  -numberTracks: int // 1 = single track, >1 = double track
+}
+
+class Locomotive {
+  -locomotiveId: String
+  -power_kw: double
+  -tareWeight_kg: double
+}
+
+class Wagon {
+  -wagonId: String
+  -tareWeight_kg: double
+  -loadWeight_kg: double
+}
+
+' --- SIMULATION & OUTPUT DTOs ---
+
+class SimulationSegmentEntry {
+  -entryTime: LocalDateTime
+  -exitTime: LocalDateTime
+  -calculatedSpeedKmh: double
+  -segmentId: String
+}
+
+class CrossingOperation {
+  -tripId: String
+  -conflictSegmentId: String
+  -safeWaitFacilityId: int
+  -delayMinutes: long
+  -scheduledMeetTime: LocalDateTime
+}
+
+class SchedulerResult {
+  +scheduledTrips: List<TrainTrip>
+  +crossingOperations: List<CrossingOperation>
+}
+
+' --- INFRASTRUCTURE / DATA ACCESS ---
+
+class PL_SQL_Gateway {
+  +getNetworkData()
+  +getSegmentCapacities(path)
+  +getLocomotivePower(trainId)
+  +getTrainWeight(trainId)
+  +saveSchedules(result: SchedulerResult)
+}
+
+' --- UI / ENTRY POINT ---
+
+class TrainSimulationUI {
+  +runAdvancedSimulation(trips: List<TrainTrip>, mode: PathMode)
+}
+
+' --- RELATIONSHIPS ---
+
+TrainSimulationUI --> DispatcherService : uses
+DispatcherService --> SchedulerService : coordinates
+
+SchedulerService --> AutoPathCalculator : uses
+SchedulerService --> PL_SQL_Gateway : queries / persists
+SchedulerService --> TrainTrip : simulates
+SchedulerService --> LineSegment : reads constraints
+SchedulerService --> Locomotive : reads power
+SchedulerService --> Wagon : reads weight
+SchedulerService --> SchedulerResult : outputs
+
+SchedulerResult "1" *-- "0..*" CrossingOperation : details
+
+TrainTrip "1" *-- "1..*" LineSegment : route
+TrainTrip "1" *-- "1..*" Locomotive : is pulled by
+TrainTrip "1" *-- "0..*" Wagon : carries
+TrainTrip "1" *-- "0..*" SimulationSegmentEntry : simulation results
+
+LineSegment "1" --> "1" LineSegment : inverse_segment_id
+
+@enduml

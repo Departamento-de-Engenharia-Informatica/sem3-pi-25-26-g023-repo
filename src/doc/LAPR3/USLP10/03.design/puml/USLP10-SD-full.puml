@@ -1,0 +1,89 @@
+@startuml
+skinparam packageStyle rectangle
+skinparam shadowing false
+
+autonumber
+
+actor "Traffic Manager" as Manager
+participant ":TrainSimulationUI" as UI
+participant ":DispatcherService" as Dispatcher
+participant ":SchedulerService" as Scheduler
+participant ":AutoPathCalculator" as PathCalc
+participant ":PL_SQL_Gateway" as DB
+participant "TripA" as TripA
+participant "TripB" as TripB
+participant "CrossingOperation" as Cross
+participant "SchedulerResult" as Res
+
+== Start Advanced Dispatching ==
+
+activate UI
+    UI -> Manager : loadTrainList()
+    activate Manager
+    Manager -> UI : return List<TrainTrip>
+    deactivate Manager
+
+    UI -> Dispatcher : dispatchTrainsWithOptions(trips, mode)
+    activate Dispatcher
+        Dispatcher -> Scheduler : dispatchAdvanced(trips, mode)
+        activate Scheduler
+
+            note over Scheduler : 1. Sort Trips by PlannedDepartureTime
+
+            alt mode = AUTOMATIC
+                note over Scheduler : Automatic Path Calculation
+                Scheduler -> PathCalc : calculateOptimalPath(Trip)
+                activate PathCalc
+                PathCalc -> DB : getNetworkData()
+                DB --> PathCalc : return segments & capacities
+                PathCalc --> Scheduler : return calculated path
+                deactivate PathCalc
+            else mode = MANUAL
+                note over Scheduler : Manual Path from Manager
+                Scheduler -> Scheduler : usePredefinedPath(Trip)
+            end
+
+            loop For each TrainTrip
+                note over Scheduler : 2. Calculate Performance & Speed Profile
+                Scheduler -> TripA : calculateTrainPerformance()
+                Scheduler -> TripA : calculateSpeedProfile()
+
+                note over Scheduler : 3. Calculate Travel Times (with crossings)
+                Scheduler -> TripA : calculateTravelTimesWithCrossings()
+            end
+
+            note over Scheduler : 4. Detect & Resolve Conflicts (Single Track)
+
+            loop For each pair (TripA, TripB)
+                Scheduler -> TripA : getSegmentEntries()
+                Scheduler -> TripB : getSegmentEntries()
+
+                alt Conflict detected (ExitTimeA > EntryTimeB on single track)
+                    note over Scheduler : 5. Determine Crossing Point
+                    Scheduler -> TripB : findNearestSidingOrStation(conflictSegment)
+
+                    note over Scheduler : 6. Create Crossing Operation
+                    Scheduler -> Cross : new(delayMinutes, safeWaitFacilityId)
+                    Scheduler -> Res : addCrossingOperation(Cross)
+
+                    note over Scheduler : 7. Recalculate Delayed Trip (Cascading)
+                    Scheduler -> TripB : setDepartureTime(newDepartureTime)
+                    Scheduler -> TripB : calculateTravelTimesWithCrossings()
+                end
+            end
+
+            note over Scheduler : 8. Compile & Persist Final Schedules
+            Scheduler -> Res : compileFinalSchedules()
+            Scheduler -> DB : saveSchedules(Res)
+            DB --> Scheduler : confirmation
+
+            Scheduler --> Dispatcher : return SchedulerResult
+        deactivate Scheduler
+
+        Dispatcher --> UI : return SchedulerResult
+    deactivate Dispatcher
+
+    UI --> Manager : display schedules & crossings
+deactivate UI
+
+@enduml
