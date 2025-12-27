@@ -1,0 +1,96 @@
+@startuml
+hide circle
+hide methods
+
+' Domain Model - USLP10: Advanced Freight Dispatching with Automatic Path Planning
+
+class SchedulerService {
+    +dispatchAdvanced(List<TrainTrip>, PathMode)
+    +calculateTrainPerformance(TrainTrip)
+    +calculateSpeedProfile(TrainTrip)
+    +calculateTravelTimesWithCrossings(TrainTrip)
+    +resolveAllConflicts(List<TrainTrip>)
+}
+
+class AutoPathCalculator {
+    +calculateOptimalPath(TrainTrip) : List<LineSegment>
+}
+
+class PL_SQL_Gateway {
+    +getNetworkData()
+    +getSegmentCapacities(path)
+    +getLocomotivePower(trainId)
+    +getTrainWeight(trainId)
+    +saveSchedules(SchedulerResult)
+}
+
+class SchedulerResult {
+    scheduledTrips
+    crossingOperations
+}
+
+class TrainTrip {
+    tripId
+    plannedDepartureTime
+    actualDepartureTime
+    +getRoute() : List<LineSegment>
+    +setRoute(List<LineSegment>)
+    +getLocomotives()
+    +getWagons()
+    +getMaxTrainSpeed()
+    +getTotalWeightKg()
+    +setDepartureTime(LocalDateTime)
+}
+
+class LineSegment {
+    segmentId
+    length_km
+    maxSpeedAllowedKmh
+    numberTracks
+    +isSingleTrack()
+}
+
+class Locomotive {
+    locomotiveId
+    power_kw
+    tareWeight_kg
+}
+
+class Wagon {
+    wagonId
+    tareWeight_kg
+    loadWeight_kg
+}
+
+class SimulationSegmentEntry {
+    entryTime
+    exitTime
+    calculatedSpeedKmh
+    segmentId
+}
+
+class CrossingOperation {
+    tripId
+    conflictSegmentId
+    safeWaitFacilityId
+    delayMinutes
+    scheduledMeetTime
+}
+
+' Relationships
+SchedulerService "1" --> "*" TrainTrip : schedules
+SchedulerService "1" --> "1" AutoPathCalculator : uses
+SchedulerService "1" --> "1" PL_SQL_Gateway : queries / persists
+SchedulerService "1" --> "1" SchedulerResult : produces
+
+SchedulerResult "1" *-- "*" TrainTrip : finalSchedules
+SchedulerResult "1" *-- "*" CrossingOperation : crossings
+
+TrainTrip "1" *-- "1..*" LineSegment : route
+TrainTrip "1" *-- "1..*" Locomotive : pulls
+TrainTrip "1" *-- "0..*" Wagon : carries
+TrainTrip "1" *-- "1..*" SimulationSegmentEntry : simulationOutput
+
+LineSegment "1" --> "1" LineSegment : inverse_segment_id
+
+@enduml
