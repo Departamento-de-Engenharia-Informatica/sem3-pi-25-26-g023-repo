@@ -7,7 +7,7 @@ public class DatabaseConnection {
     // --- Connection Details (Ensure these are correct) ---
     private static final String DB_URL = "jdbc:oracle:thin:@vsgate-s1.dei.isep.ipp.pt:10221:xe";
     private static final String DB_USER = "system";
-    private static final String DB_PASSWORD = "oracle"; // <-- CHANGE TO CORRECT PASSWORD
+    private static final String DB_PASSWORD = "oracle2"; // <-- CHANGE TO CORRECT PASSWORD
     // --- End of Details ---
 
     static {
