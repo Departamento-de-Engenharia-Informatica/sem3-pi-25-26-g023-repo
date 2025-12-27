@@ -1,0 +1,86 @@
+@startuml
+autonumber
+
+actor "Traffic Manager" as Manager
+participant "Dispatcher Service" as Dispatcher
+participant "Scheduler Service" as Scheduler
+participant "AutoPathCalculator" as PathCalc
+participant "PL/SQL Gateway" as DB
+participant "TrainTrip" as Trip
+participant "Scheduler Result" as Result
+
+== USLP10 - Start Advanced Dispatching ==
+
+activate Manager
+Manager -> Dispatcher : dispatchTrainsWithOptions(List<TrainTrip>, mode)
+
+activate Dispatcher
+Dispatcher -> Scheduler : dispatchAdvanced(Trip List, mode)
+activate Scheduler
+
+note over Scheduler : USLP10 AC2: Path can be Manual or Auto
+
+alt mode = AUTOMATIC
+    note over Scheduler : Automatic Path Calculation
+    Scheduler -> PathCalc : calculateOptimalPath(trip)
+    activate PathCalc
+    PathCalc -> DB : getNetworkData() via PL/SQL
+    DB --> PathCalc : return segments, capacities
+    PathCalc -> PathCalc : applyShortestPathAlgorithm()
+    PathCalc --> Scheduler : return calculated Path
+    deactivate PathCalc
+else mode = MANUAL
+    note over Scheduler : Manual Path (from Freight Manager)
+    Scheduler -> Scheduler : usePredefinedPath(trip)
+end
+
+note over Scheduler : USLP10 AC1: Each trip has planned departure
+Scheduler -> Trip : setDepartureTime(plannedTime)
+
+note over Scheduler : USLP10 AC3: Calculate speed based on power, weight, limits
+Scheduler -> Trip : calculateSpeedProfile()
+activate Trip
+Trip -> DB : getLocomotivePower(trainId) via PL/SQL
+DB --> Trip : return totalPower
+Trip -> DB : getTrainWeight(trainId) via PL/SQL
+DB --> Trip : return totalWeight
+Trip -> Trip : speed = min(trackLimit, power/weight)
+Trip --> Scheduler : return speedProfile
+deactivate Trip
+
+note over Scheduler : USLP10 AC4/5: Consider crossings & estimate times
+loop For each TrainTrip
+    Scheduler -> Trip : calculateTravelTimesWithCrossings()
+    Trip -> DB : getSegmentCapacities(path) via PL/SQL
+    DB --> Trip : return capacities, single/double tracks
+    Trip -> Trip : detectCrossingPoints()
+    Trip --> Scheduler : return detailed schedule with crossings
+end
+
+note over Scheduler : Conflict Resolution (Enhanced from USLP07)
+Scheduler -> Scheduler : resolveAllConflicts(trips)
+
+loop For each Conflict
+    alt Conflict in Single Track Segment
+        note over Scheduler : USLP10 AC4: Crossing at sidings or station
+        Scheduler -> Trip : findNearestSidingOrStation(conflictSegment)
+        Trip --> Scheduler : return crossingPoint
+        Scheduler -> Result : addCrossingOperation(crossingPoint, delay)
+    end
+end
+
+Scheduler -> Result : compileFinalSchedules()
+Scheduler -> DB : saveSchedulesToDatabase() via PL/SQL
+activate DB
+DB --> Scheduler : confirmation
+deactivate DB
+
+Scheduler --> Dispatcher : return AdvancedSchedulerResult
+deactivate Scheduler
+
+Dispatcher -> Manager : displayResults(schedules, crossings, conflicts)
+deactivate Dispatcher
+
+deactivate Manager
+
+@enduml
