@@ -11,65 +11,49 @@ import java.util.List;
 public class Wagon {
 
     // --- Railway/CRUD Fields (Immutable) ---
-    private final String idWagon; // <--- CORREÇÃO: ID AGORA É STRING
+    private final String idWagon;
     private final int modelId;
     private final int serviceYear;
+
+    // --- Physics/Validation Fields (Transientes) ---
+    private double lengthMeters;
+    private double grossWeightKg; // Tara + Carga Máxima
 
     // --- WMS Fields ---
     private final List<Box> boxes = new ArrayList<>();
 
-    /**
-     * Constructs a Wagon object used for CRUD/DB loading (String ID).
-     */
-    public Wagon(String idWagon, int modelId, int serviceYear) { // <--- CONSTRUTOR ALTERADO
+    public Wagon(String idWagon, int modelId, int serviceYear) {
         this.idWagon = idWagon;
         this.modelId = modelId;
         this.serviceYear = serviceYear;
     }
 
-    /**
-     * Constructor for WMS loading where a String ID is used (Original usage).
-     */
     public Wagon(String wagonId) {
-        this.idWagon = wagonId; // Não há mais conversão problemática
+        this.idWagon = wagonId;
         this.modelId = 0;
         this.serviceYear = 0;
     }
 
+    public String getIdWagon() { return idWagon; }
+    public String getWagonId() { return idWagon; }
+    public int getModelId() { return modelId; }
+    public int getServiceYear() { return serviceYear; }
 
-    // --- Getters ---
+    public double getLengthMeters() { return lengthMeters; }
+    public void setLengthMeters(double lengthMeters) { this.lengthMeters = lengthMeters; }
 
-    public String getIdWagon() { // <--- RETORNA STRING
-        return idWagon;
-    }
+    public double getGrossWeightKg() { return grossWeightKg; }
+    public void setGrossWeightKg(double grossWeightKg) { this.grossWeightKg = grossWeightKg; }
 
-    public String getWagonId() { // <--- MANTIDO PARA COMPATIBILIDADE WMS (retorna String)
-        return idWagon;
-    }
-
-    public int getModelId() {
-        return modelId;
-    }
-
-    public int getServiceYear() {
-        return serviceYear;
-    }
-
-    // --- WMS methods ---
     public void addBox(Box b) { boxes.add(b); }
     public List<Box> getBoxes() { return boxes; }
 
-    // --- JavaFX Property Methods ---
+    public StringProperty wagonIdProperty() { return new SimpleStringProperty(idWagon); }
+    public StringProperty modelIdProperty() { return new SimpleStringProperty(String.valueOf(modelId)); }
+    public IntegerProperty serviceYearProperty() { return new SimpleIntegerProperty(serviceYear); }
 
-    public StringProperty wagonIdProperty() {
-        return new SimpleStringProperty(idWagon);
-    }
-
-    public StringProperty modelIdProperty() {
-        return new SimpleStringProperty(String.valueOf(modelId));
-    }
-
-    public IntegerProperty serviceYearProperty() {
-        return new SimpleIntegerProperty(serviceYear);
+    @Override
+    public String toString() {
+        return String.format("Wagon %s [%.1fm, %.0ft]", idWagon, lengthMeters, grossWeightKg/1000.0);
     }
 }

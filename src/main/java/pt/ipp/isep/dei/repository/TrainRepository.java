@@ -2,7 +2,7 @@ package pt.ipp.isep.dei.repository;
 
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.Train;
-import pt.ipp.isep.dei.domain.Wagon; // Importar Wagon
+import pt.ipp.isep.dei.domain.Wagon;
 
 import java.sql.*;
 import java.time.LocalDateTime;
@@ -17,6 +17,9 @@ public class TrainRepository {
     // Instância do repositório de vagões para fazer a ligação
     private final WagonRepository wagonRepo = new WagonRepository();
 
+    /**
+     * Recupera todos os comboios e preenche a sua lista de vagões.
+     */
     public List<Train> findAll() {
         List<Train> trains = new ArrayList<>();
         String sql = "SELECT train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id " +
@@ -43,10 +46,10 @@ public class TrainRepository {
 
                     Train train = new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId, routeId);
 
-                    // --- NOVO: CARREGAR VAGÕES REAIS DA BD ---
+                    // --- CARREGAR VAGÕES REAIS DA BD ---
                     List<Wagon> realWagons = wagonRepo.findWagonsByTrainId(trainId);
                     train.setWagons(realWagons);
-                    // -----------------------------------------
+                    // -----------------------------------
 
                     trains.add(train);
 
@@ -64,11 +67,84 @@ public class TrainRepository {
         return findAll().stream().filter(t -> t.getTrainId().equals(id)).findFirst();
     }
 
-    // ... (Manter findAllOperators e findAllRouteIds iguais) ...
     public List<String> findAllOperators() {
         return findAll().stream().map(Train::getOperatorId).distinct().collect(Collectors.toList());
     }
+
     public List<String> findAllRouteIds() {
         return findAll().stream().map(Train::getRouteId).filter(id -> id != null && !id.isEmpty()).distinct().collect(Collectors.toList());
+    }
+
+    /**
+     * --- MÉTODO EM FALTA ---
+     * Grava um novo comboio e a sua composição (vagões) na base de dados.
+     * Utiliza uma transação para garantir integridade.
+     */
+    public boolean saveTrainWithConsist(Train train, List<String> wagonIds) {
+        Connection conn = null;
+        PreparedStatement stmtTrain = null;
+        PreparedStatement stmtUsage = null;
+
+        String sqlTrain = "INSERT INTO TRAIN (train_id, operator_id, train_date, train_time, " +
+                "start_facility_id, end_facility_id, locomotive_id, route_id) " +
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+
+        String sqlUsage = "INSERT INTO TRAIN_WAGON_USAGE (usage_id, train_id, wagon_id, usage_date) " +
+                "VALUES (?, ?, ?, ?)";
+
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false); // 1. Iniciar Transação
+
+            // 2. Inserir dados na tabela TRAIN
+            stmtTrain = conn.prepareStatement(sqlTrain);
+            stmtTrain.setString(1, train.getTrainId());
+            stmtTrain.setString(2, train.getOperatorId());
+            stmtTrain.setDate(3, Date.valueOf(train.getDepartureTime().toLocalDate()));
+            stmtTrain.setString(4, train.getDepartureTime().toLocalTime().toString());
+            stmtTrain.setInt(5, train.getStartFacilityId());
+            stmtTrain.setInt(6, train.getEndFacilityId());
+            stmtTrain.setString(7, train.getLocomotiveId());
+            stmtTrain.setString(8, train.getRouteId());
+
+            stmtTrain.executeUpdate();
+
+            // 3. Inserir dados na tabela TRAIN_WAGON_USAGE (se houver vagões)
+            if (wagonIds != null && !wagonIds.isEmpty()) {
+                stmtUsage = conn.prepareStatement(sqlUsage);
+                int idx = 1;
+                for (String wId : wagonIds) {
+                    // Gerar ID único para o uso: USG_TrainID_Index
+                    String usageId = "USG_" + train.getTrainId() + "_" + idx++;
+
+                    stmtUsage.setString(1, usageId);
+                    stmtUsage.setString(2, train.getTrainId());
+                    stmtUsage.setString(3, wId);
+                    stmtUsage.setDate(4, Date.valueOf(train.getDepartureTime().toLocalDate()));
+
+                    stmtUsage.addBatch();
+                }
+                stmtUsage.executeBatch();
+            }
+
+            conn.commit(); // 4. Gravar efetivamente
+            return true;
+
+        } catch (SQLException e) {
+            if (conn != null) {
+                try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
+            }
+            System.err.println("❌ Erro ao gravar comboio e composição: " + e.getMessage());
+            return false;
+        } finally {
+            try {
+                if (stmtTrain != null) stmtTrain.close();
+                if (stmtUsage != null) stmtUsage.close();
+                if (conn != null) {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                }
+            } catch (SQLException ex) { ex.printStackTrace(); }
+        }
     }
 }

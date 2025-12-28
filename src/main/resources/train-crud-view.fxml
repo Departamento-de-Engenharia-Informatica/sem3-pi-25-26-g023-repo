@@ -3,70 +3,98 @@
 <?import javafx.geometry.Insets?>
 <?import javafx.scene.control.*?>
 <?import javafx.scene.layout.*?>
-<?import java.lang.String?>
 
 <VBox alignment="TOP_CENTER" spacing="15.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1"
-      fx:controller="pt.ipp.isep.dei.UI.gui.views.TrainCRUDController">
+      fx:controller="pt.ipp.isep.dei.UI.gui.views.TrainCRUDController" prefWidth="900" prefHeight="700">
     <padding>
         <Insets bottom="20.0" left="20.0" right="20.0" top="20.0" />
     </padding>
 
-    <Label styleClass="header-label" text="Train CRUD Management" />
+    <Label styleClass="header-label" text="Train Assembly &amp; Management" style="-fx-font-size: 18px; -fx-font-weight: bold;"/>
 
-    <GridPane hgap="15.0" vgap="10.0" style="-fx-border-color: #ddd; -fx-border-radius: 5; -fx-padding: 15;">
-        <columnConstraints>
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="100.0" prefWidth="150.0" />
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="100.0" prefWidth="250.0" />
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="100.0" prefWidth="150.0" />
-            <ColumnConstraints hgrow="SOMETIMES" minWidth="100.0" prefWidth="250.0" />
-        </columnConstraints>
+    <HBox spacing="20">
+        <GridPane hgap="10.0" vgap="10.0" style="-fx-border-color: #ddd; -fx-border-radius: 5; -fx-padding: 15;" HBox.hgrow="ALWAYS">
+            <columnConstraints>
+                <ColumnConstraints hgrow="SOMETIMES" minWidth="100.0" />
+                <ColumnConstraints hgrow="ALWAYS" minWidth="150.0" />
+            </columnConstraints>
 
-        <Label text="Train ID:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
-        <TextField fx:id="trainIdField" promptText="e.g., 5437" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
+            <Label text="Train ID:" GridPane.rowIndex="0" GridPane.columnIndex="0"/>
+            <TextField fx:id="trainIdField" promptText="e.g., 5437" GridPane.rowIndex="0" GridPane.columnIndex="1"/>
 
-        <Label text="Operator ID:" GridPane.rowIndex="0" GridPane.columnIndex="2"/>
-        <ComboBox fx:id="operatorIdCombo" promptText="Select Operator" maxWidth="Infinity" GridPane.rowIndex="0" GridPane.columnIndex="3"/>
+            <Label text="Operator:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="operatorIdCombo" promptText="Select Operator" maxWidth="Infinity" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
 
-        <Label text="Departure Date:" GridPane.rowIndex="1" GridPane.columnIndex="0"/>
-        <DatePicker fx:id="departureDateField" maxWidth="Infinity" GridPane.rowIndex="1" GridPane.columnIndex="1"/>
+            <Label text="Date/Time:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
+            <HBox spacing="5" GridPane.rowIndex="2" GridPane.columnIndex="1">
+                <DatePicker fx:id="departureDateField" maxWidth="Infinity"/>
+                <TextField fx:id="departureTimeField" promptText="HH:mm:ss" prefWidth="80"/>
+            </HBox>
 
-        <Label text="Departure Time (HH:mm:ss):" GridPane.rowIndex="1" GridPane.columnIndex="2"/>
-        <TextField fx:id="departureTimeField" promptText="e.g., 10:30:00" GridPane.rowIndex="1" GridPane.columnIndex="3"/>
+            <Label text="Route:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="routeIdCombo" promptText="Select Route" maxWidth="Infinity" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
 
-        <Label text="Start Facility:" GridPane.rowIndex="2" GridPane.columnIndex="0"/>
-        <ComboBox fx:id="startFacilityCombo" promptText="Select Origin" maxWidth="Infinity" GridPane.rowIndex="2" GridPane.columnIndex="1"/>
+            <Label text="Start/End:" GridPane.rowIndex="4" GridPane.columnIndex="0"/>
+            <HBox spacing="5" GridPane.rowIndex="4" GridPane.columnIndex="1">
+                <ComboBox fx:id="startFacilityCombo" promptText="Origin" maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+                <Label text="→"/>
+                <ComboBox fx:id="endFacilityCombo" promptText="Dest." maxWidth="Infinity" HBox.hgrow="ALWAYS"/>
+            </HBox>
 
-        <Label text="End Facility:" GridPane.rowIndex="2" GridPane.columnIndex="2"/>
-        <ComboBox fx:id="endFacilityCombo" promptText="Select Destination" maxWidth="Infinity" GridPane.rowIndex="2" GridPane.columnIndex="3"/>
+            <Label text="Locomotive:" GridPane.rowIndex="5" GridPane.columnIndex="0"/>
+            <ComboBox fx:id="cmbLocomotive" promptText="Select Locomotive" maxWidth="Infinity" GridPane.rowIndex="5" GridPane.columnIndex="1"/>
+        </GridPane>
 
-        <Label text="Locomotive ID:" GridPane.rowIndex="3" GridPane.columnIndex="0"/>
-        <ComboBox fx:id="locomotiveIdCombo" promptText="Select Locomotive" maxWidth="Infinity" GridPane.rowIndex="3" GridPane.columnIndex="1"/>
+        <VBox spacing="10" prefWidth="300" style="-fx-background-color: #f4f4f4; -fx-padding: 10; -fx-border-color: #aaa; -fx-border-radius: 5;">
+            <Label text="Composition &amp; Physics Check" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
 
-        <Label text="Route ID:" GridPane.rowIndex="3" GridPane.columnIndex="2"/>
-        <ComboBox fx:id="routeIdCombo" promptText="Select Route" maxWidth="Infinity" GridPane.rowIndex="3" GridPane.columnIndex="3"/>
+            <Label text="Wagons (Hold Ctrl to select multiple):"/>
+            <ListView fx:id="wagonListView" VBox.vgrow="ALWAYS"/>
 
-    </GridPane>
+            <Separator/>
 
-    <HBox alignment="CENTER_LEFT" spacing="10.0">
-        <Button fx:id="saveButton" text="Create Train" onAction="#saveOrUpdateTrain" styleClass="run-button"/>
-        <Button text="Delete Selected" onAction="#deleteTrain" styleClass="delete-button"/>
-        <Button text="Clear Form" onAction="#clearForm" styleClass="clear-button"/>
-        <ProgressIndicator fx:id="progressIndicator" visible="false" />
+            <VBox spacing="2">
+                <Label text="Tractive Effort / Power Usage"/>
+                <ProgressBar fx:id="powerProgressBar" maxWidth="Infinity" progress="0.0"/>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label fx:id="lblPowerStats" text="0 / 0 kW" style="-fx-font-size: 10px;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lblPowerStatus" text="-" style="-fx-font-weight: bold;"/>
+                </HBox>
+            </VBox>
+
+            <VBox spacing="2">
+                <Label text="Train Length vs. Route Limit"/>
+                <ProgressBar fx:id="lengthProgressBar" maxWidth="Infinity" progress="0.0"/>
+                <HBox alignment="CENTER_LEFT" spacing="10">
+                    <Label fx:id="lblLengthStats" text="0m / 500m" style="-fx-font-size: 10px;"/>
+                    <Region HBox.hgrow="ALWAYS"/>
+                    <Label fx:id="lblLengthStatus" text="-" style="-fx-font-weight: bold;"/>
+                </HBox>
+            </VBox>
+
+            <Label fx:id="lblTotalMass" text="Total Mass: 0 tons" style="-fx-font-size: 11px;"/>
+            <Label fx:id="lblWagonCount" text="Wagons Selected: 0" style="-fx-font-size: 11px;"/>
+        </VBox>
     </HBox>
 
-    <Label text="Existing Trains:" />
+    <HBox alignment="CENTER_LEFT" spacing="10.0">
+        <Button fx:id="saveButton" text="Save Train Assembly" onAction="#saveOrUpdateTrain" style="-fx-base: #4CAF50; -fx-text-fill: white; -fx-font-weight: bold;"/>
+        <Button text="Delete Selected" onAction="#deleteTrain" styleClass="delete-button"/>
+        <Button text="Clear Form" onAction="#clearForm"/>
+        <ProgressIndicator fx:id="progressIndicator" visible="false" prefHeight="20"/>
+    </HBox>
 
-    <TableView fx:id="trainTable" VBox.vgrow="ALWAYS" prefHeight="350.0">
+    <TableView fx:id="trainTable" VBox.vgrow="ALWAYS">
         <columns>
-            <TableColumn text="Train ID" fx:id="idColumn" prefWidth="100.0" />
-            <TableColumn text="Operator ID" fx:id="operatorColumn" prefWidth="100.0" />
-            <TableColumn text="Departure Time" fx:id="departureColumn" prefWidth="180.0" />
-            <TableColumn text="Start Facility" fx:id="startFacilityColumn" prefWidth="100.0" />
+            <TableColumn text="Train ID" fx:id="idColumn" prefWidth="80.0" />
+            <TableColumn text="Operator" fx:id="operatorColumn" prefWidth="100.0" />
+            <TableColumn text="Departure" fx:id="departureColumn" prefWidth="150.0" />
+            <TableColumn text="Route" fx:id="routeColumn" prefWidth="100.0" /> <TableColumn text="Start Facility" fx:id="startFacilityColumn" prefWidth="100.0" />
             <TableColumn text="End Facility" fx:id="endFacilityColumn" prefWidth="100.0" />
         </columns>
         <placeholder>
             <Label text="Loading trains..." />
         </placeholder>
     </TableView>
-
 </VBox>
