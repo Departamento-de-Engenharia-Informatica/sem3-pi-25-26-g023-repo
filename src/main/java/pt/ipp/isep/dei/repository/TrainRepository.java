@@ -2,149 +2,269 @@ package pt.ipp.isep.dei.repository;
 
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.Train;
-import pt.ipp.isep.dei.domain.Wagon;
 
 import java.sql.*;
 import java.time.LocalDateTime;
-import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 public class TrainRepository {
 
-    // Instância do repositório de vagões para fazer a ligação
-    private final WagonRepository wagonRepo = new WagonRepository();
-
     /**
-     * Recupera todos os comboios e preenche a sua lista de vagões.
+     * Encontra um comboio pelo seu ID.
+     * Devolve Optional<Train> para ser compatível com as UIs existentes.
      */
-    public List<Train> findAll() {
-        List<Train> trains = new ArrayList<>();
-        String sql = "SELECT train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id " +
-                "FROM TRAIN ORDER BY train_id";
-
+    public Optional<Train> findById(String trainId) {
+        String query = "SELECT * FROM TRAIN WHERE train_id = ?";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(query)) {
 
-            while (rs.next()) {
-                try {
-                    String trainId = rs.getString("train_id");
-                    String operatorId = rs.getString("operator_id");
-                    String locoId = rs.getString("locomotive_id");
-                    String routeId = rs.getString("route_id");
-                    int startFacilityId = rs.getInt("start_facility_id");
-                    int endFacilityId = rs.getInt("end_facility_id");
+            stmt.setString(1, trainId);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    String id = rs.getString("train_id");
+                    String operator = rs.getString("operator_id");
                     Date date = rs.getDate("train_date");
                     String timeStr = rs.getString("train_time");
+                    int startNode = rs.getInt("start_facility_id");
+                    int endNode = rs.getInt("end_facility_id");
+                    String locoId = rs.getString("locomotive_id");
+                    String routeId = rs.getString("route_id");
 
-                    String timePart = timeStr.length() >= 8 ? timeStr.substring(0, 8) : timeStr;
-                    LocalTime time = LocalTime.parse(timePart);
-                    LocalDateTime departureTime = date.toLocalDate().atTime(time);
+                    LocalDateTime departure = null;
+                    if (date != null && timeStr != null) {
+                        // Tenta fazer o parse da hora. Se a BD tiver formato diferente, ajusta aqui.
+                        try {
+                            departure = LocalDateTime.of(date.toLocalDate(), java.time.LocalTime.parse(timeStr));
+                        } catch (Exception e) {
+                            // Fallback se a hora vier num formato estranho
+                            departure = date.toLocalDate().atStartOfDay();
+                        }
+                    }
 
-                    Train train = new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId, routeId);
-
-                    // --- CARREGAR VAGÕES REAIS DA BD ---
-                    List<Wagon> realWagons = wagonRepo.findWagonsByTrainId(trainId);
-                    train.setWagons(realWagons);
-                    // -----------------------------------
-
-                    trains.add(train);
-
-                } catch (Exception e) {
-                    System.err.println("Erro de tipagem ao ler Train: " + e.getMessage());
+                    Train train = new Train(id, operator, departure, startNode, endNode, locoId, routeId);
+                    return Optional.of(train);
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro fatal ao ler tabela TRAIN: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return Optional.empty();
+    }
+
+    public List<Train> findAll() {
+        List<Train> trains = new ArrayList<>();
+        // Ordena por data decrescente para ver os mais recentes primeiro
+        String query = "SELECT * FROM TRAIN ORDER BY train_date DESC, train_time DESC";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(query);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                String id = rs.getString("train_id");
+                String operator = rs.getString("operator_id");
+                Date date = rs.getDate("train_date");
+                String timeStr = rs.getString("train_time");
+                int startNode = rs.getInt("start_facility_id");
+                int endNode = rs.getInt("end_facility_id");
+                String locoId = rs.getString("locomotive_id");
+                String routeId = rs.getString("route_id");
+
+                LocalDateTime departure = null;
+                if (date != null && timeStr != null) {
+                    try {
+                        departure = LocalDateTime.of(date.toLocalDate(), java.time.LocalTime.parse(timeStr));
+                    } catch (Exception e) {
+                        departure = date.toLocalDate().atStartOfDay();
+                    }
+                }
+
+                Train train = new Train(id, operator, departure, startNode, endNode, locoId, routeId);
+                trains.add(train);
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
         }
         return trains;
     }
 
-    public Optional<Train> findById(String id) {
-        return findAll().stream().filter(t -> t.getTrainId().equals(id)).findFirst();
+    /**
+     * CORREÇÃO CRÍTICA: Busca os operadores REAIS da base de dados.
+     * Evita erros de chave estrangeira (ORA-02291).
+     */
+    public List<String> findAllOperators() {
+        List<String> ops = new ArrayList<>();
+        // Query à tabela OPERATOR (assumindo que a coluna chave é operator_id)
+        String sql = "SELECT operator_id FROM OPERATOR";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+
+            while (rs.next()) {
+                ops.add(rs.getString("operator_id"));
+            }
+
+        } catch (SQLException e) {
+            System.err.println("Erro ao carregar operadores: " + e.getMessage());
+            // Se a tabela não existir, tenta carregar pelo menos os que estão em uso na tabela TRAIN
+            // Isto é um "hack" para tentar não devolver lista vazia
+            return getOperatorsFromExistingTrains();
+        }
+
+        if (ops.isEmpty()) {
+            System.err.println("AVISO: A tabela OPERATOR está vazia! Não será possível criar comboios válidos.");
+        }
+
+        return ops;
     }
 
-    public List<String> findAllOperators() {
-        return findAll().stream().map(Train::getOperatorId).distinct().collect(Collectors.toList());
+    // Método auxiliar de recurso
+    private List<String> getOperatorsFromExistingTrains() {
+        List<String> ops = new ArrayList<>();
+        String sql = "SELECT DISTINCT operator_id FROM TRAIN";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while(rs.next()) ops.add(rs.getString("operator_id"));
+        } catch (SQLException e) { e.printStackTrace(); }
+        return ops;
     }
 
     public List<String> findAllRouteIds() {
-        return findAll().stream().map(Train::getRouteId).filter(id -> id != null && !id.isEmpty()).distinct().collect(Collectors.toList());
+        List<String> routes = new ArrayList<>();
+        // Apenas rotas que existem na BD
+        String sql = "SELECT DISTINCT route_id FROM TRAIN WHERE route_id IS NOT NULL";
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql);
+             ResultSet rs = ps.executeQuery()) {
+            while(rs.next()) {
+                routes.add(rs.getString("route_id"));
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return routes;
     }
 
-    /**
-     * --- MÉTODO EM FALTA ---
-     * Grava um novo comboio e a sua composição (vagões) na base de dados.
-     * Utiliza uma transação para garantir integridade.
-     */
+    public List<String> getTrainConsist(String trainId) {
+        List<String> wagonIds = new ArrayList<>();
+        String sql = "SELECT wagon_id FROM TRAIN_WAGON_USAGE WHERE train_id = ?";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setString(1, trainId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    wagonIds.add(rs.getString("wagon_id"));
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+        return wagonIds;
+    }
+
     public boolean saveTrainWithConsist(Train train, List<String> wagonIds) {
         Connection conn = null;
+        PreparedStatement stmtCheck = null;
         PreparedStatement stmtTrain = null;
-        PreparedStatement stmtUsage = null;
+        PreparedStatement stmtDeleteUsage = null;
+        PreparedStatement stmtInsertUsage = null;
 
-        String sqlTrain = "INSERT INTO TRAIN (train_id, operator_id, train_date, train_time, " +
-                "start_facility_id, end_facility_id, locomotive_id, route_id) " +
-                "VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-
-        String sqlUsage = "INSERT INTO TRAIN_WAGON_USAGE (usage_id, train_id, wagon_id, usage_date) " +
-                "VALUES (?, ?, ?, ?)";
+        boolean isUpdate = false;
 
         try {
             conn = DatabaseConnection.getConnection();
-            conn.setAutoCommit(false); // 1. Iniciar Transação
+            conn.setAutoCommit(false); // Transação
 
-            // 2. Inserir dados na tabela TRAIN
-            stmtTrain = conn.prepareStatement(sqlTrain);
-            stmtTrain.setString(1, train.getTrainId());
-            stmtTrain.setString(2, train.getOperatorId());
-            stmtTrain.setDate(3, Date.valueOf(train.getDepartureTime().toLocalDate()));
-            stmtTrain.setString(4, train.getDepartureTime().toLocalTime().toString());
-            stmtTrain.setInt(5, train.getStartFacilityId());
-            stmtTrain.setInt(6, train.getEndFacilityId());
-            stmtTrain.setString(7, train.getLocomotiveId());
-            stmtTrain.setString(8, train.getRouteId());
+            // 1. Verificar UPDATE vs INSERT
+            stmtCheck = conn.prepareStatement("SELECT COUNT(*) FROM TRAIN WHERE train_id = ?");
+            stmtCheck.setString(1, train.getTrainId());
+            ResultSet rs = stmtCheck.executeQuery();
+            if (rs.next() && rs.getInt(1) > 0) {
+                isUpdate = true;
+            }
+            rs.close();
 
-            stmtTrain.executeUpdate();
+            // 2. Tabela TRAIN
+            if (isUpdate) {
+                String sqlUpdate = "UPDATE TRAIN SET operator_id=?, train_date=?, train_time=?, start_facility_id=?, end_facility_id=?, locomotive_id=?, route_id=? WHERE train_id=?";
+                stmtTrain = conn.prepareStatement(sqlUpdate);
+                stmtTrain.setString(1, train.getOperatorId());
+                stmtTrain.setDate(2, java.sql.Date.valueOf(train.getDepartureTime().toLocalDate()));
+                stmtTrain.setString(3, train.getDepartureTime().toLocalTime().toString());
+                stmtTrain.setInt(4, train.getStartFacilityId());
+                stmtTrain.setInt(5, train.getEndFacilityId());
+                stmtTrain.setString(6, train.getLocomotiveId());
+                stmtTrain.setString(7, train.getRouteId());
+                stmtTrain.setString(8, train.getTrainId());
+                stmtTrain.executeUpdate();
 
-            // 3. Inserir dados na tabela TRAIN_WAGON_USAGE (se houver vagões)
-            if (wagonIds != null && !wagonIds.isEmpty()) {
-                stmtUsage = conn.prepareStatement(sqlUsage);
-                int idx = 1;
-                for (String wId : wagonIds) {
-                    // Gerar ID único para o uso: USG_TrainID_Index
-                    String usageId = "USG_" + train.getTrainId() + "_" + idx++;
+                // Removemos composição antiga para adicionar a nova
+                stmtDeleteUsage = conn.prepareStatement("DELETE FROM TRAIN_WAGON_USAGE WHERE train_id = ?");
+                stmtDeleteUsage.setString(1, train.getTrainId());
+                stmtDeleteUsage.executeUpdate();
 
-                    stmtUsage.setString(1, usageId);
-                    stmtUsage.setString(2, train.getTrainId());
-                    stmtUsage.setString(3, wId);
-                    stmtUsage.setDate(4, Date.valueOf(train.getDepartureTime().toLocalDate()));
-
-                    stmtUsage.addBatch();
-                }
-                stmtUsage.executeBatch();
+            } else {
+                String sqlInsert = "INSERT INTO TRAIN (train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+                stmtTrain = conn.prepareStatement(sqlInsert);
+                stmtTrain.setString(1, train.getTrainId());
+                stmtTrain.setString(2, train.getOperatorId());
+                stmtTrain.setDate(3, java.sql.Date.valueOf(train.getDepartureTime().toLocalDate()));
+                stmtTrain.setString(4, train.getDepartureTime().toLocalTime().toString());
+                stmtTrain.setInt(5, train.getStartFacilityId());
+                stmtTrain.setInt(6, train.getEndFacilityId());
+                stmtTrain.setString(7, train.getLocomotiveId());
+                stmtTrain.setString(8, train.getRouteId());
+                stmtTrain.executeUpdate();
             }
 
-            conn.commit(); // 4. Gravar efetivamente
+            // 3. Tabela TRAIN_WAGON_USAGE
+            String sqlUsage = "INSERT INTO TRAIN_WAGON_USAGE (usage_id, train_id, wagon_id, usage_date) VALUES (?, ?, ?, ?)";
+            stmtInsertUsage = conn.prepareStatement(sqlUsage);
+
+            for (String wagonId : wagonIds) {
+                // CORREÇÃO: ID curto (12 chars) para evitar ORA-12899
+                String usageId = UUID.randomUUID().toString().replace("-", "").substring(0, 12).toUpperCase();
+
+                stmtInsertUsage.setString(1, usageId);
+                stmtInsertUsage.setString(2, train.getTrainId());
+                stmtInsertUsage.setString(3, wagonId);
+                stmtInsertUsage.setDate(4, java.sql.Date.valueOf(train.getDepartureTime().toLocalDate()));
+
+                stmtInsertUsage.addBatch();
+            }
+
+            if (!wagonIds.isEmpty()) {
+                stmtInsertUsage.executeBatch();
+            }
+
+            conn.commit();
             return true;
 
         } catch (SQLException e) {
+            System.err.println("Erro SQL: " + e.getMessage());
+            e.printStackTrace(); // Importante para debug
             if (conn != null) {
                 try { conn.rollback(); } catch (SQLException ex) { ex.printStackTrace(); }
             }
-            System.err.println("❌ Erro ao gravar comboio e composição: " + e.getMessage());
             return false;
         } finally {
             try {
-                if (stmtTrain != null) stmtTrain.close();
-                if (stmtUsage != null) stmtUsage.close();
                 if (conn != null) {
                     conn.setAutoCommit(true);
                     conn.close();
                 }
-            } catch (SQLException ex) { ex.printStackTrace(); }
+            } catch (SQLException e) {
+                e.printStackTrace();
+            }
         }
     }
 }

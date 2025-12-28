@@ -75,8 +75,9 @@ public class TrainCRUDController {
     private List<Locomotive> allLocomotivesCache = new ArrayList<>();
     private List<Wagon> allWagonsCache = new ArrayList<>();
 
-    // Controlo de Edição
+    // --- CONTROLO DE EDIÇÃO ---
     private String pendingLocomotiveId = null;
+    private List<String> pendingWagonIds = new ArrayList<>(); // Lista de vagões a selecionar após carga
 
     // Constants
     private static final double ROUTE_MAX_LENGTH_METERS = 500.0;
@@ -105,7 +106,6 @@ public class TrainCRUDController {
         setupCustomCellFactories();
 
         // --- LÓGICA DE SEGURANÇA DO BOTÃO (USLP09) ---
-        // O botão fica desativo até tudo estar preenchido
         BooleanBinding invalidFields = trainIdField.textProperty().isEmpty()
                 .or(operatorIdCombo.valueProperty().isNull())
                 .or(departureDateField.valueProperty().isNull())
@@ -129,6 +129,7 @@ public class TrainCRUDController {
             endFacilityColumn.setCellValueFactory(new PropertyValueFactory<>("endFacilityId"));
             if (routeColumn != null) routeColumn.setCellValueFactory(new PropertyValueFactory<>("routeId"));
 
+            // Listener para Seleção na Tabela -> Edição
             trainTable.getSelectionModel().selectedItemProperty().addListener((obs, oldS, newS) -> {
                 if (newS != null) populateForm(newS);
             });
@@ -140,7 +141,7 @@ public class TrainCRUDController {
             startFacilityCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal != null) {
                     if (networkService != null) filterEndFacilities(newVal.getKey());
-                    // Chama a versão Async para não bloquear a UI
+                    // Chama a versão Async para não bloquear a UI e calcular distâncias
                     updateAvailableStockAsync(newVal.getKey());
                 } else {
                     endFacilityCombo.getItems().clear();
@@ -169,13 +170,11 @@ public class TrainCRUDController {
 
     /**
      * OTIMIZAÇÃO: Carregamento Paralelo
-     * Dispara 3 threads separadas para ir à BD buscar tudo ao mesmo tempo.
      */
     public void initController() {
         if(progressIndicator != null) progressIndicator.setVisible(true);
         System.out.println("🚀 A iniciar carregamento paralelo de dados...");
 
-        // 1. Criar Futures para cada tarefa de carregamento
         CompletableFuture<Void> stationsFuture = CompletableFuture.runAsync(() -> {
             try { allStationsCache = stationRepository.findAll(); } catch (Exception e) { e.printStackTrace(); }
         });
@@ -188,10 +187,8 @@ public class TrainCRUDController {
             try { allWagonsCache = wagonRepository.findAll(); } catch (Exception e) { e.printStackTrace(); }
         });
 
-        // 2. Quando TUDO acabar, atualiza a UI
         CompletableFuture.allOf(stationsFuture, locosFuture, wagonsFuture)
                 .thenRun(() -> Platform.runLater(() -> {
-                    System.out.println("✅ Dados carregados! Atualizando UI...");
                     loadComboBoxDataAsync();
                     if(progressIndicator != null) progressIndicator.setVisible(false);
                 }));
@@ -232,21 +229,59 @@ public class TrainCRUDController {
         new Thread(task).start();
     }
 
-    // --- OTIMIZAÇÃO: CÁLCULO ASSÍNCRONO ---
+    // --- POPULAR FORMULÁRIO (EDIÇÃO) ---
+    private void populateForm(Train train) {
+        // 1. Dados Básicos
+        trainIdField.setText(train.getTrainId());
+        operatorIdCombo.setValue(train.getOperatorId());
+        if (train.getDepartureTime() != null) {
+            departureDateField.setValue(train.getDepartureTime().toLocalDate());
+            departureTimeField.setText(train.getDepartureTime().toLocalTime().toString());
+        }
+        routeIdCombo.setValue(train.getRouteId());
 
+        // 2. Guardar a Locomotiva para seleção posterior
+        this.pendingLocomotiveId = train.getLocomotiveId();
+
+        // 3. Buscar a Composição (Vagões) Assincronamente
+        Task<List<String>> loadConsistTask = new Task<>() {
+            @Override
+            protected List<String> call() {
+                return trainRepository.getTrainConsist(train.getTrainId());
+            }
+
+            @Override
+            protected void succeeded() {
+                // Guardamos os IDs para selecionar depois
+                pendingWagonIds = getValue();
+
+                // 4. Selecionar Estação Partida -> Dispara o Listener -> Dispara updateAvailableStockAsync
+                startFacilityCombo.getItems().stream()
+                        .filter(e -> e.getKey() == train.getStartFacilityId())
+                        .findFirst()
+                        .ifPresent(startFacilityCombo::setValue);
+
+                // 5. Selecionar Estação Chegada
+                endFacilityCombo.getItems().stream()
+                        .filter(e -> e.getKey() == train.getEndFacilityId())
+                        .findFirst()
+                        .ifPresent(endFacilityCombo::setValue);
+            }
+        };
+        new Thread(loadConsistTask).start();
+    }
+
+    // --- CÁLCULO E ORDENAÇÃO (USLP09) ---
     private void updateAvailableStockAsync(int startStationId) {
         if(progressIndicator != null) progressIndicator.setVisible(true);
 
-        // Limpar listas enquanto calcula
         cmbLocomotive.getItems().clear();
         wagonListView.getItems().clear();
 
         Task<Map<String, List<?>>> calculationTask = new Task<>() {
             @Override
             protected Map<String, List<?>> call() {
-                // Lógica pesada corre aqui em background
                 Map<String, List<?>> results = new HashMap<>();
-
                 if (allStationsCache == null || allStationsCache.isEmpty()) return results;
 
                 EuropeanStation startStation = allStationsCache.stream()
@@ -280,7 +315,7 @@ public class TrainCRUDController {
                     }
                 }
 
-                // Ordenar
+                // Ordenar: Parked descendente de distância
                 Comparator<RollingStockItem<?>> sorter = (o1, o2) -> {
                     int statusCompare = o1.getStatus().compareTo(o2.getStatus());
                     if (statusCompare != 0) return statusCompare;
@@ -309,22 +344,35 @@ public class TrainCRUDController {
                     cmbLocomotive.setItems(FXCollections.observableArrayList(locos));
                     wagonListView.setItems(FXCollections.observableArrayList(wagons));
 
-                    // Restaurar seleção pendente (no caso de edição)
+                    // --- RE-SELEÇÃO AUTOMÁTICA (EDIÇÃO) ---
+
+                    // 1. Locomotiva
                     if (pendingLocomotiveId != null) {
                         cmbLocomotive.getItems().stream()
                                 .filter(wrapper -> wrapper.getItem().getLocomotiveId().equals(pendingLocomotiveId))
                                 .findFirst()
                                 .ifPresent(cmbLocomotive::setValue);
-                        pendingLocomotiveId = null;
+                        pendingLocomotiveId = null; // Reset
+                    }
+
+                    // 2. Vagões (Multi-seleção)
+                    if (pendingWagonIds != null && !pendingWagonIds.isEmpty()) {
+                        wagonListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
+                        // Iterar pela UI list e selecionar se o ID estiver na lista pendente
+                        for (RollingStockItem<Wagon> wrapper : wagonListView.getItems()) {
+                            if (pendingWagonIds.contains(wrapper.getItem().getIdWagon())) {
+                                wagonListView.getSelectionModel().select(wrapper);
+                            }
+                        }
+                        pendingWagonIds.clear(); // Reset
                     }
                 }
             }
         };
-
         new Thread(calculationTask).start();
     }
 
-    // --- COCKPIT: Validação ---
+    // --- Validations & Helpers ---
 
     private void setupValidationListeners() {
         if(cmbLocomotive != null)
@@ -363,16 +411,10 @@ public class TrainCRUDController {
 
         if (totalLengthM > ROUTE_MAX_LENGTH_METERS) {
             if(lengthProgressBar != null) lengthProgressBar.setStyle("-fx-accent: red;");
-            if(lblLengthStatus != null) {
-                lblLengthStatus.setText("TOO LONG!");
-                lblLengthStatus.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-            }
+            if(lblLengthStatus != null) lblLengthStatus.setText("TOO LONG!");
         } else {
             if(lengthProgressBar != null) lengthProgressBar.setStyle("-fx-accent: green;");
-            if(lblLengthStatus != null) {
-                lblLengthStatus.setText("OK");
-                lblLengthStatus.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
-            }
+            if(lblLengthStatus != null) lblLengthStatus.setText("OK");
         }
 
         double powerRequired = totalMassTons * 1.5;
@@ -384,16 +426,10 @@ public class TrainCRUDController {
 
         if (powerRatio > 1.0) {
             if(powerProgressBar != null) powerProgressBar.setStyle("-fx-accent: red;");
-            if(lblPowerStatus != null) {
-                lblPowerStatus.setText("OVERLOAD!");
-                lblPowerStatus.setStyle("-fx-text-fill: red; -fx-font-weight: bold;");
-            }
+            if(lblPowerStatus != null) lblPowerStatus.setText("OVERLOAD!");
         } else {
             if(powerProgressBar != null) powerProgressBar.setStyle("-fx-accent: green;");
-            if(lblPowerStatus != null) {
-                lblPowerStatus.setText("OPTIMAL");
-                lblPowerStatus.setStyle("-fx-text-fill: green; -fx-font-weight: bold;");
-            }
+            if(lblPowerStatus != null) lblPowerStatus.setText("OPTIMAL");
         }
 
         if(lblTotalMass != null) lblTotalMass.setText(String.format("Mass: %.0f tons", totalMassTons));
@@ -406,8 +442,6 @@ public class TrainCRUDController {
         if(lblPowerStatus != null) lblPowerStatus.setText("-");
         if(lblLengthStatus != null) lblLengthStatus.setText("-");
     }
-
-    // --- CRUD ACTIONS ---
 
     @FXML
     public void saveOrUpdateTrain() {
@@ -430,10 +464,9 @@ public class TrainCRUDController {
         RollingStockItem<Locomotive> locoWrapper = cmbLocomotive.getValue();
         String routeId = routeIdCombo.getValue();
 
-        // Dupla validação (além do botão desativo)
         if (trainId.isEmpty() || operatorId == null || date == null || timeStr.isEmpty() ||
                 startEntry == null || endEntry == null || routeId == null || locoWrapper == null) {
-            mainController.showNotification("Erro: Preencha todos os campos obrigatórios.", "error");
+            mainController.showNotification("Erro: Preencha todos os campos.", "error");
             return;
         }
 
@@ -469,39 +502,13 @@ public class TrainCRUDController {
             new Thread(saveTask).start();
 
         } catch (DateTimeParseException e) {
-            mainController.showNotification("Formato de hora inválido (HH:mm:ss)", "error");
+            mainController.showNotification("Formato de hora inválido.", "error");
         }
     }
 
     @FXML
     public void deleteTrain() {
         mainController.showNotification("Delete not implemented in this demo.", "info");
-    }
-
-    private void populateForm(Train train) {
-        trainIdField.setText(train.getTrainId());
-        operatorIdCombo.setValue(train.getOperatorId());
-
-        if (train.getDepartureTime() != null) {
-            departureDateField.setValue(train.getDepartureTime().toLocalDate());
-            departureTimeField.setText(train.getDepartureTime().toLocalTime().toString());
-        }
-
-        routeIdCombo.setValue(train.getRouteId());
-
-        this.pendingLocomotiveId = train.getLocomotiveId();
-
-        startFacilityCombo.getItems().stream()
-                .filter(e -> e.getKey() == train.getStartFacilityId())
-                .findFirst()
-                .ifPresent(startFacilityCombo::setValue);
-
-        endFacilityCombo.getItems().stream()
-                .filter(e -> e.getKey() == train.getEndFacilityId())
-                .findFirst()
-                .ifPresent(endFacilityCombo::setValue);
-
-        wagonListView.getSelectionModel().clearSelection();
     }
 
     @FXML
@@ -517,6 +524,7 @@ public class TrainCRUDController {
         wagonListView.getSelectionModel().clearSelection();
         resetValidationPanel();
         this.pendingLocomotiveId = null;
+        this.pendingWagonIds.clear();
     }
 
     private void filterEndFacilities(int startId) {
@@ -531,12 +539,10 @@ public class TrainCRUDController {
 
     private double calculateDistance(EuropeanStation s1, EuropeanStation s2) {
         if (s1 == null || s2 == null) return 0.0;
-
         double lat1 = s1.getLatitude();
         double lon1 = s1.getLongitude();
         double lat2 = s2.getLatitude();
         double lon2 = s2.getLongitude();
-
         final int R = 6371;
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
@@ -559,7 +565,7 @@ public class TrainCRUDController {
         @Override public Map.Entry<Integer, String> fromString(String s) { return null; }
     }
 
-    // --- INNER CLASS: Wrapper ---
+    // --- INNER CLASS ---
     public static class RollingStockItem<T> {
         private final T item;
         private final String status;
@@ -585,7 +591,6 @@ public class TrainCRUDController {
             } else if (item instanceof Wagon) {
                 itemName = "Wagon " + ((Wagon)item).getIdWagon();
             }
-
             if ("IN_TRANSIT".equals(status)) {
                 return String.format("%s (In Transit to %s)", itemName, locationName);
             } else {
