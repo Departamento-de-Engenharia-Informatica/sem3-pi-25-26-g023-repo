@@ -1178,3 +1178,146 @@
     -fx-background-color: #E0E0E0;
     -fx-shape: "M 0,0 H 1 L 5,3 L 1,6 H 0 L 4,3 Z"; /* Garante uma forma visível */
 }
+/* ==================================================================
+   STYLE.CSS - DARK MODE INTELIGENTE
+   (Não toca no Menu Lateral)
+   ================================================================== */
+
+/* 1. TEMA GLOBAL ESCURO */
+.root {
+    -fx-background-color: #1e1e1e;
+    -fx-base: #1e1e1e;
+    -fx-control-inner-background: #1e1e1e;
+    -fx-control-inner-background-alt: #2b2b2b;
+    -fx-faint-focus-color: transparent;
+    /* Texto branco por defeito */
+    -fx-text-background-color: white;
+    -fx-text-fill: white;
+}
+
+/* Aplica cor branca a labels genéricas, mas respeita se o menu tiver cor própria */
+.label {
+    -fx-text-fill: white;
+}
+
+/* 2. BOTÕES GERAIS (A CORREÇÃO ESTÁ AQUI) */
+/* Aplica estilo escuro apenas a botões que NÃO SÃO do menu (.sidebar-button) */
+.button:not(.sidebar-button) {
+    -fx-background-color: #444;
+    -fx-text-fill: white;
+    -fx-font-weight: bold;
+    -fx-background-radius: 4;
+    -fx-cursor: hand;
+    -fx-border-color: #555;
+    -fx-border-radius: 4;
+}
+
+.button:not(.sidebar-button):hover {
+    -fx-background-color: #555;
+    -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.4), 5, 0, 0, 1);
+}
+
+.button:not(.sidebar-button):pressed {
+    -fx-background-color: #666;
+}
+
+.button:not(.sidebar-button):disabled {
+    -fx-opacity: 0.4;
+    -fx-background-color: #333;
+}
+
+/* 3. INPUTS (TextField, ComboBox, DatePicker) */
+.text-field, .combo-box, .date-picker, .text-area {
+    -fx-background-color: #333333;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #888888;
+    -fx-border-color: #555555;
+    -fx-border-radius: 3;
+}
+
+.text-field:focused, .combo-box:focused, .date-picker:focused {
+    -fx-border-color: #4CAF50; /* Verde ao focar */
+    -fx-background-color: #383838;
+}
+
+/* Dropdown das ComboBox */
+.combo-box .list-cell, .combo-box-popup .list-view {
+    -fx-background-color: #333333;
+    -fx-text-fill: white;
+}
+.combo-box .list-cell:hover {
+    -fx-background-color: #444;
+}
+
+/* 4. TABELAS (TableView) */
+.table-view {
+    -fx-background-color: #252525;
+    -fx-control-inner-background: #252525;
+    -fx-table-cell-border-color: transparent; /* Remove linhas brancas */
+    -fx-padding: 5;
+}
+
+.table-view .column-header-background {
+    -fx-background-color: #1e1e1e;
+    -fx-border-width: 0 0 1 0;
+    -fx-border-color: #444;
+}
+
+.table-view .column-header {
+    -fx-background-color: transparent;
+}
+
+.table-view .column-header .label {
+    -fx-text-fill: #ffa500; /* Laranja no cabeçalho */
+    -fx-font-weight: bold;
+}
+
+.table-row-cell {
+    -fx-background-color: #252525;
+    -fx-border-width: 0 0 1 0;
+    -fx-border-color: #333;
+}
+
+.table-row-cell:odd {
+    -fx-background-color: #2a2a2a; /* Zebra striping */
+}
+
+.table-row-cell:selected {
+    -fx-background-color: #005fcc; /* Azul na seleção */
+    -fx-background-insets: 0;
+}
+.table-row-cell:selected .text {
+    -fx-fill: white;
+}
+
+/* 5. LISTAS (ListView) - Usado nos vagões */
+.list-view {
+    -fx-background-color: #2b2b2b;
+    -fx-control-inner-background: #2b2b2b;
+}
+.list-cell {
+    -fx-text-fill: white;
+    -fx-padding: 5 10 5 10;
+}
+.list-cell:even {
+    -fx-background-color: #2b2b2b;
+}
+.list-cell:odd {
+    -fx-background-color: #303030;
+}
+.list-cell:filled:selected:focused, .list-cell:filled:selected {
+    -fx-background-color: #005fcc;
+    -fx-text-fill: white;
+}
+
+/* 6. SCROLLBARS (Discretas) */
+.scroll-bar:horizontal, .scroll-bar:vertical {
+    -fx-background-color: transparent;
+}
+.scroll-bar .thumb {
+    -fx-background-color: #555;
+    -fx-background-radius: 5em;
+}
+.scroll-bar .track {
+    -fx-background-color: transparent;
+}
