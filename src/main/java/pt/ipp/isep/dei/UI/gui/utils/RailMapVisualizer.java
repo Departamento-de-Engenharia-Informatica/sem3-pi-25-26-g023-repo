@@ -1,14 +1,18 @@
 package pt.ipp.isep.dei.UI.gui.utils;
 
 import javafx.animation.AnimationTimer;
-import javafx.application.Platform;
 import javafx.geometry.Point2D;
+import javafx.geometry.VPos;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
+import javafx.scene.control.Button;
+import javafx.scene.control.ToggleButton;
 import javafx.scene.layout.Pane;
+import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.scene.text.Font;
 import javafx.scene.text.FontWeight;
+import javafx.scene.text.TextAlignment;
 import pt.ipp.isep.dei.domain.Train;
 
 import java.time.Duration;
@@ -23,250 +27,356 @@ public class RailMapVisualizer extends Pane {
     private final List<VisualSegment> segments = new ArrayList<>();
     private final List<VisualTrain> activeTrains = new ArrayList<>();
 
-    // --- CONTROLO DE CÂMARA (ZOOM & PAN) ---
+    // --- CONTROLO DE CÂMARA ---
     private double scale = 1.0;
     private double translateX = 0.0;
     private double translateY = 0.0;
 
-    // Variáveis para arrastar (Pan)
+    // Alvos para a interpolação (Movimento Suave)
+    private double targetScale = 1.0;
+    private double targetTranslateX = 0.0;
+    private double targetTranslateY = 0.0;
+    private boolean autoCameraMode = true;
+
     private double lastMouseX, lastMouseY;
 
     // --- SIMULAÇÃO ---
     private LocalTime simulationTime;
-    private double speedFactor = 120.0;
+    private LocalTime maxSimulationTime;
+    private double speedFactor = 100.0;
     private AnimationTimer timer;
     private boolean isRunning = false;
-    private boolean initialFitDone = false; // Controlo para ajustar apenas na primeira vez
+    private boolean isFinished = false;
+
+    // --- UI CONTROLS ---
+    private final Button btnZoomIn;
+    private final Button btnZoomOut;
+    private final ToggleButton btnAutoCam;
 
     public RailMapVisualizer() {
-        // Inicializa canvas
+        // 1. Inicializa Canvas
         this.canvas = new Canvas(0, 0);
-        getChildren().add(canvas);
 
-        // Auto-Resize do Canvas ao mudar o tamanho da janela
+        // 2. Controlos UI
+        this.btnZoomIn = createButton("+", e -> manualZoom(1.2));
+        this.btnZoomOut = createButton("-", e -> manualZoom(0.8));
+
+        this.btnAutoCam = new ToggleButton("Auto Cam");
+        this.btnAutoCam.setSelected(true);
+        this.btnAutoCam.setStyle("-fx-background-color: #2c3e50; -fx-text-fill: white; -fx-font-size: 10px;");
+        this.btnAutoCam.selectedProperty().addListener((obs, old, isSelected) -> autoCameraMode = isSelected);
+
+        VBox controls = new VBox(5, btnZoomIn, btnZoomOut, btnAutoCam);
+        controls.setLayoutX(20);
+        controls.setLayoutY(20);
+
+        getChildren().addAll(canvas, controls);
+
+        // 3. Bindings
         canvas.widthProperty().bind(this.widthProperty());
         canvas.heightProperty().bind(this.heightProperty());
 
-        // Listeners para redesenhar e ajustar zoom se a janela mudar de tamanho
-        this.widthProperty().addListener((obs, oldVal, newVal) -> {
-            if (!initialFitDone && newVal.doubleValue() > 0 && !stationCoordinates.isEmpty()) {
-                fitContent();
-                initialFitDone = true;
-            }
-            updateFrame();
-        });
+        this.widthProperty().addListener(e -> updateFrame());
         this.heightProperty().addListener(e -> updateFrame());
 
-        setStyle("-fx-background-color: #111; -fx-border-color: #444;");
+        setStyle("-fx-background-color: #1e1e1e; -fx-border-color: #444;");
 
         setupInteraction();
         setupMapCoordinates();
-
-        // Tenta ajustar logo no arranque (pode falhar se a janela ainda não tiver tamanho, o listener acima resolve)
-        Platform.runLater(this::fitContent);
     }
 
-    /**
-     * NOVA FUNÇÃO: Calcula o zoom e posição ideais para ver tudo
-     */
-    public void fitContent() {
-        if (stationCoordinates.isEmpty() || getWidth() <= 0 || getHeight() <= 0) return;
+    private Button createButton(String text, javafx.event.EventHandler<javafx.event.ActionEvent> action) {
+        Button btn = new Button(text);
+        String style = "-fx-background-color: rgba(255,255,255,0.15); -fx-text-fill: white; -fx-font-weight: bold; -fx-min-width: 30px; -fx-cursor: hand;";
+        btn.setStyle(style);
+        btn.setOnAction(action);
+        return btn;
+    }
 
-        double minX = Double.MAX_VALUE;
-        double maxX = -Double.MAX_VALUE;
-        double minY = Double.MAX_VALUE;
-        double maxY = -Double.MAX_VALUE;
+    private void manualZoom(double factor) {
+        autoCameraMode = false;
+        btnAutoCam.setSelected(false);
+        targetScale *= factor;
+        // Clamp manual zoom
+        if(targetScale < 0.01) targetScale = 0.01;
+        if(targetScale > 10.0) targetScale = 10.0;
 
-        // 1. Encontrar limites (Bounding Box) das estações
-        for (Point2D p : stationCoordinates.values()) {
-            if (p.getX() < minX) minX = p.getX();
-            if (p.getX() > maxX) maxX = p.getX();
-            if (p.getY() < minY) minY = p.getY();
-            if (p.getY() > maxY) maxY = p.getY();
-        }
-
-        // Adicionar margem de segurança (padding)
-        double padding = 50.0;
-
-        // Tamanho do conteúdo (Rede ferroviária)
-        double contentWidth = maxX - minX;
-        double contentHeight = maxY - minY;
-
-        // Tamanho da Janela disponível
-        double availWidth = getWidth() - (padding * 2);
-        double availHeight = getHeight() - (padding * 2);
-
-        // Evitar divisão por zero
-        if (contentWidth == 0) contentWidth = 100;
-        if (contentHeight == 0) contentHeight = 100;
-
-        // 2. Calcular escalas para caber na largura e na altura
-        double scaleX = availWidth / contentWidth;
-        double scaleY = availHeight / contentHeight;
-
-        // Escolher a menor escala para garantir que tudo cabe (manter proporção)
-        this.scale = Math.min(scaleX, scaleY);
-
-        // Limites de segurança para o zoom automático não ser exagerado
-        this.scale = Math.max(0.1, Math.min(this.scale, 2.0));
-
-        // 3. Centrar o conteúdo no ecrã
-        double contentCenterX = minX + (contentWidth / 2.0);
-        double contentCenterY = minY + (contentHeight / 2.0);
-
-        // Fórmula: (CentroJanela) - (CentroConteúdo * Escala)
-        this.translateX = (getWidth() / 2.0) - (contentCenterX * this.scale);
-        this.translateY = (getHeight() / 2.0) - (contentCenterY * this.scale);
-
+        scale = targetScale;
         updateFrame();
     }
 
-    /**
-     * Configura Zoom (Scroll) e Pan (Drag)
-     */
-    private void setupInteraction() {
-        // ZOOM (Roda do Rato)
-        this.setOnScroll(event -> {
-            double zoomFactor = 1.1;
-            if (event.getDeltaY() < 0) {
-                zoomFactor = 1 / zoomFactor;
+    private void fitBounds(double minX, double maxX, double minY, double maxY, double padding) {
+        if (getWidth() <= 0 || getHeight() <= 0) return;
+
+        double contentW = maxX - minX;
+        double contentH = maxY - minY;
+
+        if (contentW < 100) contentW = 100;
+        if (contentH < 100) contentH = 100;
+
+        double availW = getWidth() - padding * 2;
+        double availH = getHeight() - padding * 2;
+
+        double scaleX = availW / contentW;
+        double scaleY = availH / contentH;
+
+        double newScale = Math.min(scaleX, scaleY);
+        // Limites ajustados
+        newScale = Math.max(0.05, Math.min(newScale, 2.0));
+
+        double contentCX = minX + contentW / 2.0;
+        double contentCY = minY + contentH / 2.0;
+
+        double newTX = (getWidth() / 2.0) - (contentCX * newScale);
+        double newTY = (getHeight() / 2.0) - (contentCY * newScale);
+
+        this.targetScale = newScale;
+        this.targetTranslateX = newTX;
+        this.targetTranslateY = newTY;
+    }
+
+    private void updateCameraLogic() {
+        if (!autoCameraMode) return;
+
+        List<Point2D> activePoints = new ArrayList<>();
+
+        if (simulationTime != null) {
+            for (VisualTrain vt : activeTrains) {
+                Point2D pos = vt.getCurrentPositionOrLastStation(simulationTime);
+                if (pos != null) {
+                    activePoints.add(pos);
+                }
             }
+        }
 
-            // Guardar posição do rato antes do zoom para focar nele (opcional, aqui simplificado)
-            scale *= zoomFactor;
+        double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
+        double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
+        double padding = 100;
 
-            // Limites de zoom manual
-            if (scale < 0.1) scale = 0.1;
-            if (scale > 10.0) scale = 10.0;
+        if (activePoints.isEmpty()) {
+            // Mostrar mapa todo se não houver comboios
+            for(VisualSegment vs : segments) {
+                Point2D p1 = stationCoordinates.get(vs.start);
+                Point2D p2 = stationCoordinates.get(vs.end);
+                if (p1 != null) { minX = Math.min(minX, p1.getX()); maxX = Math.max(maxX, p1.getX()); minY = Math.min(minY, p1.getY()); maxY = Math.max(maxY, p1.getY()); }
+                if (p2 != null) { minX = Math.min(minX, p2.getX()); maxX = Math.max(maxX, p2.getX()); minY = Math.min(minY, p2.getY()); maxY = Math.max(maxY, p2.getY()); }
+            }
+        } else {
+            // Focar nos comboios
+            for (Point2D p : activePoints) {
+                minX = Math.min(minX, p.getX());
+                maxX = Math.max(maxX, p.getX());
+                minY = Math.min(minY, p.getY());
+                maxY = Math.max(maxY, p.getY());
+            }
+            padding = (activePoints.size() == 1) ? 300 : 200;
+        }
 
-            updateFrame();
+        if (minX == Double.MAX_VALUE) return;
+
+        fitBounds(minX, maxX, minY, maxY, padding);
+    }
+
+    private void applyCameraSmoothing() {
+        double smoothFactor = 0.08;
+        if (Math.abs(targetScale - scale) < 0.001) {
+            scale = targetScale;
+            translateX = targetTranslateX;
+            translateY = targetTranslateY;
+        } else {
+            scale += (targetScale - scale) * smoothFactor;
+            translateX += (targetTranslateX - translateX) * smoothFactor;
+            translateY += (targetTranslateY - translateY) * smoothFactor;
+        }
+    }
+
+    private void setupInteraction() {
+        this.setOnScroll(event -> {
+            autoCameraMode = false;
+            btnAutoCam.setSelected(false);
+            double zoomFactor = (event.getDeltaY() > 0) ? 1.1 : 0.9;
+            targetScale *= zoomFactor;
             event.consume();
         });
 
-        // PAN (Arrastar) - Início
         this.setOnMousePressed(event -> {
             lastMouseX = event.getX();
             lastMouseY = event.getY();
         });
 
-        // PAN (Arrastar) - Movimento
         this.setOnMouseDragged(event -> {
-            double deltaX = event.getX() - lastMouseX;
-            double deltaY = event.getY() - lastMouseY;
-
-            translateX += deltaX;
-            translateY += deltaY;
+            autoCameraMode = false;
+            btnAutoCam.setSelected(false);
+            targetTranslateX += (event.getX() - lastMouseX);
+            targetTranslateY += (event.getY() - lastMouseY);
+            // Atualização imediata para drag responsivo
+            translateX = targetTranslateX;
+            translateY = targetTranslateY;
 
             lastMouseX = event.getX();
             lastMouseY = event.getY();
-
             updateFrame();
         });
     }
 
+    // --- MAPA ESPAÇADO E LIMPO ---
     private void setupMapCoordinates() {
-        // Zona do Porto (Em Baixo)
-        addStation("Porto - São Bento", 200, 900);
-        addStation("Porto - Campanhã", 250, 850);
-        addStation("Contumil", 300, 800);
-        addStation("Leixões", 50, 800);
-        addStation("Leça do Balio", 100, 800);
-        addStation("São Mamede de Infesta", 150, 800);
-        addStation("São Gemil", 220, 800);
+        // Eixo Central X=1000. Espaçamento Y grande para evitar overlaps
 
-        // Subida para o Minho
-        addStation("Nine", 350, 600);
-        addStation("Barcelos", 350, 500);
-        addStation("Darque", 350, 350);
-        addStation("Viana do Castelo", 320, 300);
-        addStation("Caminha", 300, 150);
-        addStation("São Pedro da Torre", 320, 100);
-        addStation("Valença", 350, 50);
+        // LINHA DO MINHO
+        addStation("Valença", 1000, 0);
+        addStation("São Pedro da Torre", 1000, 200);
+        addStation("Vila Nova de Cerveira", 1000, 400);
+        addStation("Caminha", 1000, 600);
+        addStation("Viana do Castelo", 1000, 800);
+        addStation("Darque", 1000, 1000);
+        addStation("Barcelos", 1000, 1200);
+        addStation("Nine", 1000, 1400); // HUB
 
-        // Variantes
-        addStation("Porto São Bento", 200, 900);
-        addStation("Porto Campanhã", 250, 850);
+        // Ramal Braga (Direita)
+        addStation("Braga", 1300, 1400);
+
+        addStation("Famalicão", 1000, 1600);
+        addStation("Trofa", 1000, 1800);
+
+        // Ramal Guimarães (Direita)
+        addStation("Santo Tirso", 1200, 1800);
+        addStation("Guimarães", 1400, 1800);
+
+        // Entrada Porto
+        addStation("Ermesinde", 1000, 2000);
+
+        // Linha de Leixões (Esquerda)
+        addStation("São Gemil", 800, 2000);
+        addStation("Leça do Balio", 600, 2000);
+        addStation("Leixões", 400, 2000);
+
+        addStation("Rio Tinto", 1000, 2150);
+        addStation("Contumil", 1000, 2300);
+
+        addStation("Porto - Campanhã", 1000, 2500); // HUB
+
+        // Ramal São Bento (Esquerda)
+        addStation("Porto - São Bento", 700, 2500);
+
+        // SUL (Linha do Norte)
+        addStation("Vila Nova de Gaia", 1000, 2700);
+        addStation("Espinho", 1000, 3000);
+        addStation("Ovar", 1000, 3200);
+        addStation("Aveiro", 1000, 3500);
+        addStation("Coimbra-B", 1000, 3900);
+        addStation("Pombal", 1000, 4200);
+        addStation("Entroncamento", 1000, 4600);
+        addStation("Santarém", 1000, 4900);
+        addStation("Lisboa - Oriente", 1000, 5400);
+        addStation("Lisboa - Santa Apolónia", 1000, 5600);
     }
 
     private void addStation(String name, double x, double y) {
         stationCoordinates.put(name, new Point2D(x, y));
     }
 
-    // --- CARREGAMENTO DE DADOS ---
-    public void loadSchedule(Map<Train, List<String>> trainSchedules, LocalTime startTime) {
-        this.simulationTime = startTime;
+    public void loadSchedule(Map<Train, List<String>> trainSchedules, LocalTime localTime) {
         this.segments.clear();
         this.activeTrains.clear();
+        this.isFinished = false;
+
+        LocalTime globalStart = LocalTime.MAX;
+        LocalTime globalEnd = LocalTime.MIN;
 
         for (Map.Entry<Train, List<String>> entry : trainSchedules.entrySet()) {
-            parseTrainLogToVisuals(entry.getKey(), entry.getValue());
+            Train train = entry.getKey();
+            List<String> logs = entry.getValue();
+
+            VisualTrain vTrain = new VisualTrain(train);
+            boolean hasSegments = false;
+
+            for (String line : logs) {
+                if (!line.contains("|")) continue;
+                String[] parts = line.split("\\|");
+                if (parts.length < 7) continue;
+
+                try {
+                    String startSt = parts[1].trim();
+                    String endSt = parts[2].trim();
+                    String type = parts[3].trim();
+                    String entryTimeStr = parts[5].trim();
+                    String exitTimeStr = parts[6].trim();
+
+                    if (startSt.equalsIgnoreCase("START") || startSt.equalsIgnoreCase("END")) continue;
+                    if (entryTimeStr.equals("N/A") || exitTimeStr.equals("N/A")) continue;
+
+                    LocalTime tIn = LocalTime.parse(entryTimeStr);
+                    LocalTime tOut = LocalTime.parse(exitTimeStr);
+
+                    if (tIn.isBefore(globalStart)) globalStart = tIn;
+                    if (tOut.isAfter(globalEnd)) globalEnd = tOut;
+
+                    Point2D p1 = getCoordinates(startSt);
+                    Point2D p2 = getCoordinates(endSt);
+
+                    if (segments.stream().noneMatch(s -> s.matches(startSt, endSt))) {
+                        segments.add(new VisualSegment(startSt, endSt, p1, p2, type.equalsIgnoreCase("Double")));
+                    }
+
+                    vTrain.addMovement(tIn, tOut, p1, p2);
+                    hasSegments = true;
+
+                } catch (Exception e) { }
+            }
+            if (hasSegments) activeTrains.add(vTrain);
         }
 
-        // IMPORTANTE: Recalcula o zoom para ver tudo sempre que carrega novos dados
-        fitContent();
+        if (globalStart != LocalTime.MAX) {
+            this.simulationTime = globalStart.minusSeconds(1);
+            this.maxSimulationTime = globalEnd;
+        } else {
+            this.simulationTime = LocalTime.of(8, 0);
+        }
+
+        autoCameraMode = true;
+        btnAutoCam.setSelected(true);
+        updateCameraLogic();
+        scale = targetScale; translateX = targetTranslateX; translateY = targetTranslateY;
 
         updateFrame();
     }
 
-    private void parseTrainLogToVisuals(Train train, List<String> logs) {
-        VisualTrain vTrain = new VisualTrain(train);
-        boolean hasValidSegments = false;
-
-        for (String line : logs) {
-            if (!line.contains("|")) continue;
-            String[] parts = line.split("\\|");
-            if (parts.length < 6) continue;
-
-            try {
-                String startSt = parts[1].trim();
-                String endSt = parts[2].trim();
-                String type = parts[3].trim();
-                String entryStr = parts[5].trim();
-                String exitStr = parts[6].trim();
-
-                if (startSt.equalsIgnoreCase("START")) continue;
-
-                Point2D p1 = stationCoordinates.get(startSt);
-                Point2D p2 = stationCoordinates.get(endSt);
-
-                // Fallback visual
-                if (p1 == null) { System.out.println("⚠️ Estação sem coord: " + startSt); p1 = new Point2D(400, 400); }
-                if (p2 == null) { System.out.println("⚠️ Estação sem coord: " + endSt); p2 = new Point2D(400, 400); }
-
-                if (segments.stream().noneMatch(s -> s.matches(startSt, endSt))) {
-                    boolean isDouble = type.equalsIgnoreCase("Double");
-                    segments.add(new VisualSegment(startSt, endSt, p1, p2, isDouble));
-                }
-
-                if (!entryStr.equals("N/A") && !exitStr.equals("N/A")) {
-                    LocalTime entryTime = LocalTime.parse(entryStr);
-                    LocalTime exitTime = LocalTime.parse(exitStr);
-                    if (exitTime.isBefore(entryTime)) continue;
-                    vTrain.addMovement(entryTime, exitTime, p1, p2);
-                    hasValidSegments = true;
-                }
-            } catch (Exception e) {
-                // Ignore parse errors
-            }
+    private Point2D getCoordinates(String name) {
+        if (stationCoordinates.containsKey(name)) return stationCoordinates.get(name);
+        for (String key : stationCoordinates.keySet()) {
+            if (key.contains(name) || name.contains(key)) return stationCoordinates.get(key);
         }
-        if (hasValidSegments) activeTrains.add(vTrain);
+        return new Point2D(0, 0);
     }
-
-    // --- LÓGICA DE DESENHO E ANIMAÇÃO ---
 
     public void startAnimation() {
         if (timer != null) timer.stop();
+        if (activeTrains.isEmpty()) return;
+        isFinished = false;
+
         timer = new AnimationTimer() {
             private long lastUpdate = 0;
             @Override
             public void handle(long now) {
                 if (lastUpdate == 0) { lastUpdate = now; return; }
-                double elapsedSeconds = (now - lastUpdate) / 1_000_000_000.0;
+
+                double elapsedSecondsReal = (now - lastUpdate) / 1_000_000_000.0;
                 lastUpdate = now;
-                long secondsToAdd = (long) (elapsedSeconds * speedFactor);
+
+                long secondsToAdd = (long) (elapsedSecondsReal * speedFactor);
+
                 if (simulationTime != null) {
                     simulationTime = simulationTime.plusSeconds(secondsToAdd);
+                    if (maxSimulationTime != null && simulationTime.isAfter(maxSimulationTime)) {
+                        simulationTime = maxSimulationTime;
+                        isFinished = true;
+                        this.stop();
+                    }
                 }
+
+                updateCameraLogic();
+                applyCameraSmoothing();
                 updateFrame();
             }
         };
@@ -281,127 +391,231 @@ public class RailMapVisualizer extends Pane {
 
     public void setSpeedFactor(double factor) { this.speedFactor = factor; }
 
+    // --- CORAÇÃO DO RENDER (SOLUÇÃO DA "SALGALHADA") ---
     private void updateFrame() {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         double w = getWidth();
         double h = getHeight();
 
-        // 1. Limpar
-        gc.clearRect(0, 0, w, h);
+        // 1. Limpar Fundo
+        gc.setFill(Color.web("#1e1e1e"));
+        gc.fillRect(0,0, w, h);
 
-        // 2. Aplicar Transformação (Zoom & Pan)
+        // 2. LAYER MUNDO (LINHAS) - Aplica Transformação da Câmara
         gc.save();
         gc.translate(translateX, translateY);
         gc.scale(scale, scale);
 
-        // 3. Desenhar Grelha de Fundo
-        drawGrid(gc);
-
-        // 4. Desenhar Segmentos
-        gc.setLineWidth(4);
+        gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
         for (VisualSegment seg : segments) {
-            if (seg.isDouble) {
-                gc.setStroke(Color.DODGERBLUE);
-                gc.setLineWidth(6);
-                gc.strokeLine(seg.p1.getX(), seg.p1.getY(), seg.p2.getX(), seg.p2.getY());
-                gc.setStroke(Color.BLACK);
-                gc.setLineWidth(2);
-                gc.strokeLine(seg.p1.getX(), seg.p1.getY(), seg.p2.getX(), seg.p2.getY());
-            } else {
-                gc.setStroke(Color.ORANGE);
-                gc.setLineWidth(3);
-                gc.strokeLine(seg.p1.getX(), seg.p1.getY(), seg.p2.getX(), seg.p2.getY());
+            // TRUQUE: Dividir grossura pelo scale para manter espessura visual constante
+            // Mas permitimos que fique *ligeiramente* mais grosso com zoom, mas não linearmente
+            double baseWidth = seg.isDouble ? 3.0 : 1.5;
+            double visualWidth = baseWidth / Math.sqrt(scale); // Suaviza o crescimento
+
+            // Fundo da linha
+            gc.setStroke(Color.web("#333"));
+            gc.setLineWidth(visualWidth * 2.5);
+            gc.strokeLine(seg.p1.getX(), seg.p1.getY(), seg.p2.getX(), seg.p2.getY());
+
+            // Linha colorida
+            gc.setStroke(seg.isDouble ? Color.DODGERBLUE : Color.ORANGE);
+            gc.setLineWidth(visualWidth);
+            gc.strokeLine(seg.p1.getX(), seg.p1.getY(), seg.p2.getX(), seg.p2.getY());
+        }
+        gc.restore(); // Fim do Layer Mundo
+
+        // 3. LAYER ECRÃ (ESTAÇÕES E TEXTO)
+        // Calculamos a posição no ecrã manualmente para desenhar ícones com tamanho FIXO (INVARIANTE)
+        Set<String> drawnStations = new HashSet<>();
+        for (VisualSegment seg : segments) {
+            drawStationScreenSpace(gc, seg.start, seg.p1, drawnStations);
+            drawStationScreenSpace(gc, seg.end, seg.p2, drawnStations);
+        }
+
+        // 4. LAYER COMBOIOS (SCREEN SPACE)
+        List<String> waitingTrains = new ArrayList<>();
+        for (VisualTrain train : activeTrains) {
+            Point2D worldPos = train.getCurrentPositionOrLastStation(simulationTime);
+            if (worldPos != null) {
+                // Converter para Screen Space
+                double sx = worldPos.getX() * scale + translateX;
+                double sy = worldPos.getY() * scale + translateY;
+
+                boolean waiting = train.isWaiting(simulationTime);
+                if (waiting) waitingTrains.add(train.train.getTrainId());
+
+                // Desenha Comboio (Tamanho Fixo!)
+                gc.setFill(waiting ? Color.ORANGERED : Color.LIME);
+                gc.setEffect(new javafx.scene.effect.DropShadow(10, waiting ? Color.RED : Color.LIME));
+                gc.fillOval(sx - 7, sy - 7, 14, 14); // Sempre 14px
+                gc.setEffect(null);
+
+                // Label do Comboio
+                gc.setFill(Color.YELLOW);
+                gc.setFont(Font.font("Arial", FontWeight.BOLD, 12));
+                gc.fillText(train.train.getTrainId(), sx + 10, sy - 10);
             }
         }
 
-        // 5. Desenhar Estações
-        for (Map.Entry<String, Point2D> entry : stationCoordinates.entrySet()) {
-            Point2D p = entry.getValue();
-            gc.setFill(Color.web("#333"));
-            gc.fillOval(p.getX() - 8, p.getY() - 8, 16, 16);
-            gc.setFill(Color.LIGHTGRAY);
-            gc.fillOval(p.getX() - 5, p.getY() - 5, 10, 10);
-            gc.setFill(Color.WHITE);
-            gc.setFont(Font.font("Arial", FontWeight.NORMAL, 12));
-            gc.fillText(entry.getKey(), p.getX() + 12, p.getY() + 4);
-        }
+        // 5. HUD
+        drawHUD(gc, w, h);
+        drawAlerts(gc, w, waitingTrains);
+    }
 
-        // 6. Desenhar Comboios
-        for (VisualTrain train : activeTrains) {
-            train.draw(gc, simulationTime);
-        }
+    private void drawStationScreenSpace(GraphicsContext gc, String name, Point2D worldPos, Set<String> drawn) {
+        if (drawn.contains(name)) return;
+        drawn.add(name);
 
-        gc.restore();
+        // Converter coordenadas do mundo para pixeis no ecrã
+        double sx = worldPos.getX() * scale + translateX;
+        double sy = worldPos.getY() * scale + translateY;
 
-        // 7. Relógio (UI Fixa)
+        // Só desenha se estiver dentro do ecrã (Optimization)
+        if (sx < -50 || sx > getWidth() + 50 || sy < -50 || sy > getHeight() + 50) return;
+
+        // Ponto da Estação (Tamanho Fixo: 8px)
         gc.setFill(Color.WHITE);
-        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 20));
-        String timeStr = (simulationTime != null) ? simulationTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) : "--:--:--";
-        gc.fillText("TIME: " + timeStr, w - 200, 30);
+        gc.fillOval(sx - 4, sy - 4, 8, 8);
 
-        gc.setFont(Font.font(12));
-        gc.setFill(Color.LIGHTGRAY);
-        gc.fillText(String.format("Zoom: %.2fx | Speed: %.0fx", scale, speedFactor), w - 200, 50);
-        gc.fillText("Scroll to Zoom | Drag to Pan", w - 200, 70);
-    }
+        // Texto (Tamanho Fixo: 11px)
+        // Só mostra texto se o zoom não for microscópico (para não poluir se estiver muito longe)
+        if (scale > 0.1) {
+            gc.setFill(Color.LIGHTGRAY);
+            gc.setFont(Font.font("Arial", FontWeight.NORMAL, 11));
 
-    private void drawGrid(GraphicsContext gc) {
-        gc.setStroke(Color.web("#222"));
-        gc.setLineWidth(1);
-        // Aumentei o range da grelha para garantir que cobre tudo se desenharmos longe
-        for (int i = -1000; i < 3000; i += 100) {
-            gc.strokeLine(i, -1000, i, 3000);
-            gc.strokeLine(-1000, i, 3000, i);
+            // Smart Labeling: Esquerda ou Direita baseado na posição X original
+            if (worldPos.getX() < 990) {
+                gc.setTextAlign(TextAlignment.RIGHT);
+                gc.fillText(name, sx - 10, sy + 4);
+            } else {
+                gc.setTextAlign(TextAlignment.LEFT);
+                gc.fillText(name, sx + 10, sy + 4);
+            }
+            gc.setTextAlign(TextAlignment.LEFT); // Reset
         }
     }
 
-    // --- CLASSES INTERNAS (Dados) ---
+    private void drawHUD(GraphicsContext gc, double w, double h) {
+        gc.setFill(Color.color(0, 0, 0, 0.7));
+        gc.fillRoundRect(w - 260, 10, 240, 100, 15, 15);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(w - 260, 10, 240, 100, 15, 15);
+
+        gc.setFill(Color.WHITE);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 22));
+
+        String timeStr = (simulationTime != null) ? simulationTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")) : "--:--:--";
+        gc.fillText("HORA: " + timeStr, w - 240, 40);
+
+        String remainingStr = "Concluído";
+        if (simulationTime != null && maxSimulationTime != null && !isFinished) {
+            long secondsLeft = java.time.Duration.between(simulationTime, maxSimulationTime).getSeconds();
+            if (secondsLeft < 0) secondsLeft = 0;
+            long hh = secondsLeft / 3600;
+            long mm = (secondsLeft % 3600) / 60;
+            long ss = secondsLeft % 60;
+            remainingStr = String.format("-%02d:%02d:%02d", hh, mm, ss);
+        }
+
+        gc.setFill(isFinished ? Color.LIGHTGREEN : Color.ORANGE);
+        gc.setFont(Font.font("Monospaced", FontWeight.BOLD, 16));
+        gc.fillText("FIM EM: " + remainingStr, w - 240, 65);
+
+        gc.setFill(Color.LIGHTGRAY);
+        gc.setFont(Font.font("Arial", 11));
+        String mode = autoCameraMode ? "AUTO" : "MANUAL";
+        gc.fillText(String.format("Cam: %s | Speed: %.0fx", mode, speedFactor), w - 240, 90);
+    }
+
+    private void drawAlerts(GraphicsContext gc, double w, List<String> waitingTrains) {
+        if (waitingTrains.isEmpty()) return;
+
+        String text = "EM ESPERA: " + String.join(", ", waitingTrains);
+
+        gc.setFont(Font.font("Arial", FontWeight.BOLD, 14));
+        double textWidth = text.length() * 9 + 30;
+        double boxX = (w - textWidth) / 2;
+
+        gc.setFill(Color.rgb(255, 69, 0, 0.9));
+        gc.fillRoundRect(boxX, 10, textWidth, 30, 10, 10);
+        gc.setStroke(Color.WHITE);
+        gc.setLineWidth(1);
+        gc.strokeRoundRect(boxX, 10, textWidth, 30, 10, 10);
+
+        gc.setFill(Color.WHITE);
+        gc.setTextAlign(TextAlignment.CENTER);
+        gc.setTextBaseline(VPos.CENTER);
+        gc.fillText(text, w / 2, 25);
+        gc.setTextAlign(TextAlignment.LEFT);
+        gc.setTextBaseline(VPos.BASELINE);
+    }
+
     private static class VisualSegment {
         String start, end;
         Point2D p1, p2;
         boolean isDouble;
-        public VisualSegment(String s, String e, Point2D p1, Point2D p2, boolean d) {
+        VisualSegment(String s, String e, Point2D p1, Point2D p2, boolean d) {
             this.start = s; this.end = e; this.p1 = p1; this.p2 = p2; this.isDouble = d;
         }
-        public boolean matches(String s, String e) {
+        boolean matches(String s, String e) {
             return (start.equals(s) && end.equals(e)) || (start.equals(e) && end.equals(s));
         }
     }
 
     private static class VisualTrain {
         Train train;
-        List<TrainMovement> movements = new ArrayList<>();
-        public VisualTrain(Train train) { this.train = train; }
-        public void addMovement(LocalTime s, LocalTime e, Point2D p1, Point2D p2) { movements.add(new TrainMovement(s, e, p1, p2)); }
-        public void draw(GraphicsContext gc, LocalTime curTime) {
-            if (curTime == null) return;
-            for (TrainMovement mv : movements) {
-                if (!curTime.isBefore(mv.start) && !curTime.isAfter(mv.end)) {
-                    long totalSec = Duration.between(mv.start, mv.end).getSeconds();
-                    long elapsed = Duration.between(mv.start, curTime).getSeconds();
-                    if (totalSec == 0) totalSec = 1;
-                    double progress = (double) elapsed / totalSec;
+        List<Movement> movements = new ArrayList<>();
+        VisualTrain(Train t) { this.train = t; }
 
-                    double x = mv.p1.getX() + (mv.p2.getX() - mv.p1.getX()) * progress;
-                    double y = mv.p1.getY() + (mv.p2.getY() - mv.p1.getY()) * progress;
+        void addMovement(LocalTime s, LocalTime e, Point2D p1, Point2D p2) {
+            movements.add(new Movement(s, e, p1, p2));
+            movements.sort(Comparator.comparing(m -> m.start));
+        }
 
-                    gc.setFill(Color.LIMEGREEN);
-                    gc.setEffect(new javafx.scene.effect.DropShadow(10, Color.LIME));
-                    gc.fillOval(x - 8, y - 8, 16, 16);
-                    gc.setEffect(null);
+        boolean isWaiting(LocalTime now) {
+            if (now == null || movements.isEmpty()) return false;
+            if (now.isBefore(movements.get(0).start) || now.isAfter(movements.get(movements.size()-1).end)) return false;
+            for (Movement m : movements) {
+                if (!now.isBefore(m.start) && !now.isAfter(m.end)) return false;
+            }
+            return true;
+        }
 
-                    gc.setFill(Color.YELLOW);
-                    gc.setFont(Font.font("Arial", FontWeight.BOLD, 14));
-                    gc.fillText(train.getTrainId(), x + 10, y - 10);
-                    return;
+        Point2D getCurrentPositionOrLastStation(LocalTime now) {
+            if (now == null || movements.isEmpty()) return null;
+
+            for (Movement m : movements) {
+                if (!now.isBefore(m.start) && !now.isAfter(m.end)) {
+                    long total = Duration.between(m.start, m.end).getSeconds();
+                    long current = Duration.between(m.start, now).getSeconds();
+                    if (total <= 0) total = 1;
+                    double t = (double) current / total;
+                    return new Point2D(
+                            m.p1.getX() + (m.p2.getX() - m.p1.getX()) * t,
+                            m.p1.getY() + (m.p2.getY() - m.p1.getY()) * t
+                    );
                 }
             }
+
+            for (int i = 0; i < movements.size() - 1; i++) {
+                Movement current = movements.get(i);
+                Movement next = movements.get(i+1);
+                if (now.isAfter(current.end) && now.isBefore(next.start)) {
+                    return current.p2;
+                }
+            }
+
+            return null;
         }
     }
 
-    private static class TrainMovement {
+    private static class Movement {
         LocalTime start, end;
         Point2D p1, p2;
-        public TrainMovement(LocalTime s, LocalTime e, Point2D p1, Point2D p2) { start = s; end = e; this.p1 = p1; this.p2 = p2; }
+        Movement(LocalTime s, LocalTime e, Point2D p1, Point2D p2) {
+            this.start = s; this.end = e; this.p1 = p1; this.p2 = p2;
+        }
     }
 }
