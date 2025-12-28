@@ -12,10 +12,8 @@ public class LocomotiveRepository {
 
     /**
      * Encontra uma locomotiva pelo ID.
-     * CORREÇÃO: Usa setString para evitar ORA-01722 se a coluna na BD for mista.
      */
     public Optional<Locomotive> findById(String idStr) {
-        // Query ajustada para ser segura
         String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model, L.length_m " +
                 "FROM LOCOMOTIVE L JOIN ROLLING_STOCK R ON L.stock_id = R.stock_id " +
                 "WHERE R.stock_id = ?";
@@ -23,10 +21,6 @@ public class LocomotiveRepository {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            // USAR setString É MAIS SEGURO AQUI
-            // Se a BD espera número, o driver converte "123" para 123.
-            // Se a BD espera texto, passa "123".
-            // Isto evita que o Oracle tente converter colunas de texto para número e falhe.
             stmt.setString(1, idStr);
 
             try (ResultSet rs = stmt.executeQuery()) {
@@ -36,14 +30,10 @@ public class LocomotiveRepository {
             }
         } catch (SQLException e) {
             System.err.println("⚠️ Erro SQL ao buscar Locomotiva ID " + idStr + ": " + e.getMessage());
-            // Em vez de crashar a simulação, devolvemos vazio e o Dispatcher lida com isso
         }
         return Optional.empty();
     }
 
-    /**
-     * Sobrecarga para int, converte para String e chama o método principal.
-     */
     public Optional<Locomotive> findById(int id) {
         return findById(String.valueOf(id));
     }
@@ -68,32 +58,47 @@ public class LocomotiveRepository {
     }
 
     /**
-     * Método auxiliar para mapear e CORRIGIR A FÍSICA (0 km/h fix).
+     * CORREÇÃO AQUI: Tratamento robusto do ID para evitar NumberFormatException.
      */
     private Locomotive mapResultSetToLocomotive(ResultSet rs) throws SQLException {
-        // Usa getObject para ser agnóstico ao tipo (int ou string) na BD
         Object idObj = rs.getObject("stock_id");
-        int id = (idObj instanceof Number) ? ((Number) idObj).intValue() : Integer.parseInt(idObj.toString());
+        int id = 0;
+
+        // --- BLOCO DE CORREÇÃO DO ID (Remove NumberFormatException) ---
+        try {
+            if (idObj instanceof Number) {
+                id = ((Number) idObj).intValue();
+            } else if (idObj != null) {
+                // Remove tudo o que não é digito (ex: "335.001" vira "335001")
+                String cleanId = idObj.toString().replaceAll("[^0-9]", "");
+                if (!cleanId.isEmpty()) {
+                    id = Integer.parseInt(cleanId);
+                } else {
+                    // Fallback se o ID for puramente texto (ex: "CP-LOC") -> Usa HashCode para não crashar
+                    id = idObj.toString().hashCode();
+                }
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Erro ao converter ID '" + idObj + "'. Usando fallback seguro.");
+            id = (idObj != null) ? idObj.hashCode() : 0;
+        }
+        // -----------------------------------------------------------
 
         double originalPower = rs.getDouble("power_kw");
-
-        // --- FIX CRÍTICO DE FÍSICA ---
-        // Se a BD devolver 0 ou NULL, forçamos 4200 kW para a simulação andar
         double finalPower = originalPower;
+
+        // Fix de física (impede 0 kW)
         if (finalPower < 1.0) {
             finalPower = 4200.0;
-            // System.out.println("🔧 FIXED: Locomotiva " + id + " tinha 0kW, assumido 4200kW.");
         }
 
-        // Criar Objeto
         Locomotive loc = new Locomotive(
                 id,
                 rs.getString("model"),
                 rs.getString("locomotive_type"),
-                finalPower // Importante: usar a variável corrigida
+                finalPower
         );
 
-        // Preencher dados físicos (Comprimento)
         try {
             double len = rs.getDouble("length_m");
             loc.setLengthMeters(len > 0 ? len : 22.0);
@@ -101,8 +106,7 @@ public class LocomotiveRepository {
             loc.setLengthMeters(22.0);
         }
 
-        // Peso (Tara) - Default 80t se a BD não tiver
-        loc.setTotalWeightKg(80000.0);
+        loc.setTotalWeightKg(80000.0); // Peso default
 
         return loc;
     }
