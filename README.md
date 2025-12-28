@@ -29,3 +29,14 @@ Focus: **KD-Trees** (Spatial Search), **Max-Heaps** (k-NN), **Graph Algorithms**
 * **[🔗 View SPRINT 2 Documentation](README_SPRINT2.md)**
 
 ---
+
+
+
+---
+### 🚦 Sprint 3: Simulation, Flow & DB Procedures
+
+Focus: **Graph Flow Algorithms** (Max-Flow, Min-Cut), **Resource Allocation**, **PL/SQL Procedures & Triggers**, **GUI Visualization** (Network Topology), and **Low-Level Sensor Integration** (C/Assembly).
+
+* **[🔗 View SPRINT 3 Documentation](README_SPRINT3.md)**
+
+---
