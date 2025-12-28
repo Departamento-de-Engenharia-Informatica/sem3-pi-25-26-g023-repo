@@ -87,33 +87,28 @@ public class DispatcherService {
      * @param train The train to process.
      * @return An Optional containing the {@code TrainTrip} if a valid route is found, otherwise {@code Optional.empty()}.
      */
+    // Em DispatcherService.java, método createTrainTrip:
+
     private Optional<TrainTrip> createTrainTrip(Train train) {
-        // Find the route.
         List<LineSegment> route = findRouteForTrain(train);
+        if (route.isEmpty()) return Optional.empty();
 
-        if (route.isEmpty()) {
-            return Optional.empty();
-        }
-
-        // Find the locomotive to build the TrainTrip.
         List<Locomotive> locomotives = Collections.emptyList();
         try {
             int locoId = Integer.parseInt(train.getLocomotiveId());
             Optional<Locomotive> optLoco = locomotiveRepo.findById(locoId);
-            if (optLoco.isPresent()) {
-                locomotives = Collections.singletonList(optLoco.get());
-            }
-        } catch (NumberFormatException e) {
-            // Error handling print removed (handled by UI layer).
-        }
+            if (optLoco.isPresent()) locomotives = Collections.singletonList(optLoco.get());
+        } catch (NumberFormatException e) { }
 
-        // Create the TrainTrip. The calculation of weight/power and Vmax is handled by the SchedulerService.
+        // --- ALTERAÇÃO AQUI: Passar train.getWagons() em vez de emptyList() ---
+        List<Wagon> tripWagons = (train.getWagons() != null) ? train.getWagons() : Collections.emptyList();
+
         TrainTrip trip = new TrainTrip(
                 train.getTrainId(),
                 train.getDepartureTime(),
                 route,
                 locomotives,
-                Collections.emptyList() // Assuming 0 wagons for simplification or use the Wagon repo if applicable.
+                tripWagons // <--- USAR A LISTA DO COMBOIO
         );
 
         return Optional.of(trip);

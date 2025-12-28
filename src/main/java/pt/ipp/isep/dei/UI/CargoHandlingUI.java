@@ -10,6 +10,7 @@ import pt.ipp.isep.dei.repository.FacilityRepository;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
+import java.time.LocalDate;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.time.LocalDateTime;
@@ -284,71 +285,97 @@ public class CargoHandlingUI implements Runnable {
     private void handleRunFullSimulation() {
         showInfo("--- [USLP07] Full Simulation & Conflict Analysis ---");
         try {
+            // 1. Carregar Comboios (Agora já vêm com vagões da BD!)
             List<Train> allTrains = trainRepo.findAll();
+
             if (allTrains.isEmpty()) {
                 showError("No scheduled Trains found in the database.");
                 return;
             }
+
+            // REMOVIDO: Bloco "Mock Wagons" gigante.
+            // Agora confiamos no TrainRepository e WagonRepository.
+
             System.out.println(ANSI_BOLD + "\n--- 1. Select Trains for Simulation ---" + ANSI_RESET);
             allTrains.forEach(t -> {
                 String startName = facilityRepo.findNameById(t.getStartFacilityId()).orElse("F" + t.getStartFacilityId());
                 String endName = facilityRepo.findNameById(t.getEndFacilityId()).orElse("F" + t.getEndFacilityId());
-                String status = String.format("Route: %s -> %s | Departure: %s | Loco: %s",
-                        startName, endName, t.getDepartureTime().toLocalTime(), t.getLocomotiveId());
+
+                // Mostrar info real dos vagões carregados
+                int wagonCount = (t.getWagons() != null) ? t.getWagons().size() : 0;
+
+                String status = String.format("Route: %s -> %s | Dep: %s | Loco: %s | Wagons: %d",
+                        startName, endName, t.getDepartureTime().toLocalTime(), t.getLocomotiveId(), wagonCount);
                 System.out.printf(ANSI_CYAN + "   [%s] %s%n" + ANSI_RESET, t.getTrainId(), status);
             });
+
             String trainIdsStr = readString(ANSI_BOLD + "Enter Train IDs to simulate (e.g., 5421,5437) [c=Cancel]: " + ANSI_RESET);
             if (isCancel(trainIdsStr)) {
                 showInfo("Simulation cancelled by user.");
                 return;
             }
+
             List<String> selectedIds = Arrays.stream(trainIdsStr.split(",")).map(String::trim).toList();
             List<Train> trainsToSimulate = allTrains.stream().filter(t -> selectedIds.contains(t.getTrainId())).toList();
+
             if (trainsToSimulate.isEmpty()) {
                 showError("No valid Train IDs selected. Cannot run simulation.");
                 return;
             }
+
             System.out.printf(ANSI_CYAN + "\nExecuting Schedule calculation for %d selected trains...%n" + ANSI_RESET, trainsToSimulate.size());
+
+            // O resto continua igual, usando os dados reais
             SchedulerResult schedulerResult = dispatcherService.scheduleTrains(trainsToSimulate);
+
             Map<String, TrainTrip> scheduledTripsMap = schedulerResult.scheduledTrips.stream()
                     .collect(Collectors.toMap(TrainTrip::getTripId, trip -> trip, (existing, replacement) -> existing));
+
             if (scheduledTripsMap.isEmpty()) {
                 showError("No valid scheduled trips could be simulated for the selected trains (check routes).");
                 return;
             }
+
             showSuccess("Full simulation completed successfully for " + scheduledTripsMap.size() + " trains!");
+
             printSimulationTimetables(scheduledTripsMap, schedulerResult.resolvedConflicts);
+
             List<String> conflictReport = schedulerResult.resolvedConflicts.stream().map(c -> c.toString()).collect(Collectors.toList());
             printConflictReport(conflictReport);
+
         } catch (Exception e) {
             showError("Failed to execute full simulation (USLP07): " + e.getMessage());
             e.printStackTrace(System.err);
         }
     }
-
     private void printSimulationTimetables(Map<String, TrainTrip> scheduledTripsMap, List<Conflict> conflicts) {
         System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
         System.out.println(ANSI_BOLD + "                            DETAILED SEGMENT TIMETABLE (SIMULATION OUTPUT) " + ANSI_RESET);
         System.out.println(ANSI_BOLD + ANSI_BLUE + "=========================================================================================" + ANSI_RESET);
+
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
+
+        // Mapear atrasos para injetar na tabela visualmente
         Map<String, Map<Integer, Long>> delayPoints = new HashMap<>();
         for (Conflict c : conflicts) {
-            String delayedTripId = c.tripId2;
-            int waitFacilityId = c.getSafeWaitFacilityId();
-            long delay = c.delayMinutes;
-            delayPoints.computeIfAbsent(delayedTripId, k -> new HashMap<>()).merge(waitFacilityId, delay, Long::sum);
+            delayPoints.computeIfAbsent(c.tripId2, k -> new HashMap<>()).merge(c.getSafeWaitFacilityId(), c.delayMinutes, Long::sum);
         }
+
         for (Map.Entry<String, TrainTrip> entry : scheduledTripsMap.entrySet()) {
             TrainTrip trip = entry.getValue();
             String trainId = trip.getTripId();
             List<SimulationSegmentEntry> timetable = trip.getSegmentEntries();
+
             if (timetable.isEmpty()) continue;
+
             Train originalTrain = trainRepo.findById(trainId).orElse(null);
             if (originalTrain == null) continue;
+
             LocalDateTime initialDeparture = originalTrain.getDepartureTime();
             LocalDateTime currentTime = initialDeparture;
-            String locoInfo = "N/A (0 kW)";
-            double maxCalculatedSpeed = trip.getMaxTrainSpeed();
+
+            // Informação da Locomotiva
+            String locoInfo = "N/A";
             if (originalTrain.getLocomotiveId() != null) {
                 try {
                     Locomotive loco = locomotivaRepo.findById(Integer.parseInt(originalTrain.getLocomotiveId())).orElse(null);
@@ -359,47 +386,89 @@ public class CargoHandlingUI implements Runnable {
                     locoInfo = originalTrain.getLocomotiveId() + " (Power N/A)";
                 }
             }
+
             String originalDepartureStr = initialDeparture.toLocalTime().format(timeFormatter);
-            String speedDisplay = (maxCalculatedSpeed > 0 && maxCalculatedSpeed != Double.POSITIVE_INFINITY) ? String.format("%.0f km/h", maxCalculatedSpeed) : "N/A";
+            String speedDisplay = String.format("%.0f km/h", trip.getMaxTrainSpeed());
+
+            // 1. Cabeçalho do Comboio
             System.out.printf(ANSI_BOLD + "\nTrain %s — Final Departure %s%n" + ANSI_RESET, trainId, originalDepartureStr);
             System.out.printf(ANSI_ITALIC + "   Composition: Locomotive %s | Max Calculated Speed: %s%n" + ANSI_RESET, locoInfo, speedDisplay);
+
+            // 2. Física Condensada (Numa linha, sem espaços extra)
             if (trip.getPhysicsCalculationLog() != null && !trip.getPhysicsCalculationLog().isEmpty()) {
-                System.out.println("\n" + trip.getPhysicsCalculationLog() + "\n");
+                System.out.println(ANSI_CYAN + trip.getPhysicsCalculationLog() + ANSI_RESET);
             }
+
+            // 3. Manifesto de Carga (Payload) - Nova Funcionalidade
+            System.out.print(ANSI_BOLD + "   [PAYLOAD] " + ANSI_RESET);
+            List<Wagon> trainWagons = trip.getWagons();
+
+            if (trainWagons == null || trainWagons.isEmpty()) {
+                System.out.println("Locomotive Only (No Wagons)");
+            } else {
+                System.out.println(trainWagons.size() + " Wagon(s):");
+                for (Wagon w : trainWagons) {
+                    String cargoStr;
+                    if (w.getBoxes().isEmpty()) {
+                        cargoStr = ANSI_ITALIC + "Empty" + ANSI_RESET;
+                    } else {
+                        // Cria um resumo das caixas: "5 Boxes [SKU1, SKU2...]"
+                        String items = w.getBoxes().stream()
+                                .limit(5) // Limita a 5 itens para não poluir a consola
+                                .map(Box::getSku)
+                                .collect(Collectors.joining(", "));
+
+                        if (w.getBoxes().size() > 5) items += ", ...";
+
+                        cargoStr = String.format("%d Boxes [%s]", w.getBoxes().size(), items);
+                    }
+                    // Imprime: • Wagon 2001 -> 5 Boxes [ItemA, ItemB]
+                    System.out.printf("      • Wagon %-5s -> %s%n", w.getIdWagon(), cargoStr);
+                }
+            }
+
+            // 4. Cabeçalho da Tabela
             System.out.println(ANSI_BOLD + ANSI_CYAN + "ID\tFROM FACILITY\t\tTO FACILITY\t\tTYPE\tLENGTH\t\tENTRY\t\tEXIT\t\tSPEED (C/A)" + ANSI_RESET);
             System.out.println("-".repeat(95));
-            for (int i = 0; i < timetable.size(); i++) {
-                SimulationSegmentEntry segment = timetable.get(i);
+
+            // 5. Loop dos Segmentos
+            for (SimulationSegmentEntry segment : timetable) {
                 int startFacilityId = segment.getSegment().getIdEstacaoInicio();
                 Map<Integer, Long> tripDelays = delayPoints.getOrDefault(trainId, Map.of());
-                long accumulatedDelayAtThisFacility = tripDelays.getOrDefault(startFacilityId, 0L);
-                if (accumulatedDelayAtThisFacility > 0) {
-                    String facilityName = segment.getStartFacilityName();
-                    LocalDateTime delayStart = currentTime;
-                    currentTime = currentTime.plusMinutes(accumulatedDelayAtThisFacility);
-                    LocalDateTime delayEnd = currentTime;
-                    System.out.printf(ANSI_YELLOW + ANSI_BOLD + "DELAY\t%-20s\t%-20s\t%-5s\t%s%4d min\t%s\t%s\t%s%n" + ANSI_RESET,
-                            facilityName.substring(0, Math.min(facilityName.length(), 16)),
-                            facilityName.substring(0, Math.min(facilityName.length(), 16)),
-                            "WAIT", "", accumulatedDelayAtThisFacility,
-                            delayStart.toLocalTime().format(timeFormatter),
-                            delayEnd.toLocalTime().format(timeFormatter), "0/0");
-                    delayPoints.get(trainId).remove(startFacilityId);
+
+                // Injetar linha de Atraso (DELAY) se existir para esta estação
+                if (tripDelays.containsKey(startFacilityId)) {
+                    long delay = tripDelays.get(startFacilityId);
+                    String facName = segment.getStartFacilityName();
+
+                    System.out.printf(ANSI_YELLOW + ANSI_BOLD + "DELAY\t%-20s\t%-20s\tWAIT\t      \t%4d min\t%s\t%s\t0/0%n" + ANSI_RESET,
+                            facName.substring(0, Math.min(facName.length(), 18)),
+                            "...", // Destino irrelevante durante espera
+                            delay,
+                            currentTime.toLocalTime().format(timeFormatter),
+                            currentTime.plusMinutes(delay).toLocalTime().format(timeFormatter));
+
+                    // Aplicar atraso ao tempo corrente
+                    currentTime = currentTime.plusMinutes(delay);
+                    delayPoints.get(trainId).remove(startFacilityId); // Consumir o atraso
                 }
-                double segmentTimeHours = segment.getSegment().getComprimento() / segment.getCalculatedSpeedKmh();
-                long secondsToAdd = Math.round(segmentTimeHours * 3600);
-                LocalDateTime entryVisual = currentTime;
-                LocalDateTime exitVisual = currentTime.plusSeconds(secondsToAdd);
+
+                // Calcular tempo visual de saída
+                double segHours = segment.getSegment().getComprimento() / segment.getCalculatedSpeedKmh();
+                LocalDateTime exitVisual = currentTime.plusSeconds(Math.round(segHours * 3600));
+
+                // Imprimir linha do Segmento
                 System.out.printf("%-7s\t%-20s\t%-20s\t%-6s\t%7.1f km\t%8s\t%8s\t%10.0f/%-3.0f%n",
                         segment.getSegmentId(),
-                        segment.getStartFacilityName().substring(0, Math.min(segment.getStartFacilityName().length(), 16)),
-                        segment.getEndFacilityName().substring(0, Math.min(segment.getEndFacilityName().length(), 16)),
+                        segment.getStartFacilityName().substring(0, Math.min(segment.getStartFacilityName().length(), 18)),
+                        segment.getEndFacilityName().substring(0, Math.min(segment.getEndFacilityName().length(), 18)),
                         segment.getSegment().getNumberTracks() > 1 ? "Double" : "Single",
                         segment.getSegment().getComprimento(),
-                        entryVisual.toLocalTime().format(timeFormatter),
+                        currentTime.toLocalTime().format(timeFormatter),
                         exitVisual.toLocalTime().format(timeFormatter),
                         segment.getCalculatedSpeedKmh(),
                         segment.getSegment().getVelocidadeMaxima());
+
                 currentTime = exitVisual;
             }
             System.out.println("-".repeat(95));
