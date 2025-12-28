@@ -352,21 +352,39 @@ public class MainController {
     // --- PUBLIC METHODS FOR CRUDS ---
 
     @FXML
-    public void handleShowSimulation(ActionEvent event) throws IOException {
-        statusLabel.setText("USLP07 - Full Simulation and Conflicts");
-        FXMLLoader loader = new FXMLLoader(getClass().getResource("/lapr3-simulation-view.fxml"));
-        TrainSimulationController controller = new TrainSimulationController();
-        controller.setDependencies(this, this.facilityRepository, this.dispatcherService, this.locomotiveRepository);
-        loader.setController(controller);
-        Parent root = loader.load();
-        controller.initController();
-        controller.runButton.setOnAction(e -> controller.runSimulation());
-        this.centerContentPane.getChildren().clear();
-        this.centerContentPane.getChildren().add(root);
-        AnchorPane.setTopAnchor(root, 0.0);
-        AnchorPane.setBottomAnchor(root, 0.0);
-        AnchorPane.setLeftAnchor(root, 0.0);
-        AnchorPane.setRightAnchor(root, 0.0);
+    public void handleShowSimulation(ActionEvent event) {
+        statusLabel.setText("USLP07 - Full Simulation and Conflicts (Com Visualização)");
+
+        try {
+            // [CORREÇÃO 1] Apontar para o NOVO ficheiro FXML que criámos (o que tem o mapa)
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/train-simulation-view.fxml"));
+
+            // [CORREÇÃO 2] Carregar primeiro! O loader vai instanciar o Controller definido no FXML automatically
+            Parent root = loader.load();
+
+            // [CORREÇÃO 3] Obter a instância do controller que o Loader criou
+            TrainSimulationController controller = loader.getController();
+
+            // [CORREÇÃO 4] Injetar as dependências nessa instância
+            if (controller != null) {
+                controller.setDependencies(this, this.facilityRepository, this.dispatcherService, this.locomotiveRepository);
+                controller.initController();
+                // Nota: Não precisas de definir o botão 'setOnAction' aqui, o FXML novo já tem onAction="#runSimulation"
+            }
+
+            // Colocar a vista no ecrã
+            this.centerContentPane.getChildren().clear();
+            this.centerContentPane.getChildren().add(root);
+            AnchorPane.setTopAnchor(root, 0.0);
+            AnchorPane.setBottomAnchor(root, 0.0);
+            AnchorPane.setLeftAnchor(root, 0.0);
+            AnchorPane.setRightAnchor(root, 0.0);
+
+        } catch (IOException e) {
+            System.err.println("Erro ao carregar a simulação: " + e.getMessage());
+            e.printStackTrace();
+            statusLabel.setText("❌ Erro ao abrir simulação.");
+        }
     }
 
     public void loadTrainCrudView() {
