@@ -363,6 +363,9 @@ public class CargoHandlingUI implements Runnable {
             String speedDisplay = (maxCalculatedSpeed > 0 && maxCalculatedSpeed != Double.POSITIVE_INFINITY) ? String.format("%.0f km/h", maxCalculatedSpeed) : "N/A";
             System.out.printf(ANSI_BOLD + "\nTrain %s — Final Departure %s%n" + ANSI_RESET, trainId, originalDepartureStr);
             System.out.printf(ANSI_ITALIC + "   Composition: Locomotive %s | Max Calculated Speed: %s%n" + ANSI_RESET, locoInfo, speedDisplay);
+            if (trip.getPhysicsCalculationLog() != null && !trip.getPhysicsCalculationLog().isEmpty()) {
+                System.out.println("\n" + trip.getPhysicsCalculationLog() + "\n");
+            }
             System.out.println(ANSI_BOLD + ANSI_CYAN + "ID\tFROM FACILITY\t\tTO FACILITY\t\tTYPE\tLENGTH\t\tENTRY\t\tEXIT\t\tSPEED (C/A)" + ANSI_RESET);
             System.out.println("-".repeat(95));
             for (int i = 0; i < timetable.size(); i++) {
