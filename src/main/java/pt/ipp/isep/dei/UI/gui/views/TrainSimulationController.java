@@ -11,6 +11,7 @@ import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
+import pt.ipp.isep.dei.repository.WagonRepository; // [NOVO] Import necessário
 
 import java.sql.Connection;
 import java.sql.Date;
@@ -28,13 +29,8 @@ import java.util.stream.Collectors;
 
 public class TrainSimulationController {
 
-    // --- ANSI COLOR CONSTANTS (REMOVIDAS DO OUTPUT FINAL) ---
+    // Constantes de estilo (não usadas no Text Area mas mantidas por compatibilidade)
     private static final String ANSI_RESET = "";
-    private static final String ANSI_RED = "";
-    private static final String ANSI_YELLOW = "";
-    private static final String ANSI_CYAN = "";
-    private static final String ANSI_BOLD = "";
-    // ----------------------------
 
     @FXML private TableView<TrainWrapper> trainTable;
     @FXML private TableColumn<TrainWrapper, String> idColumn;
@@ -75,8 +71,6 @@ public class TrainSimulationController {
 
             trainTable.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
             trainTable.setColumnResizePolicy(TableView.CONSTRAINED_RESIZE_POLICY);
-
-            // Adiciona classes CSS
             runButton.getStyleClass().add("run-button");
         }
         if (progressIndicator != null) {
@@ -84,6 +78,7 @@ public class TrainSimulationController {
         }
         if (resultTextArea != null) {
             resultTextArea.getStyleClass().add("result-text-area");
+            resultTextArea.setEditable(false);
         }
     }
 
@@ -120,6 +115,10 @@ public class TrainSimulationController {
             protected List<TrainWrapper> call() throws Exception {
 
                 List<Train> trains = new ArrayList<>();
+
+                // [CRÍTICO] Instanciar Repositório de Vagões aqui para carregar a carga real
+                WagonRepository wagonRepo = new WagonRepository();
+
                 String sql = "SELECT train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id " +
                         "FROM TRAIN ORDER BY train_id";
 
@@ -133,33 +132,34 @@ public class TrainSimulationController {
                             String operatorId = rs.getString("operator_id");
                             String locoId = rs.getString("locomotive_id");
                             String routeId = rs.getString("route_id");
-
                             int startFacilityId = rs.getInt("start_facility_id");
                             int endFacilityId = rs.getInt("end_facility_id");
-
                             Date date = rs.getDate("train_date");
                             String timeStr = rs.getString("train_time");
 
                             LocalDateTime departureTime = null;
-
                             if (date != null && timeStr != null && !timeStr.isEmpty()) {
                                 String timePart = timeStr.length() >= 8 ? timeStr.substring(0, 8) : timeStr;
                                 LocalTime time = LocalTime.parse(timePart);
                                 departureTime = date.toLocalDate().atTime(time);
                             }
 
-                            trains.add(new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId, routeId));
+                            Train train = new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId, routeId);
+
+                            // --- [CORREÇÃO] CARREGAR VAGÕES COM DADOS REAIS ---
+                            List<Wagon> wagons = wagonRepo.findWagonsByTrainId(trainId);
+                            train.setWagons(wagons);
+                            // --------------------------------------------------
+
+                            trains.add(train);
+
                         } catch (Exception e) {
-                            System.err.println("❌ Parsing/Typing Error reading Train from DB: " + e.getMessage());
+                            System.err.println("❌ Error parsing train: " + e.getMessage());
                         }
                     }
                 } catch (SQLException e) {
-                    System.err.println("❌ Fatal Error reading TRAIN table. Possible connection failure: " + e.getMessage());
+                    System.err.println("❌ Fatal Error reading TRAIN table: " + e.getMessage());
                     throw e;
-                }
-
-                if (facilityRepository == null) {
-                    throw new IllegalStateException("facilityRepository is null. Injection failed in MainController.");
                 }
 
                 return trains.stream()
@@ -172,37 +172,26 @@ public class TrainSimulationController {
                 if (trainTable != null && progressIndicator != null && runButton != null && mainController != null) {
                     observableTrains = FXCollections.observableArrayList(getValue());
                     trainTable.setItems(observableTrains);
-
                     progressIndicator.setVisible(false);
                     trainTable.setDisable(false);
                     runButton.setDisable(false);
-
                     mainController.showNotification("Trains loaded successfully (" + getValue().size() + ").", "success");
                 }
             }
 
             @Override
             protected void failed() {
-                Throwable exception = getException();
-
                 if (progressIndicator != null) progressIndicator.setVisible(false);
                 if (trainTable != null) trainTable.setDisable(false);
                 if (runButton != null) runButton.setDisable(false);
 
-                String errMsg = "CRITICAL ERROR: Loading Failed: " +
-                        (exception.getMessage() != null ? exception.getMessage() : exception.getClass().getSimpleName());
-                if (mainController != null) {
-                    mainController.showNotification(errMsg, "error");
-                }
-
-                System.err.println("❌ Fatal Error in Train Loading Task:");
-                exception.printStackTrace();
+                if (mainController != null) mainController.showNotification("Error loading trains.", "error");
+                getException().printStackTrace();
             }
         };
 
         new Thread(loadTask).start();
     }
-
 
     @FXML
     public void runSimulation() {
@@ -212,7 +201,6 @@ public class TrainSimulationController {
             return;
         }
 
-        // 1. Preparação da UI (Assíncrona)
         resultTextArea.setText("Simulating conflicts and schedules... (This may take a few seconds)");
         progressIndicator.setVisible(true);
         runButton.setDisable(true);
@@ -221,7 +209,6 @@ public class TrainSimulationController {
                 .map(TrainWrapper::getTrain)
                 .collect(Collectors.toList());
 
-        // 2. Task para a simulação (Assíncrona para não bloquear a UI)
         Task<SchedulerResult> simulationTask = new Task<>() {
             @Override
             protected SchedulerResult call() throws Exception {
@@ -231,28 +218,20 @@ public class TrainSimulationController {
             @Override
             protected void succeeded() {
                 SchedulerResult result = getValue();
-
-                // 3. Formatar e mostrar o resultado (OUTPUT DA CONSOLA NA UI FX)
                 String output = formatSimulationOutput(result);
                 resultTextArea.setText(output);
-
                 progressIndicator.setVisible(false);
                 runButton.setDisable(false);
-
                 mainController.showNotification("Simulation completed! " + result.scheduledTrips.size() + " trips scheduled.", "success");
             }
 
             @Override
             protected void failed() {
-                Throwable exception = getException();
-                resultTextArea.setText("FATAL SIMULATION ERROR:\n" + exception.getMessage() + "\n\nCheck console for stack trace.");
-
+                resultTextArea.setText("FATAL SIMULATION ERROR:\n" + getException().getMessage());
                 progressIndicator.setVisible(false);
                 runButton.setDisable(false);
-
-                mainController.showNotification("Simulation failed. Check output for error.", "error");
-                System.err.println("❌ Fatal Error in Simulation Task:");
-                exception.printStackTrace();
+                mainController.showNotification("Simulation failed.", "error");
+                getException().printStackTrace();
             }
         };
 
@@ -260,8 +239,7 @@ public class TrainSimulationController {
     }
 
     /**
-     * Converte o resultado da simulação para um formato legível (semelhante ao output da consola).
-     * CORREÇÃO: Remove o Total Weight e mascara o prefixo INV_ dos IDs.
+     * Converte o resultado da simulação para um formato legível (incluindo Type e Length).
      */
     private String formatSimulationOutput(SchedulerResult result) {
         if (result.scheduledTrips.isEmpty()) {
@@ -271,47 +249,52 @@ public class TrainSimulationController {
         StringBuilder output = new StringBuilder();
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        // Larguras de coluna ajustadas para Monoespaçado e Nomes longos
-        final int SEGMENT_W = 8;
-        final int FACILITY_W = 20;
-        final int TIME_W = 8;
-        final int SPD_W = 6;
+        // Larguras ajustadas para o TextArea
+        final int SEG_W = 6;
+        final int FAC_W = 16;
+        final int TYP_W = 6;
+        final int LEN_W = 7;
+        final int TIM_W = 5;
+        final int SPD_W = 9;
+
         final String SEPARATOR = " | ";
         final String LINE_BREAK = "\n";
 
-        // Formato para as linhas da tabela (garante alinhamento)
-        String tableFormat = "%-" + SEGMENT_W + "s" + SEPARATOR +
-                "%-" + FACILITY_W + "s" + SEPARATOR +
-                "%-" + FACILITY_W + "s" + SEPARATOR +
-                "%-" + TIME_W + "s" + SEPARATOR +
-                "%-" + TIME_W + "s" + SEPARATOR +
-                "%-" + SPD_W + "s" + LINE_BREAK;
+        // Formato da Tabela
+        String tableFormat =
+                "%-" + SEG_W + "s" + SEPARATOR +
+                        "%-" + FAC_W + "s" + SEPARATOR +
+                        "%-" + FAC_W + "s" + SEPARATOR +
+                        "%-" + TYP_W + "s" + SEPARATOR +
+                        "%-" + LEN_W + "s" + SEPARATOR +
+                        "%-" + TIM_W + "s" + SEPARATOR +
+                        "%-" + TIM_W + "s" + SEPARATOR +
+                        "%-" + SPD_W + "s" + LINE_BREAK;
 
-        // 1. Relatório de Conflitos (LIMPO DE ANSI)
-        output.append("=================================================================\n");
-        output.append("             🚦 CONFLICT AND DELAY REPORT 🚦\n");
-        output.append("=================================================================\n");
+        // 1. Relatório de Conflitos
+        output.append("=================================================================================\n");
+        output.append("                       🚦 CONFLICT AND DELAY REPORT 🚦\n");
+        output.append("=================================================================================\n");
 
         if (result.resolvedConflicts.isEmpty()) {
             output.append("✅ No single-track conflicts detected in the schedule.\n\n");
         } else {
             output.append("⚠️ ").append(result.resolvedConflicts.size()).append(" Conflicts resolved (delays injected):\n");
             for (Conflict c : result.resolvedConflicts) {
-                // REMOVIDO ANSI, APENAS STRING PLANA
                 output.append(String.format("   • [Trip %s] Delay: %2d min in %s due to [Trip %s]\n",
                         c.tripId2, c.delayMinutes, getFacilityName(c.getSafeWaitFacilityId()), c.tripId1));
             }
             output.append("\n");
         }
 
-        // 2. Linha Temporal Detalhada (LIMPO DE ANSI)
-        output.append("=========================================================================================\n");
-        output.append("                           DETAILED SEGMENT TIMETABLE\n");
-        output.append("=========================================================================================\n\n");
+        // 2. Tabela Detalhada
+        output.append("=================================================================================================================\n");
+        output.append("                                         DETAILED SEGMENT TIMETABLE\n");
+        output.append("=================================================================================================================\n\n");
 
         for (TrainTrip trip : result.scheduledTrips) {
 
-            // Variáveis de estado para rastrear o atraso
+            // Estado Inicial de Atrasos
             long currentDelayMinutes = 0;
             String waitFacilityName = null;
 
@@ -324,184 +307,140 @@ public class TrainSimulationController {
                 waitFacilityName = getFacilityName(conflictOpt.get().getSafeWaitFacilityId());
             }
 
-            // Ponto de partida agendado original (usado como base para calcular a hora de chegada)
-            LocalDateTime originalDeparture = trip.getDepartureTime();
-
-            // Variável que rastreia a próxima hora de entrada. Começa com a partida original menos o delay total.
-            LocalDateTime nextSegmentEntryTime = originalDeparture;
-
+            LocalDateTime nextSegmentEntryTime = trip.getDepartureTime();
             if (conflictOpt.isPresent()) {
                 nextSegmentEntryTime = nextSegmentEntryTime.minusMinutes(currentDelayMinutes);
             }
 
-            // Variável para armazenar a hora de chegada final (exit time do último segmento)
             LocalDateTime finalArrivalTime = null;
-            LocalDateTime expectedArrivalTime = null;
 
-
-            // --- Output de Informação do Comboio (LIMPO DE ANSI) ---
-
+            // Info de Rota
             String rotaStart = trip.getRoute().isEmpty() ? "N/A" : getFacilityName(trip.getRoute().get(0).getIdEstacaoInicio());
             String rotaEnd = trip.getRoute().isEmpty() ? "N/A" : getFacilityName(trip.getRoute().get(trip.getRoute().size() - 1).getIdEstacaoFim());
-
-            // Placeholder para Arrival Times
             String arrivalPlaceholder = " | EAT: %s | AAT: %s";
 
-            // Primeira Linha: Train ID, Departure (REMOVIDO TOTAL WEIGHT)
-            String line1 = String.format("🚆 Train %s — Scheduled Departure: %s",
-                    trip.getTripId(), nextSegmentEntryTime.toLocalTime().format(timeFormatter));
-            output.append(line1).append(LINE_BREAK);
+            // --- CABEÇALHO ---
+            output.append(String.format("🚆 Train %s — Scheduled Departure: %s\n",
+                    trip.getTripId(), trip.getDepartureTime().toLocalTime().format(timeFormatter)));
 
-            // Segunda Linha: Speed, Route, ARRIVAL TIMES (EAT e AAT)
-            output.append(String.format("   Max Calculated Speed: %.0f km/h | Route: %s -> %s%s",
+            output.append(String.format("   Max Calculated Speed: %.0f km/h | Route: %s -> %s%s\n",
                     trip.getMaxTrainSpeed(), rotaStart, rotaEnd, arrivalPlaceholder));
-            output.append(LINE_BREAK);
 
+            // --- FÍSICA ---
+            if (trip.getPhysicsCalculationLog() != null && !trip.getPhysicsCalculationLog().isEmpty()) {
+                output.append(trip.getPhysicsCalculationLog()).append("\n");
+            }
 
-            // Cabeçalho da Tabela
+            // --- PAYLOAD (CARGA) ---
+            output.append("   [PAYLOAD] ");
+            List<Wagon> trainWagons = trip.getWagons();
+            if (trainWagons == null || trainWagons.isEmpty()) {
+                output.append("Locomotive Only (No Wagons)\n");
+            } else {
+                output.append(trainWagons.size()).append(" Wagon(s):\n");
+                for (Wagon w : trainWagons) {
+                    String cargoStr = w.getBoxes().isEmpty() ? "Empty" :
+                            String.format("%d Boxes [%s]", w.getBoxes().size(), w.getBoxes().stream().limit(3).map(Box::getSku).collect(Collectors.joining(",")) + (w.getBoxes().size()>3?"...":""));
+                    output.append(String.format("      • %-5s -> %s\n", w.getIdWagon(), cargoStr));
+                }
+            }
+
+            // --- CABEÇALHO TABELA ---
             output.append(String.format(tableFormat,
-                    "SEGMENT", "START", "END", "ENTRY", "EXIT", "SPD (C/A)"));
-            output.append("-".repeat(85)).append(LINE_BREAK);
+                    "ID", "START", "END", "TYPE", "LEN", "ENTRY", "EXIT", "SPD(C/A)"));
+            output.append("-".repeat(110)).append("\n");
 
-
-            // ----------------------------------------------------------------
-            // Itera pelas SimulationSegmentEntry
-            // ----------------------------------------------------------------
-
+            // --- LOOP SEGMENTOS ---
             long remainingDelayMinutes = currentDelayMinutes;
 
             for (SimulationSegmentEntry entry : trip.getSegmentEntries()) {
 
                 LocalDateTime finalEntryTime = nextSegmentEntryTime;
-
-                // Calcula a duração do segmento (usando a diferença dos horários não ajustados)
                 Duration segmentDuration = Duration.between(entry.getEntryTime(), entry.getExitTime());
-
-                // Calcula o tempo de saída (tempo de viagem do segmento)
                 LocalDateTime finalExitTime = finalEntryTime.plus(segmentDuration);
 
-                // --- VARIÁVEIS PARA OUTPUT ---
-                // MASCARAMENTO DO PREFIXO INV_
+                // Dados Formatados
                 String rawSegmentId = entry.getSegmentId();
                 String segmentId = rawSegmentId.startsWith("INV_") ? rawSegmentId.substring(4) : rawSegmentId;
+                String startName = truncate(entry.getStartFacilityName(), FAC_W);
+                String endName = truncate(entry.getEndFacilityName(), FAC_W);
+                String trackType = entry.getSegment().getNumberTracks() > 1 ? "Double" : "Single";
+                String lengthStr = String.format("%.1fkm", entry.getSegment().getComprimento());
 
-                String startName = entry.getStartFacilityName().substring(0, Math.min(entry.getStartFacilityName().length(), FACILITY_W));
-                String endName = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), FACILITY_W));
-
-                // ----------------------------------------------------------------
-                // LÓGICA DE APLICAÇÃO E INSERÇÃO DA LINHA DELAY
-                // ----------------------------------------------------------------
-
+                // Lógica de Delay
                 if (remainingDelayMinutes > 0 && entry.getEndFacilityName().equals(waitFacilityName)) {
-
-                    // O tempo de partida após a espera
                     LocalDateTime departureFromWaitPoint = finalExitTime.plusMinutes(remainingDelayMinutes);
 
-                    // --- IMPRIME A LINHA DO SEGMENTO (Chegada ao ponto de espera) ---
+                    // Segmento de Chegada
                     output.append(String.format(tableFormat,
-                            segmentId,
-                            startName,
-                            endName,
+                            segmentId, startName, endName, trackType, lengthStr,
                             finalEntryTime.toLocalTime().format(timeFormatter),
-                            finalExitTime.toLocalTime().format(timeFormatter), // Chega ao ponto de espera
+                            finalExitTime.toLocalTime().format(timeFormatter),
                             String.format("%.0f/%.0f", entry.getCalculatedSpeedKmh(), entry.getSegment().getVelocidadeMaxima())
                     ));
 
-                    // --- INSERÇÃO DA LINHA DELAY ---
-                    String waitFacilityShort = entry.getEndFacilityName().substring(0, Math.min(entry.getEndFacilityName().length(), FACILITY_W));
-
+                    // Linha de Espera (DELAY)
+                    String waitShort = truncate(entry.getEndFacilityName(), FAC_W);
                     output.append(String.format(tableFormat,
-                            "DELAY",
-                            waitFacilityShort,
-                            waitFacilityShort,
-                            finalExitTime.toLocalTime().format(timeFormatter), // ENTRY = Chegada (Tempo real)
-                            departureFromWaitPoint.toLocalTime().format(timeFormatter), // EXIT = Partida ajustada (Com delay)
+                            "DELAY", waitShort, waitShort, "WAIT", "---",
+                            finalExitTime.toLocalTime().format(timeFormatter),
+                            departureFromWaitPoint.toLocalTime().format(timeFormatter),
                             "0/0"
                     ));
 
-                    // Atualiza o tempo de entrada para o PRÓXIMO segmento
                     nextSegmentEntryTime = departureFromWaitPoint;
-                    remainingDelayMinutes = 0; // Delay aplicado
+                    remainingDelayMinutes = 0;
 
-                    // Se este for o último segmento, a chegada final é a partida ajustada
                     if (entry == trip.getSegmentEntries().get(trip.getSegmentEntries().size() - 1)) {
                         finalArrivalTime = departureFromWaitPoint;
                     }
-
-                    continue; // Passa ao próximo segmento
+                    continue;
                 }
 
-                // 2. Imprime o segmento normal (ou segmentos após a espera)
+                // Segmento Normal
                 output.append(String.format(tableFormat,
-                        segmentId,
-                        startName,
-                        endName,
+                        segmentId, startName, endName, trackType, lengthStr,
                         finalEntryTime.toLocalTime().format(timeFormatter),
                         finalExitTime.toLocalTime().format(timeFormatter),
                         String.format("%.0f/%.0f", entry.getCalculatedSpeedKmh(), entry.getSegment().getVelocidadeMaxima())
                 ));
 
-                nextSegmentEntryTime = finalExitTime; // Atualiza o tempo para o próximo segmento.
+                nextSegmentEntryTime = finalExitTime;
 
-                // Se este for o último segmento, esta é a chegada final
                 if (entry == trip.getSegmentEntries().get(trip.getSegmentEntries().size() - 1)) {
                     finalArrivalTime = finalExitTime;
                 }
             }
 
-            // --- CÁLCULO FINAL E SUBSTITUIÇÃO DO PLACEHOLDER ---
-
-            // AAT = finalArrivalTime (tempo real com atrasos)
-            // EAT = AAT - Total Delay (tempo sem atrasos)
-
-            String aatString = "N/A";
-            String eatString = "N/A";
-
+            // --- CÁLCULO FINAIS ---
+            String aat = "N/A", eat = "N/A";
             if (finalArrivalTime != null) {
-                // O AAT é o tempo de chegada final (finalExitTime do último segmento)
-                aatString = finalArrivalTime.toLocalTime().format(timeFormatter);
-
-                // Calcula EAT: Final Arrival Time - Atraso Total Imposto
-                // NOTA: O Atraso Total Imposto é o 'currentDelayMinutes' que foi capturado no início.
-                // Se o comboio não foi atrasado, currentDelayMinutes é 0.
-                long totalImposedDelay = result.resolvedConflicts.stream()
+                aat = finalArrivalTime.toLocalTime().format(timeFormatter);
+                long totalDelay = result.resolvedConflicts.stream()
                         .filter(c -> c.tripId2.equals(trip.getTripId()))
-                        .mapToLong(c -> c.delayMinutes)
-                        .sum();
-
-                LocalDateTime eatTime = finalArrivalTime.minusMinutes(totalImposedDelay);
-                eatString = eatTime.toLocalTime().format(timeFormatter);
+                        .mapToLong(c -> c.delayMinutes).sum();
+                eat = finalArrivalTime.minusMinutes(totalDelay).toLocalTime().format(timeFormatter);
             }
 
-
-            // Procura o placeholder " | EAT: %s | AAT: %s" e substitui-o
-            int startOfHeaderLine2 = output.lastIndexOf("Max Calculated Speed:");
-
-            if (startOfHeaderLine2 != -1) {
-                // Encontra a posição exata do placeholder na string grande
-                int placeholderStart = output.indexOf(arrivalPlaceholder, startOfHeaderLine2);
-
-                if (placeholderStart != -1) {
-                    // Constrói a string de substituição
-                    String replacement = String.format(" | EAT: %s | AAT: %s", eatString, aatString);
-                    // O tamanho da string do placeholder é constante, usamos seu comprimento
-                    output.replace(placeholderStart, placeholderStart + arrivalPlaceholder.length(), replacement);
-                }
+            int headerIdx = output.lastIndexOf("Max Calculated Speed:");
+            if (headerIdx != -1) {
+                int placeIdx = output.indexOf(arrivalPlaceholder, headerIdx);
+                if (placeIdx != -1) output.replace(placeIdx, placeIdx + arrivalPlaceholder.length(), String.format(" | EAT: %s | AAT: %s", eat, aat));
             }
-
-            output.append(LINE_BREAK);
+            output.append("\n");
         }
-
         return output.toString();
     }
 
-    private String getFacilityName(int id) {
-        if (facilityRepository != null) {
-            return facilityRepository.findNameById(id).orElse("F" + id);
-        }
-        return "ID " + id;
+    private String truncate(String str, int width) {
+        if (str == null) return "";
+        if (str.length() <= width) return str;
+        return str.substring(0, width - 2) + "..";
     }
 
+    private String getFacilityName(int id) {
+        return (facilityRepository != null) ? facilityRepository.findNameById(id).orElse("F" + id) : "ID " + id;
+    }
 
     public static class TrainWrapper {
         private final Train train;
@@ -512,22 +451,11 @@ public class TrainSimulationController {
         public TrainWrapper(Train t, FacilityRepository facilityRepository) {
             this.train = t;
             this.trainId = t.getTrainId();
-
-            LocalDateTime departure = t.getDepartureTime();
-            if (departure != null) {
-                this.departureTime = departure.toLocalTime().format(TIME_FORMATTER);
-            } else {
-                this.departureTime = "N/A (DB Null)";
-                System.err.println("❌ Null check needed: Train " + t.getTrainId() + " has null DepartureTime.");
-            }
-
-
+            this.departureTime = (t.getDepartureTime() != null) ? t.getDepartureTime().toLocalTime().format(TIME_FORMATTER) : "N/A";
             String startName = facilityRepository.findNameById(t.getStartFacilityId()).orElse("F" + t.getStartFacilityId());
             String endName = facilityRepository.findNameById(t.getEndFacilityId()).orElse("F" + t.getEndFacilityId());
-            // String de rota em inglês
             this.routeDescription = startName + " -> " + endName + " | Loco: " + t.getLocomotiveId();
         }
-
         public Train getTrain() { return train; }
         public String getTrainId() { return trainId; }
         public String getDepartureTime() { return departureTime; }
