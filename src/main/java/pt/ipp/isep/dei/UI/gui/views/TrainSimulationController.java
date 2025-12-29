@@ -7,6 +7,8 @@ import javafx.fxml.FXML;
 import javafx.scene.control.*;
 import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontWeight;
 import pt.ipp.isep.dei.UI.gui.MainController;
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.UI.gui.utils.RailMapVisualizer;
@@ -29,9 +31,6 @@ import java.util.stream.Collectors;
 
 public class TrainSimulationController {
 
-    // Constantes de estilo
-    private static final String ANSI_RESET = "";
-
     // --- ELEMENTOS EXISTENTES ---
     @FXML private TableView<TrainWrapper> trainTable;
     @FXML private TableColumn<TrainWrapper, String> idColumn;
@@ -42,7 +41,7 @@ public class TrainSimulationController {
     @FXML private ProgressIndicator progressIndicator;
     @FXML private Button selectAllButton;
 
-    // --- [NOVO] ELEMENTOS PARA O GRÁFICO ---
+    // --- ELEMENTOS PARA O GRÁFICO ---
     @FXML private BorderPane mapContainer;
     @FXML private Slider speedSlider;
 
@@ -53,7 +52,7 @@ public class TrainSimulationController {
     private MainController mainController;
     private WagonRepository wagonRepository;
 
-    // [NOVO] Visualizador
+    // Visualizador
     private RailMapVisualizer railVisualizer;
 
     private ObservableList<TrainWrapper> observableTrains;
@@ -73,7 +72,6 @@ public class TrainSimulationController {
 
     @FXML
     public void initialize() {
-        // --- Configuração Tabela (Existente) ---
         if (idColumn != null) {
             idColumn.setCellValueFactory(new PropertyValueFactory<>("trainId"));
             departureColumn.setCellValueFactory(new PropertyValueFactory<>("departureTime"));
@@ -89,19 +87,19 @@ public class TrainSimulationController {
         if (resultTextArea != null) {
             resultTextArea.getStyleClass().add("result-text-area");
             resultTextArea.setEditable(false);
-            // Garante fonte monoespaçada para a tabela ficar alinhada
-            resultTextArea.setStyle("-fx-font-family: 'Consolas', 'Monospaced'; -fx-font-size: 12px;");
+
+            // [CORREÇÃO FINAL] Fonte Monospaced + Texto BRANCO + Fundo ESCURO
+            resultTextArea.setFont(Font.font("Monospaced", FontWeight.BOLD, 12));
+            resultTextArea.setStyle("-fx-font-family: 'Monospaced'; -fx-font-size: 12px; -fx-text-fill: white; -fx-control-inner-background: #0f172a;");
         }
 
-        // --- [NOVO] Configuração do Visualizador Gráfico ---
+        // --- Configuração do Visualizador Gráfico ---
         this.railVisualizer = new RailMapVisualizer();
 
-        // Adicionar o canvas ao layout se o container existir no FXML
         if (mapContainer != null) {
             mapContainer.setCenter(railVisualizer);
         }
 
-        // Ligar o Slider à velocidade
         if (speedSlider != null) {
             speedSlider.valueProperty().addListener((obs, oldVal, newVal) -> {
                 if (railVisualizer != null) {
@@ -142,12 +140,10 @@ public class TrainSimulationController {
         Task<List<TrainWrapper>> loadTask = new Task<>() {
             @Override
             protected List<TrainWrapper> call() throws Exception {
-
                 List<Train> trains = new ArrayList<>();
-                WagonRepository wagonRepo = new WagonRepository(); // Instancia local
+                WagonRepository wagonRepo = new WagonRepository();
 
-                String sql = "SELECT train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id " +
-                        "FROM TRAIN ORDER BY train_id";
+                String sql = "SELECT train_id, operator_id, train_date, train_time, start_facility_id, end_facility_id, locomotive_id, route_id FROM TRAIN ORDER BY train_id";
 
                 try (Connection conn = DatabaseConnection.getConnection();
                      PreparedStatement stmt = conn.prepareStatement(sql);
@@ -167,55 +163,39 @@ public class TrainSimulationController {
                             LocalDateTime departureTime = null;
                             if (date != null && timeStr != null && !timeStr.isEmpty()) {
                                 String timePart = timeStr.length() >= 8 ? timeStr.substring(0, 8) : timeStr;
-                                LocalTime time = LocalTime.parse(timePart);
-                                departureTime = date.toLocalDate().atTime(time);
+                                departureTime = date.toLocalDate().atTime(LocalTime.parse(timePart));
                             }
 
                             Train train = new Train(trainId, operatorId, departureTime, startFacilityId, endFacilityId, locoId, routeId);
-
-                            // Carregar vagões
-                            List<Wagon> wagons = wagonRepo.findWagonsByTrainId(trainId);
-                            train.setWagons(wagons);
-
+                            train.setWagons(wagonRepo.findWagonsByTrainId(trainId));
                             trains.add(train);
 
                         } catch (Exception e) {
-                            System.err.println("❌ Error parsing train: " + e.getMessage());
+                            System.err.println("Error parsing train: " + e.getMessage());
                         }
                     }
-                } catch (SQLException e) {
-                    System.err.println("❌ Fatal Error reading TRAIN table: " + e.getMessage());
-                    throw e;
                 }
-
-                return trains.stream()
-                        .map(t -> new TrainWrapper(t, facilityRepository))
-                        .collect(Collectors.toList());
+                return trains.stream().map(t -> new TrainWrapper(t, facilityRepository)).collect(Collectors.toList());
             }
 
             @Override
             protected void succeeded() {
-                if (trainTable != null && progressIndicator != null && runButton != null && mainController != null) {
-                    observableTrains = FXCollections.observableArrayList(getValue());
-                    trainTable.setItems(observableTrains);
-                    progressIndicator.setVisible(false);
-                    trainTable.setDisable(false);
-                    runButton.setDisable(false);
-                    mainController.showNotification("Trains loaded successfully (" + getValue().size() + ").", "success");
-                }
+                observableTrains = FXCollections.observableArrayList(getValue());
+                trainTable.setItems(observableTrains);
+                progressIndicator.setVisible(false);
+                trainTable.setDisable(false);
+                runButton.setDisable(false);
+                mainController.showNotification("Trains loaded (" + getValue().size() + ").", "success");
             }
 
             @Override
             protected void failed() {
-                if (progressIndicator != null) progressIndicator.setVisible(false);
-                if (trainTable != null) trainTable.setDisable(false);
-                if (runButton != null) runButton.setDisable(false);
-
-                if (mainController != null) mainController.showNotification("Error loading trains.", "error");
-                getException().printStackTrace();
+                progressIndicator.setVisible(false);
+                trainTable.setDisable(false);
+                runButton.setDisable(false);
+                mainController.showNotification("Error loading trains.", "error");
             }
         };
-
         new Thread(loadTask).start();
     }
 
@@ -223,20 +203,17 @@ public class TrainSimulationController {
     public void runSimulation() {
         List<TrainWrapper> selectedWrappers = trainTable.getSelectionModel().getSelectedItems();
         if (selectedWrappers.isEmpty()) {
-            mainController.showNotification("No trains selected for simulation.", "error");
+            mainController.showNotification("No trains selected.", "error");
             return;
         }
 
-        resultTextArea.setText("Simulating conflicts and schedules... (Calculando física e rotas)");
+        resultTextArea.setText("Calculating physics and scheduling routes...");
         progressIndicator.setVisible(true);
         runButton.setDisable(true);
 
-        // Parar animação anterior se existir
         if (railVisualizer != null) railVisualizer.stopAnimation();
 
-        List<Train> trainsToSimulate = selectedWrappers.stream()
-                .map(TrainWrapper::getTrain)
-                .collect(Collectors.toList());
+        List<Train> trainsToSimulate = selectedWrappers.stream().map(TrainWrapper::getTrain).collect(Collectors.toList());
 
         Task<SchedulerResult> simulationTask = new Task<>() {
             @Override
@@ -248,26 +225,20 @@ public class TrainSimulationController {
             protected void succeeded() {
                 SchedulerResult result = getValue();
 
-                // 1. Mostrar Relatório de Texto (Mantido Original e Completo)
-                String output = formatSimulationOutput(result);
-                resultTextArea.setText(output);
+                // 1. Mostrar Relatório (Agora Branco)
+                resultTextArea.setText(formatSimulationOutput(result));
 
                 progressIndicator.setVisible(false);
                 runButton.setDisable(false);
-                mainController.showNotification("Simulation completed! " + result.scheduledTrips.size() + " trips scheduled.", "success");
+                mainController.showNotification("Simulation completed!", "success");
 
-                // --- [NOVO] 2. Iniciar Visualização Gráfica ---
+                // 2. Iniciar Visualização
                 if (railVisualizer != null && !result.scheduledTrips.isEmpty()) {
-                    // Converter SchedulerResult para o formato Map<Train, Strings> que o Visualizer espera
                     Map<Train, List<String>> visualData = prepareDataForVisualizer(result, trainsToSimulate);
-
-                    // Definir hora de início (ex: 08:00 ou baseada no primeiro comboio)
                     LocalTime startTime = trainsToSimulate.stream()
                             .map(t -> t.getDepartureTime().toLocalTime())
-                            .min(LocalTime::compareTo)
-                            .orElse(LocalTime.of(8, 0));
-
-                    railVisualizer.loadSchedule(visualData, startTime.minusMinutes(30)); // Começa 30 min antes
+                            .min(LocalTime::compareTo).orElse(LocalTime.of(8, 0));
+                    railVisualizer.loadSchedule(visualData, startTime.minusMinutes(30));
                     railVisualizer.setSpeedFactor(speedSlider != null ? speedSlider.getValue() : 120.0);
                     railVisualizer.startAnimation();
                 }
@@ -275,27 +246,19 @@ public class TrainSimulationController {
 
             @Override
             protected void failed() {
-                resultTextArea.setText("FATAL SIMULATION ERROR:\n" + getException().getMessage());
+                resultTextArea.setText("ERROR: " + getException().getMessage());
                 progressIndicator.setVisible(false);
                 runButton.setDisable(false);
-                mainController.showNotification("Simulation failed.", "error");
                 getException().printStackTrace();
             }
         };
-
         new Thread(simulationTask).start();
     }
 
-    /**
-     * [NOVO] Método Auxiliar: Converte os resultados da simulação para o formato que o
-     * RailMapVisualizer sabe ler (linhas de texto com ID, START, END, TIME).
-     * * INCLUI A LÓGICA CRÍTICA DE "!!!CONFLICT" PARA O VISUALIZADOR REAGIR
-     */
     private Map<Train, List<String>> prepareDataForVisualizer(SchedulerResult result, List<Train> originalTrains) {
         Map<Train, List<String>> visualData = new HashMap<>();
 
         for (TrainTrip trip : result.scheduledTrips) {
-            // Encontrar o objeto Train original correspondente ao Trip
             Train t = originalTrains.stream()
                     .filter(tr -> tr.getTrainId().equals(trip.getTripId()))
                     .findFirst()
@@ -305,22 +268,17 @@ public class TrainSimulationController {
 
             List<String> logs = new ArrayList<>();
 
-            // ------------------------------------------------------------------------------------
-            // [CRÍTICO] INJETAR DADOS DE CONFLITO PARA O VISUALIZADOR (RailMapVisualizer.java)
-            // ------------------------------------------------------------------------------------
+            // --- INJEÇÃO DE CONFLITO (Para o ecrã vermelho) ---
             Optional<Conflict> conflictOpt = result.resolvedConflicts.stream()
-                    .filter(c -> c.tripId2.equals(trip.getTripId())) // tripId2 é quem sofre o delay
+                    .filter(c -> c.tripId2.equals(trip.getTripId()))
                     .findFirst();
 
             if (conflictOpt.isPresent()) {
                 Conflict c = conflictOpt.get();
                 String stationName = getFacilityName(c.getSafeWaitFacilityId());
-                // Formato especial lido pelo visualizador para activar o ecrã vermelho e parar
                 logs.add("!!!CONFLICT|" + t.getTrainId() + "|" + stationName + "|" + c.delayMinutes);
             }
-            // ------------------------------------------------------------------------------------
 
-            // Reconstruir as linhas de log que o Visualizer usa para desenhar
             for (SimulationSegmentEntry entry : trip.getSegmentEntries()) {
                 String line = String.format("%s | %s | %s | %s | %.1f | %s | %s | 0",
                         entry.getSegmentId(),
@@ -338,8 +296,7 @@ public class TrainSimulationController {
         return visualData;
     }
 
-    // --- MÉTODOS DE FORMATAÇÃO DE TEXTO ORIGINAIS (MANTIDOS E COMPLETOS) ---
-
+    // --- FORMATAÇÃO ALINHADA ---
     private String formatSimulationOutput(SchedulerResult result) {
         if (result.scheduledTrips.isEmpty()) {
             return "Simulation completed, but no valid trips were scheduled (check routes).";
@@ -348,14 +305,28 @@ public class TrainSimulationController {
         StringBuilder output = new StringBuilder();
         DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm");
 
-        final int SEG_W = 6; final int FAC_W = 16; final int TYP_W = 6;
-        final int LEN_W = 7; final int TIM_W = 5; final int SPD_W = 9;
+        // Larguras definidas para alinhar a tabela
+        final int SEG_W = 8;
+        final int FAC_W = 20;
+        final int TYP_W = 8;
+        final int LEN_W = 8;
+        final int TIM_W = 6;
+        final int SPD_W = 12;
+
         final String SEPARATOR = " | ";
         final String LINE_BREAK = "\n";
 
-        String tableFormat = "%-" + SEG_W + "s" + SEPARATOR + "%-" + FAC_W + "s" + SEPARATOR + "%-" + FAC_W + "s" + SEPARATOR +
-                "%-" + TYP_W + "s" + SEPARATOR + "%-" + LEN_W + "s" + SEPARATOR + "%-" + TIM_W + "s" + SEPARATOR +
-                "%-" + TIM_W + "s" + SEPARATOR + "%-" + SPD_W + "s" + LINE_BREAK;
+        String tableFormat = "%-" + SEG_W + "s" + SEPARATOR +
+                "%-" + FAC_W + "s" + SEPARATOR +
+                "%-" + FAC_W + "s" + SEPARATOR +
+                "%-" + TYP_W + "s" + SEPARATOR +
+                "%-" + LEN_W + "s" + SEPARATOR +
+                "%-" + TIM_W + "s" + SEPARATOR +
+                "%-" + TIM_W + "s" + SEPARATOR +
+                "%-" + SPD_W + "s" + LINE_BREAK;
+
+        int totalWidth = SEG_W + (FAC_W * 2) + TYP_W + LEN_W + (TIM_W * 2) + SPD_W + (SEPARATOR.length() * 7);
+        String dashLine = "-".repeat(totalWidth) + "\n";
 
         output.append("=================================================================================\n");
         output.append("                       🚦 CONFLICT AND DELAY REPORT 🚦\n");
@@ -422,8 +393,10 @@ public class TrainSimulationController {
                 }
             }
 
+            // --- CABEÇALHO ---
+            output.append("\n");
             output.append(String.format(tableFormat, "ID", "START", "END", "TYPE", "LEN", "ENTRY", "EXIT", "SPD(C/A)"));
-            output.append("-".repeat(110)).append("\n");
+            output.append(dashLine);
 
             long remainingDelayMinutes = currentDelayMinutes;
 
@@ -434,8 +407,11 @@ public class TrainSimulationController {
 
                 String rawSegmentId = entry.getSegmentId();
                 String segmentId = rawSegmentId.startsWith("INV_") ? rawSegmentId.substring(4) : rawSegmentId;
+
+                // Usar constante FAC_W para o truncate alinhar com o cabeçalho
                 String startName = truncate(entry.getStartFacilityName(), FAC_W);
                 String endName = truncate(entry.getEndFacilityName(), FAC_W);
+
                 String trackType = entry.getSegment().getNumberTracks() > 1 ? "Double" : "Single";
                 String lengthStr = String.format("%.1fkm", entry.getSegment().getComprimento());
 
@@ -450,6 +426,7 @@ public class TrainSimulationController {
                     ));
 
                     String waitShort = truncate(entry.getEndFacilityName(), FAC_W);
+
                     output.append(String.format(tableFormat,
                             "DELAY", waitShort, waitShort, "WAIT", "---",
                             finalExitTime.toLocalTime().format(timeFormatter),
