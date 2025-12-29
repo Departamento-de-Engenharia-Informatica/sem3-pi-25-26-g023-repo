@@ -9,7 +9,7 @@ import javafx.scene.control.cell.PropertyValueFactory;
 import javafx.scene.layout.BorderPane;
 import pt.ipp.isep.dei.UI.gui.MainController;
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
-import pt.ipp.isep.dei.UI.gui.utils.RailMapVisualizer; // [NOVO] Import do Visualizador
+import pt.ipp.isep.dei.UI.gui.utils.RailMapVisualizer;
 import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
@@ -51,7 +51,7 @@ public class TrainSimulationController {
     private DispatcherService dispatcherService;
     private LocomotiveRepository locomotiveRepository;
     private MainController mainController;
-    private WagonRepository wagonRepository; // Adicionado explicitamente
+    private WagonRepository wagonRepository;
 
     // [NOVO] Visualizador
     private RailMapVisualizer railVisualizer;
@@ -89,6 +89,8 @@ public class TrainSimulationController {
         if (resultTextArea != null) {
             resultTextArea.getStyleClass().add("result-text-area");
             resultTextArea.setEditable(false);
+            // Garante fonte monoespaçada para a tabela ficar alinhada
+            resultTextArea.setStyle("-fx-font-family: 'Consolas', 'Monospaced'; -fx-font-size: 12px;");
         }
 
         // --- [NOVO] Configuração do Visualizador Gráfico ---
@@ -246,7 +248,7 @@ public class TrainSimulationController {
             protected void succeeded() {
                 SchedulerResult result = getValue();
 
-                // 1. Mostrar Relatório de Texto (Mantido Original)
+                // 1. Mostrar Relatório de Texto (Mantido Original e Completo)
                 String output = formatSimulationOutput(result);
                 resultTextArea.setText(output);
 
@@ -287,6 +289,7 @@ public class TrainSimulationController {
     /**
      * [NOVO] Método Auxiliar: Converte os resultados da simulação para o formato que o
      * RailMapVisualizer sabe ler (linhas de texto com ID, START, END, TIME).
+     * * INCLUI A LÓGICA CRÍTICA DE "!!!CONFLICT" PARA O VISUALIZADOR REAGIR
      */
     private Map<Train, List<String>> prepareDataForVisualizer(SchedulerResult result, List<Train> originalTrains) {
         Map<Train, List<String>> visualData = new HashMap<>();
@@ -302,8 +305,22 @@ public class TrainSimulationController {
 
             List<String> logs = new ArrayList<>();
 
+            // ------------------------------------------------------------------------------------
+            // [CRÍTICO] INJETAR DADOS DE CONFLITO PARA O VISUALIZADOR (RailMapVisualizer.java)
+            // ------------------------------------------------------------------------------------
+            Optional<Conflict> conflictOpt = result.resolvedConflicts.stream()
+                    .filter(c -> c.tripId2.equals(trip.getTripId())) // tripId2 é quem sofre o delay
+                    .findFirst();
+
+            if (conflictOpt.isPresent()) {
+                Conflict c = conflictOpt.get();
+                String stationName = getFacilityName(c.getSafeWaitFacilityId());
+                // Formato especial lido pelo visualizador para activar o ecrã vermelho e parar
+                logs.add("!!!CONFLICT|" + t.getTrainId() + "|" + stationName + "|" + c.delayMinutes);
+            }
+            // ------------------------------------------------------------------------------------
+
             // Reconstruir as linhas de log que o Visualizer usa para desenhar
-            // Formato esperado: "ID | START | END | TYPE | LEN | ENTRY | EXIT | SPD"
             for (SimulationSegmentEntry entry : trip.getSegmentEntries()) {
                 String line = String.format("%s | %s | %s | %s | %.1f | %s | %s | 0",
                         entry.getSegmentId(),
@@ -321,7 +338,7 @@ public class TrainSimulationController {
         return visualData;
     }
 
-    // --- MÉTODOS DE FORMATAÇÃO DE TEXTO ORIGINAIS (MANTIDOS) ---
+    // --- MÉTODOS DE FORMATAÇÃO DE TEXTO ORIGINAIS (MANTIDOS E COMPLETOS) ---
 
     private String formatSimulationOutput(SchedulerResult result) {
         if (result.scheduledTrips.isEmpty()) {
