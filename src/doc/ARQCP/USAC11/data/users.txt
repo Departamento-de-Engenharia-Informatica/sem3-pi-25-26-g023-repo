@@ -1,0 +1,17 @@
+# ============================================
+# Utilizadores do Sistema
+# Formato: name;username;password;key;role
+# ============================================
+
+# Administrador do sistema
+João Silva;admin;XYZAB;5;ADMIN
+
+# Operadores da estação
+Maria Santos;operator1;ABCDE;3;OPERATOR
+Carlos Mendes;operator2;FGHIJ;7;OPERATOR
+
+# Gestor de tráfego
+Ana Rodrigues;traffic_mgr;KLMNO;9;TRAFFIC_MANAGER
+
+# Observador (só leitura)
+Pedro Costa;viewer;PQRST;2;VIEWER

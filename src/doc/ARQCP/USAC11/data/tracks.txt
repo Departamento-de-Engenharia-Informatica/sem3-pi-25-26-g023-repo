@@ -1,0 +1,21 @@
+# ============================================
+# Vias da Estação
+# Formato: id;state;train_id
+# Estados: 0=FREE, 1=BUSY, 2=ASSIGNED, 3=INOPERATIVE
+# ============================================
+
+# Vias principais
+1;0;-1  # Via 1 livre
+2;0;-1  # Via 2 livre
+3;0;-1  # Via 3 livre
+4;0;-1  # Via 4 livre
+5;0;-1  # Via 5 livre
+
+# Vias secundárias
+6;0;-1  # Via 6 livre
+7;0;-1  # Via 7 livre
+8;0;-1  # Via 8 livre
+
+# Vias de serviço
+9;3;-1  # Via 9 inoperacional (manutenção)
+10;0;-1 # Via 10 livre
