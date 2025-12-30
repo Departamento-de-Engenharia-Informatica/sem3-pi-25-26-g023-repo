@@ -12,7 +12,11 @@ public class BackboneNetwork {
     private final List<Connection> allConnections = new ArrayList<>();
     private final List<Connection> mstConnections = new ArrayList<>();
     private double totalMSTDistance = 0;
-    private long computationTimeMs = 0;
+
+    private double minX = Double.MAX_VALUE;
+    private double maxX = Double.MIN_VALUE;
+    private double minY = Double.MAX_VALUE;
+    private double maxY = Double.MIN_VALUE;
 
     /**
      * Loads railway network data from CSV files.
@@ -30,6 +34,10 @@ public class BackboneNetwork {
 
     private void loadStations(String file) throws IOException {
         stations.clear();
+        minX = Double.MAX_VALUE;
+        maxX = Double.MIN_VALUE;
+        minY = Double.MAX_VALUE;
+        maxY = Double.MIN_VALUE;
 
         try (BufferedReader br = new BufferedReader(new FileReader(file))) {
             br.readLine();
@@ -56,6 +64,10 @@ public class BackboneNetwork {
                         stations.put(id, station);
                         loaded++;
 
+                        minX = Math.min(minX, coordX);
+                        maxX = Math.max(maxX, coordX);
+                        minY = Math.min(minY, coordY);
+                        maxY = Math.max(maxY, coordY);
                     }
                 } catch (NumberFormatException e) {
                     System.err.println("Erro na linha " + count + ": " + line);
@@ -168,15 +180,19 @@ public class BackboneNetwork {
             }
         }
 
-        computationTimeMs = System.currentTimeMillis() - startTime;
+        long computationTimeMs = System.currentTimeMillis() - startTime;
 
         System.out.printf("✓ MST computed: %d edges, %.2f km total, %d ms\n",
                 mstConnections.size(), totalMSTDistance, computationTimeMs);
+
+        if (visited.size() < stations.size()) {
+            System.out.printf("⚠️  Warning: %d station(s) are isolated or unreachable\n",
+                    stations.size() - visited.size());
+        }
     }
 
     /**
      * Generates a GraphViz DOT file for visualization.
-     * The DOT file can be previewed directly in IntelliJ with the Graphviz plugin.
      *
      * @param filename Output DOT filename
      * @throws IOException If file writing fails
@@ -194,9 +210,11 @@ public class BackboneNetwork {
                 String label = s.nome().length() > 12 ?
                         s.nome().substring(0, 10) + ".." : s.nome();
 
+                double normX = 100 * (s.coordX() - minX) / (maxX - minX);
+                double normY = 100 * (s.coordY() - minY) / (maxY - minY);
+
                 writer.printf("    \"%d\" [pos=\"%.2f,%.2f!\", label=\"%s\"];\n",
-                        s.idEstacao(), s.coordX() / 1000, s.coordY() / 1000,
-                        label);
+                        s.idEstacao(), normX, normY, label);
             }
 
             writer.println();
@@ -222,98 +240,46 @@ public class BackboneNetwork {
     }
 
     /**
-     * Attempts to generate SVG visualization using available Graphviz installation.
-     * First tries the local installation, then falls back to online conversion.
+     * Attempts to generate SVG visualization using Graphviz.
      *
      * @param dotFile Input DOT filename
      * @param svgFile Output SVG filename
      * @return true if SVG generation succeeded
      */
     public boolean generateSVG(String dotFile, String svgFile) {
-        boolean localSuccess = tryLocalGraphviz(dotFile, svgFile);
+        // Tenta gerar SVG com dot
+        try {
+            ProcessBuilder pb = new ProcessBuilder("dot", "-Tsvg", dotFile, "-o", svgFile);
+            Process process = pb.start();
+            int exitCode = process.waitFor();
 
-        if (!localSuccess) {
-            System.out.println("📝 Using IntelliJ Graphviz plugin preview instead.");
-            System.out.println("💡 Right-click " + dotFile + " → Open with → Graphviz");
-        }
-
-        return localSuccess;
-    }
-
-    private boolean tryLocalGraphviz(String dotFile, String svgFile) {
-        String[] possiblePaths = {
-                "dot",
-                "C:\\Program Files\\Graphviz\\bin\\dot.exe",
-                "C:\\Program Files (x86)\\Graphviz\\bin\\dot.exe",
-                System.getProperty("user.home") + "\\Desktop\\Graphviz-14.1.1-win64\\bin\\dot.exe"
-        };
-
-        for (String path : possiblePaths) {
-            try {
-                ProcessBuilder pb = new ProcessBuilder(
-                        path, "-Tsvg", dotFile, "-o", svgFile
-                );
-
-                Process process = pb.start();
-                int exitCode = process.waitFor();
-
-                if (exitCode == 0) {
-                    File svgOutput = new File(svgFile);
-                    if (svgOutput.exists()) {
-                        System.out.println("✅ SVG generated: " + svgFile);
-                        return true;
-                    }
+            if (exitCode == 0) {
+                File svgOutput = new File(svgFile);
+                if (svgOutput.exists()) {
+                    System.out.println("✅ SVG generated: " + svgFile);
+                    return true;
                 }
-            } catch (Exception e) {
-                // Try next path
             }
+        } catch (Exception e) {
+            // Ignora erros
         }
 
+        // Se não conseguiu, não mostra mensagem de erro
+        // O utilizador pode usar o plugin do IntelliJ
         return false;
     }
 
     /**
-     * Prints a comprehensive report of the backbone network.
+     * Prints a simple completion message.
      */
     public void printReport() {
         System.out.println("\n" + "=".repeat(60));
-        System.out.println("USEI12 - MINIMAL BACKBONE NETWORK REPORT");
-        System.out.println("=".repeat(60));
-
-        System.out.println("\n📊 NETWORK STATISTICS:");
-        System.out.printf("   • Stations: %d\n", stations.size());
-        System.out.printf("   • Total connections: %d\n", allConnections.size());
-        System.out.printf("   • Backbone connections: %d\n", mstConnections.size());
-        System.out.printf("   • Total backbone length: %.2f km\n", totalMSTDistance);
-        System.out.printf("   • Computation time: %d ms\n", computationTimeMs);
-
-        System.out.println("\n⚡ ALGORITHM ANALYSIS:");
-        int V = stations.size();
-        int E = allConnections.size();
-        System.out.println("   • Algorithm: Prim's with PriorityQueue");
-        System.out.println("   • Time Complexity: O(E log V)");
-        System.out.println("   • Space Complexity: O(V + E)");
-        System.out.printf("   • For this network: O(%d log %d) operations\n", E, V);
-
-        System.out.println("\n🛠️  OUTPUT FILES:");
-        System.out.println("   • " + "belgian_backbone.dot" + " - DOT file (open in IntelliJ with Graphviz plugin)");
-
-        if (!mstConnections.isEmpty()) {
-            System.out.println("\n📋 BACKBONE SAMPLE (first 10 connections):");
-            int limit = Math.min(10, mstConnections.size());
-            for (int i = 0; i < limit; i++) {
-                Connection c = mstConnections.get(i);
-                System.out.printf("   %d. %s ↔ %s (%.1f km)\n",
-                        i + 1, c.from().nome(), c.to().nome(), c.distance());
-            }
-
-            if (mstConnections.size() > 10) {
-                System.out.printf("   ... and %d more connections\n", mstConnections.size() - 10);
-            }
-        }
-
-        System.out.println("\n" + "=".repeat(60));
         System.out.println("✅ USEI12 COMPLETED SUCCESSFULLY");
         System.out.println("=".repeat(60));
+        System.out.println("Output files generated:");
+        System.out.println("  • belgian_backbone.dot - DOT file for visualization");
+        System.out.println("\nTo visualize the network:");
+        System.out.println("  1. Open 'belgian_backbone.dot' in IntelliJ");
+        System.out.println("  2. Right-click → Open with → Graphviz");
     }
 }
