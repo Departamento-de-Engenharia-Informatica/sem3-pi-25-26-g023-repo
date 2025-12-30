@@ -2,6 +2,7 @@ package pt.ipp.isep.dei.UI.gui.utils;
 
 import javafx.animation.AnimationTimer;
 import javafx.animation.FadeTransition;
+import javafx.animation.ScaleTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
 import javafx.geometry.Pos;
@@ -32,12 +33,12 @@ public class RailMapVisualizer extends StackPane {
     private final Canvas canvas;
     private final Pane canvasPane;
     private final VBox notificationPanel;
-
-    // Variáveis não-final para permitir inicialização no método auxiliar
     private VBox notificationContent;
-    private Button notificationHeader;
+    private Button notificationToggle; // Botão pequeno
 
+    // Painéis de Aviso
     private final VBox conflictPanel;
+    private final VBox successPanel;
 
     // --- DADOS ---
     private final Map<String, Point2D> stationCoordinates = new HashMap<>();
@@ -47,7 +48,7 @@ public class RailMapVisualizer extends StackPane {
     private final Map<String, ConflictInfo> conflictRegistry = new HashMap<>();
 
     // --- CÂMARA ---
-    private double scale = 0.6; // Começar com um pouco mais de zoom
+    private double scale = 0.6; // Zoom inicial um pouco maior já que o mapa encolheu
     private double translateX = 0, translateY = 0;
     private double targetScale = 0.6;
     private double targetTranslateX = 0, targetTranslateY = 0;
@@ -74,21 +75,25 @@ public class RailMapVisualizer extends StackPane {
     private final Label clockLabel;
 
     public RailMapVisualizer() {
-        this.setStyle("-fx-background-color: #0f172a;"); // Fundo Slate Dark
+        this.setStyle("-fx-background-color: #0b1120;");
 
         // 1. Layer Mapa
         this.canvasPane = new Pane();
-        this.canvas = new Canvas(1000, 800); // Canvas maior internamente
+        this.canvas = new Canvas(2000, 3000);
         this.canvasPane.getChildren().add(canvas);
         canvas.widthProperty().bind(this.widthProperty());
         canvas.heightProperty().bind(this.heightProperty());
 
-        setupRealisticMapCoordinates();
+        setupGeographicallyAccurateMap(); // MAPA COMPACTADO
 
-        // 2. Layer HUD (Acordeão)
+        // 2. Layer HUD (Log Minimalista)
         this.notificationPanel = createNotificationPanel();
 
-        // 3. Layer Controlos
+        // 3. Layer Relógio
+        this.clockLabel = new Label("00:00:00");
+        this.clockLabel.setStyle("-fx-text-fill: white; -fx-font-family: 'Monospaced'; -fx-font-size: 28px; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 5, 0, 0, 1);");
+
+        // 4. Layer Controlos
         this.btnZoomIn = createGlassButton("+");
         this.btnZoomIn.setOnAction(e -> manualZoom(1.2));
         this.btnZoomOut = createGlassButton("-");
@@ -99,154 +104,248 @@ public class RailMapVisualizer extends StackPane {
         this.btnAutoCam.setStyle("-fx-background-color: rgba(16, 185, 129, 0.2); -fx-text-fill: #10b981; -fx-font-weight: bold; -fx-border-color: rgba(16, 185, 129, 0.4); -fx-border-radius: 5;");
         this.btnAutoCam.selectedProperty().addListener((obs, old, isSelected) -> autoCameraMode = isSelected);
 
-        this.clockLabel = new Label("00:00:00");
-        this.clockLabel.setStyle("-fx-text-fill: white; -fx-font-family: 'Monospaced'; -fx-font-size: 28px; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 5, 0, 0, 1);");
-
-        HBox controlsBox = new HBox(10, btnZoomIn, btnZoomOut, btnAutoCam, clockLabel);
+        HBox controlsBox = new HBox(10, btnAutoCam, btnZoomOut, btnZoomIn);
         controlsBox.setAlignment(Pos.TOP_RIGHT);
         controlsBox.setPadding(new Insets(20));
         controlsBox.setPickOnBounds(false);
 
-        // 4. Layer Modal
+        // 5. Layer Modais
         this.conflictPanel = createConflictPanel();
+        this.successPanel = createSuccessPanel();
 
-        this.getChildren().addAll(canvasPane, notificationPanel, controlsBox, conflictPanel);
-        StackPane.setAlignment(controlsBox, Pos.TOP_RIGHT);
+        this.getChildren().addAll(canvasPane, clockLabel, notificationPanel, controlsBox, conflictPanel, successPanel);
+
+        // --- POSICIONAMENTO ---
+        StackPane.setAlignment(clockLabel, Pos.TOP_CENTER);
+        StackPane.setMargin(clockLabel, new Insets(25, 0, 0, 0));
+
+        // LOG: Canto Superior Esquerdo, mas pequeno
         StackPane.setAlignment(notificationPanel, Pos.TOP_LEFT);
+        StackPane.setMargin(notificationPanel, new Insets(20, 0, 0, 20));
+
+        StackPane.setAlignment(controlsBox, Pos.TOP_RIGHT);
         StackPane.setAlignment(conflictPanel, Pos.CENTER);
+        StackPane.setAlignment(successPanel, Pos.CENTER);
 
         setupInteraction();
     }
 
-    // --- UI DE NOTIFICAÇÕES (CORRIGIDA) ---
+    // --- PAINEL DE LOG MINIMALISTA ---
     private VBox createNotificationPanel() {
-        VBox container = new VBox(0);
-        container.setMaxHeight(350);
-        container.setMaxWidth(320);
-        container.setPadding(new Insets(20));
-        container.setPickOnBounds(false);
+        VBox container = new VBox(5);
+        container.setMaxWidth(250);
+        container.setPickOnBounds(false); // Permite clicar através das áreas vazias
 
-        // Header
-        notificationHeader = new Button("LOG DE TRÁFEGO ▼");
-        notificationHeader.setMaxWidth(Double.MAX_VALUE);
-        notificationHeader.setStyle("-fx-background-color: #1e293b; -fx-text-fill: white; -fx-font-weight: bold; -fx-background-radius: 8 8 0 0; -fx-border-color: #475569; -fx-border-width: 1 1 0 1; -fx-cursor: hand; -fx-padding: 8;");
+        // Botão Toggle Pequeno e Discreto
+        notificationToggle = new Button("📄 LOG");
+        notificationToggle.setFont(Font.font("System", FontWeight.BOLD, 10));
+        // Estilo: Pequeno, fundo escuro semi-transparente, borda subtil
+        notificationToggle.setStyle(
+                "-fx-background-color: rgba(30, 41, 59, 0.8); " +
+                        "-fx-text-fill: #94a3b8; " +
+                        "-fx-background-radius: 4; " +
+                        "-fx-border-color: #475569; " +
+                        "-fx-border-radius: 4; " +
+                        "-fx-cursor: hand; " +
+                        "-fx-padding: 4 8;"
+        );
 
-        // Conteúdo
-        notificationContent = new VBox(8);
-        notificationContent.setPadding(new Insets(10));
-        notificationContent.setStyle("-fx-background-color: rgba(15, 23, 42, 0.95);"); // Fundo opaco
+        // Área de Conteúdo (Escondida por defeito)
+        notificationContent = new VBox(5);
+        notificationContent.setPadding(new Insets(8));
+        notificationContent.setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-background-radius: 4; -fx-border-color: #475569; -fx-border-width: 1;");
 
         ScrollPane scroll = new ScrollPane(notificationContent);
         scroll.setFitToWidth(true);
         scroll.setHbarPolicy(ScrollPane.ScrollBarPolicy.NEVER);
-        scroll.setVbarPolicy(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
-        scroll.setMaxHeight(250);
+        scroll.setMaxHeight(200);
 
-        // Impedir que o scroll do log faça zoom no mapa
-        scroll.setOnScroll(e -> e.consume());
-
-        // Wrapper do conteúdo
+        // Wrapper para controlar visibilidade
         VBox contentWrapper = new VBox(scroll);
-        contentWrapper.setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-background-radius: 0 0 8 8; -fx-border-color: #475569; -fx-border-width: 0 1 1 1;");
-        contentWrapper.setEffect(new DropShadow(10, Color.BLACK));
+        contentWrapper.setVisible(false);
+        contentWrapper.setManaged(false); // Não ocupa espaço quando invisível
 
         // Ação do Botão
-        notificationHeader.setOnAction(e -> {
+        notificationToggle.setOnAction(e -> {
             boolean isVisible = contentWrapper.isVisible();
             contentWrapper.setVisible(!isVisible);
             contentWrapper.setManaged(!isVisible);
-            notificationHeader.setText(isVisible ? "LOG DE TRÁFEGO ▶" : "LOG DE TRÁFEGO ▼");
 
-            // Ajusta o estilo se estiver fechado para arredondar em baixo
-            if (isVisible) {
-                notificationHeader.setStyle(notificationHeader.getStyle().replace("-fx-background-radius: 8 8 0 0;", "-fx-background-radius: 8;"));
+            if (!isVisible) {
+                notificationToggle.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-background-radius: 4; -fx-padding: 4 8;");
+                notificationToggle.setText("✖ FECHAR");
             } else {
-                notificationHeader.setStyle(notificationHeader.getStyle().replace("-fx-background-radius: 8;", "-fx-background-radius: 8 8 0 0;"));
+                notificationToggle.setStyle("-fx-background-color: rgba(30, 41, 59, 0.8); -fx-text-fill: #94a3b8; -fx-background-radius: 4; -fx-border-color: #475569; -fx-border-radius: 4; -fx-padding: 4 8;");
+                notificationToggle.setText("📄 LOG");
             }
         });
 
-        container.getChildren().addAll(notificationHeader, contentWrapper);
+        container.getChildren().addAll(notificationToggle, contentWrapper);
         return container;
     }
+
+    // --- MAPA COMPACTADO (Correção de Velocidade Visual) ---
+    private void setupGeographicallyAccurateMap() {
+        // Reduzi as distâncias verticais (Y) para evitar "linhas gigantes" onde o comboio parece voar.
+        // O mapa fica mais "apertado" verticalmente.
+
+        // --- LINHA DO MINHO ---
+        addStation("Valenca", 300, 100);
+        addStation("Sao Pedro da Torre", 305, 150); // Encurtado
+        addStation("Vila Nova de Cerveira", 290, 210);
+        addStation("Caminha", 280, 270);
+        addStation("Ancora Praia", 280, 320);
+        addStation("Afife", 280, 360);
+        addStation("Viana do Castelo", 280, 420); // Reduzido de 550 para 420
+
+        addStation("Barcelos", 350, 520);
+        addStation("Nine", 400, 600); // Reduzido de 780 para 600
+
+        // Ramal de Braga
+        addStation("Tadim", 450, 580);
+        addStation("Braga", 500, 570);
+
+        // Descendo para Porto (Compactado)
+        addStation("Famalicao", 400, 650);
+        addStation("Trofa", 400, 700);
+
+        // Ramal Guimarães
+        addStation("Santo Tirso", 450, 690);
+        addStation("Vizela", 500, 680);
+        addStation("Guimaraes", 550, 670);
+
+        // --- GRANDE PORTO (Compactado) ---
+        addStation("Ermesinde", 420, 760);
+        addStation("Rio Tinto", 410, 800);
+        addStation("Contumil", 400, 840);
+
+        // Porto Central
+        addStation("Porto Campanha", 380, 900); // Era 1200, agora 900. Muito mais perto.
+        addStation("Porto Sao Bento", 340, 930);
+
+        // --- LINHA DO DOURO ---
+        addStation("Valongo", 460, 770);
+        addStation("Paredes", 520, 780);
+        addStation("Penafiel", 580, 790);
+        addStation("Caide", 650, 800);
+        addStation("Marco de Canaveses", 750, 820);
+        addStation("Regua", 900, 850);
+        addStation("Pinhao", 1000, 860);
+        addStation("Pocinho", 1200, 870);
+
+        // --- SUL DO PORTO ---
+        addStation("General Torres", 380, 960);
+        addStation("Vila Nova de Gaia", 380, 1000);
+        addStation("Granja", 370, 1060);
+        addStation("Espinho", 360, 1120);
+        addStation("Esmoriz", 360, 1180);
+        addStation("Ovar", 355, 1260);
+        addStation("Estarreja", 350, 1340);
+        addStation("Aveiro", 340, 1450);
+
+        addStation("Mealhada", 360, 1550);
+        addStation("Pampilhosa", 370, 1620);
+        addStation("Coimbra B", 370, 1700);
+        addStation("Coimbra", 400, 1720);
+
+        addStation("Alfarelos", 350, 1780);
+        addStation("Pombal", 360, 1900);
+        addStation("Entroncamento", 380, 2100);
+        addStation("Lisboa Oriente", 300, 2400);
+        addStation("Lisboa Santa Apolonia", 280, 2480);
+
+        // --- LINHA DA BEIRA ALTA ---
+        addStation("Mortagua", 450, 1640);
+        addStation("Santa Comba Dao", 520, 1660);
+        addStation("Mangualde", 600, 1680);
+        addStation("Guarda", 800, 1660);
+        addStation("Vilar Formoso", 950, 1680);
+    }
+
+    // --- PAINEL DE SUCESSO ---
+    private VBox createSuccessPanel() {
+        VBox panel = new VBox(15);
+        panel.setAlignment(Pos.CENTER);
+        panel.setMaxSize(500, 320);
+        panel.setStyle("-fx-background-color: rgba(6, 78, 59, 0.95); -fx-background-radius: 15; -fx-border-color: #10b981; -fx-border-width: 3; -fx-effect: dropshadow(three-pass-box, rgba(16, 185, 129, 0.4), 50, 0, 0, 0);");
+
+        Label icon = new Label("✔ SUCESSO");
+        icon.setStyle("-fx-text-fill: #10b981; -fx-font-size: 32px; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, black, 2, 1, 0, 0);");
+
+        Label title = new Label("SIMULAÇÃO TERMINADA");
+        title.setStyle("-fx-text-fill: white; -fx-font-size: 22px; -fx-font-weight: bold;");
+
+        Label desc = new Label("Todos os conflitos foram resolvidos e os horários cumpridos.");
+        desc.setStyle("-fx-text-fill: #d1fae5; -fx-font-size: 16px; -fx-text-alignment: center;");
+        desc.setWrapText(true);
+
+        Button btnRestart = new Button("FECHAR / REINICIAR");
+        btnRestart.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12 30; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 14px;");
+        btnRestart.setOnAction(e -> panel.setVisible(false));
+
+        panel.getChildren().addAll(icon, title, desc, btnRestart);
+        panel.setVisible(false);
+        return panel;
+    }
+
+    private void showSuccessPanel() {
+        if (!successPanel.isVisible()) {
+            successPanel.setVisible(true);
+            successPanel.toFront();
+            ScaleTransition st = new ScaleTransition(Duration.millis(500), successPanel);
+            st.setFromX(0.5); st.setFromY(0.5); st.setToX(1.0); st.setToY(1.0); st.play();
+        }
+    }
+
+    // --- (Resto do código de lógica de simulação e desenho mantido igual) ---
 
     public void addLog(String msg, boolean isCritical) {
         Label lbl = new Label((isCritical ? "⚠ " : "➤ ") + msg);
         lbl.setWrapText(true);
-        lbl.setMaxWidth(270);
-        lbl.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 12));
+        lbl.setMaxWidth(220);
+        lbl.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 11));
 
         if (isCritical) {
-            lbl.setStyle("-fx-text-fill: #ff6b6b; -fx-font-weight: bold; -fx-background-color: rgba(255,0,0,0.1); -fx-padding: 3; -fx-background-radius: 3;");
+            lbl.setStyle("-fx-text-fill: #ff6b6b; -fx-font-weight: bold; -fx-background-color: rgba(255,0,0,0.15); -fx-padding: 3; -fx-background-radius: 3;");
         } else {
             lbl.setStyle("-fx-text-fill: #cbd5e1; -fx-padding: 2;");
         }
-
         notificationContent.getChildren().add(0, lbl);
+        if (notificationContent.getChildren().size() > 30) notificationContent.getChildren().remove(30, notificationContent.getChildren().size());
+    }
 
-        if (notificationContent.getChildren().size() > 40) {
-            notificationContent.getChildren().remove(40, notificationContent.getChildren().size());
+    private Point2D getCoordinates(String name) {
+        String key = normalize(name);
+        if (stationCoordinates.containsKey(key)) return stationCoordinates.get(key);
+        for (String k : stationCoordinates.keySet()) if (k.contains(key) || key.contains(k)) return stationCoordinates.get(k);
+        if (!autoGeneratedCoordinates.containsKey(key)) {
+            double autoX = 150;
+            double autoY = 400 + (autoGeneratedCoordinates.size() * 30);
+            autoGeneratedCoordinates.put(key, new Point2D(autoX, autoY));
         }
+        return autoGeneratedCoordinates.get(key);
     }
 
-    // --- COORDENADAS REAIS MAPA PORTUGAL (Escalado para 800x600) ---
-    private void setupRealisticMapCoordinates() {
-        // Baseado na geografia real mas compactado para caber no ecrã.
-        // X aumenta para a direita (Este), Y aumenta para baixo (Sul)
-
-        // --- LINHA DO MINHO (Norte Litoral) ---
-        addStation("Valenca", 250, 50);
-        addStation("Sao Pedro da Torre", 250, 80);
-        addStation("Vila Nova de Cerveira", 240, 110);
-        addStation("Caminha", 230, 140);
-        addStation("Ancora Praia", 230, 170);
-        addStation("Afife", 230, 200);
-        addStation("Viana do Castelo", 230, 230);
-        addStation("Barcelos", 260, 280);
-
-        // --- RAMAL DE BRAGA & NINE ---
-        addStation("Nine", 300, 310); // Ponto de encontro
-        addStation("Tadim", 340, 300);
-        addStation("Braga", 380, 290); // Braga é a Este de Nine
-
-        // --- DESCIDA PARA O PORTO ---
-        addStation("Famalicao", 300, 340);
-        addStation("Trofa", 300, 370);
-
-        // Guimarães (Nordeste do Porto)
-        addStation("Santo Tirso", 350, 360);
-        addStation("Guimaraes", 400, 350);
-
-        // --- GRANDE PORTO (Centro do Canvas, ligeiramente à esquerda) ---
-        addStation("Ermesinde", 320, 400); // Hub crítico
-        addStation("Rio Tinto", 310, 420);
-        addStation("Contumil", 300, 435);
-        addStation("Porto Campanha", 280, 450); // O CORAÇÃO DO SISTEMA
-        addStation("Porto Sao Bento", 250, 455); // Mais a Oeste
-
-        // --- LINHA DO DOURO (Estende-se para Este/Direita) ---
-        addStation("Valongo", 360, 410);
-        addStation("Paredes", 400, 415);
-        addStation("Penafiel", 430, 420);
-        addStation("Caide", 480, 425);
-        addStation("Marco de Canaveses", 530, 430);
-        addStation("Regua", 650, 450);
-        addStation("Pinhao", 720, 460);
-        addStation("Pocinho", 850, 470); // Extremo Este
-
-        // --- LINHA DO NORTE (Desce para Sul) ---
-        addStation("Vila Nova de Gaia", 280, 480); // Logo abaixo do Douro
-        addStation("Granja", 280, 510);
-        addStation("Espinho", 270, 530);
-        addStation("Ovar", 260, 570);
-        addStation("Aveiro", 250, 630);
-        addStation("Coimbra B", 240, 750); // Bem mais a sul
-        addStation("Entroncamento", 200, 900); // Nó ferroviário
-        addStation("Lisboa Oriente", 150, 1100);
-        addStation("Lisboa Santa Apolonia", 140, 1150);
+    private String normalize(String s) {
+        if (s == null) return "";
+        String temp = Normalizer.normalize(s, Normalizer.Form.NFD);
+        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
+        return pattern.matcher(temp).replaceAll("").toLowerCase().trim()
+                .replace(" - ", " ").replace("-", " ")
+                .replace("ç", "c").replace("ã", "a").replace("õ", "o").replace("é", "e")
+                .replace("í", "i").replace("á", "a").replace("â", "a");
     }
 
-    // --- RESTO DO CÓDIGO (Lógica Visual e Simulação) ---
+    private void addStation(String name, double x, double y) {
+        stationCoordinates.put(normalize(name), new Point2D(x, y));
+    }
+
+    private Button createGlassButton(String text) {
+        Button btn = new Button(text);
+        btn.setStyle("-fx-background-color: rgba(255, 255, 255, 0.1); -fx-text-fill: white; -fx-font-weight: bold; -fx-min-width: 30px; -fx-background-radius: 5; -fx-border-color: rgba(255,255,255,0.2);");
+        return btn;
+    }
 
     private VBox createConflictPanel() {
         VBox panel = new VBox(15);
@@ -268,7 +367,6 @@ public class RailMapVisualizer extends StackPane {
         btn.setOnAction(e -> {
             panel.setVisible(false);
             isPausedByConflict = false;
-            // 3 Segundos de câmara lenta
             isSlowMotionReplay = true;
             speedFactor = 1.0;
             slowMotionEndTime = System.currentTimeMillis() + 3000;
@@ -280,39 +378,13 @@ public class RailMapVisualizer extends StackPane {
         return panel;
     }
 
-    // [MÉTODOS HELPER IGUAIS: normalize, addStation, getCoordinates]
-    private String normalize(String s) {
-        if (s == null) return "";
-        String temp = Normalizer.normalize(s, Normalizer.Form.NFD);
-        Pattern pattern = Pattern.compile("\\p{InCombiningDiacriticalMarks}+");
-        return pattern.matcher(temp).replaceAll("").toLowerCase().trim()
-                .replace(" - ", " ").replace("-", " ")
-                .replace("ç", "c").replace("ã", "a").replace("õ", "o").replace("é", "e");
-    }
-
-    private void addStation(String name, double x, double y) {
-        stationCoordinates.put(normalize(name), new Point2D(x, y));
-    }
-
-    private Point2D getCoordinates(String name) {
-        String key = normalize(name);
-        if (stationCoordinates.containsKey(key)) return stationCoordinates.get(key);
-        for (String k : stationCoordinates.keySet()) {
-            if (k.contains(key) || key.contains(k)) return stationCoordinates.get(k);
-        }
-        if (!autoGeneratedCoordinates.containsKey(key)) {
-            autoGeneratedCoordinates.put(key, new Point2D(1000, 500 + autoGeneratedCoordinates.size() * 50));
-        }
-        return autoGeneratedCoordinates.get(key);
-    }
-
-    // [LÓGICA DE DADOS - IGUAL]
     public void loadSchedule(Map<Train, List<String>> trainSchedules, LocalTime time) {
         segments.clear();
         allTrains.clear();
         conflictRegistry.clear();
         notificationContent.getChildren().clear();
         conflictPanel.setVisible(false);
+        successPanel.setVisible(false);
         isFinished = false;
 
         LocalTime minT = LocalTime.MAX;
@@ -378,12 +450,11 @@ public class RailMapVisualizer extends StackPane {
 
         autoCameraMode = true;
         btnAutoCam.setSelected(true);
-        scale = 0.6; translateX = 0; translateY = 0;
+        scale = 0.6; // Ajuste de zoom inicial
         updateFrame();
         addLog("Rede carregada.", false);
     }
 
-    // [SIMULAÇÃO LOOP - IGUAL]
     public void startAnimation() {
         if (timer != null) timer.stop();
         if (allTrains.isEmpty()) return;
@@ -403,17 +474,13 @@ public class RailMapVisualizer extends StackPane {
                         conflictFocusTrain = null;
                         addLog("Velocidade normalizada.", false);
                     }
-
                     checkDepartures();
-
-                    if (!isPausedByConflict && !isSlowMotionReplay) {
-                        checkForConflicts();
-                    }
-
+                    if (!isPausedByConflict && !isSlowMotionReplay) checkForConflicts();
                     if (!isPausedByConflict) {
                         if (simulationTime.isAfter(maxSimulationTime)) {
                             isFinished = true;
                             addLog("Fim da Simulação.", false);
+                            showSuccessPanel();
                         } else {
                             simulationTime = simulationTime.plusSeconds((long) (elapsed * speedFactor));
                         }
@@ -432,7 +499,6 @@ public class RailMapVisualizer extends StackPane {
             if (vt.movements.isEmpty()) continue;
             LocalTime ref = (vt.scheduledStart != null) ? vt.scheduledStart : vt.movements.get(0).start;
             long minToStart = ChronoUnit.MINUTES.between(simulationTime, ref);
-
             if (minToStart >= 0 && minToStart <= 10 && !vt.notifiedStart) {
                 addLog("Partida: " + vt.train.getTrainId() + " (" + minToStart + " min)", false);
                 vt.notifiedStart = true;
@@ -442,11 +508,7 @@ public class RailMapVisualizer extends StackPane {
 
     private void checkForConflicts() {
         for (VisualTrain vt : allTrains) {
-            if (vt.hasInitialConflict &&
-                    !simulationTime.isBefore(vt.scheduledStart) &&
-                    simulationTime.isBefore(vt.movements.get(0).start) &&
-                    !vt.isWaitNotified) {
-
+            if (vt.hasInitialConflict && !simulationTime.isBefore(vt.scheduledStart) && simulationTime.isBefore(vt.movements.get(0).start) && !vt.isWaitNotified) {
                 triggerConflictPause(vt, "Atraso (" + vt.initialDelayMinutes + " min) - Aguarda via livre");
                 vt.isWaitNotified = true;
                 break;
@@ -456,9 +518,7 @@ public class RailMapVisualizer extends StackPane {
                 vt.isWaitNotified = true;
                 break;
             }
-            if (!vt.hasInitialConflict && !vt.isWaitingBetweenStations(simulationTime)) {
-                vt.isWaitNotified = false;
-            }
+            if (!vt.hasInitialConflict && !vt.isWaitingBetweenStations(simulationTime)) vt.isWaitNotified = false;
         }
     }
 
@@ -467,23 +527,18 @@ public class RailMapVisualizer extends StackPane {
         isPausedByConflict = true;
         conflictFocusTrain = t;
         speedFactor = 0;
-
         Label desc = (Label) conflictPanel.lookup("#conflictDesc");
-        if(desc != null) {
-            desc.setText("COMBOIO: " + t.train.getTrainId() + "\nLOCAL: " + t.getCurrentLocationName(simulationTime) +
-                    "\nMOTIVO: " + reason);
-        }
+        if(desc != null) desc.setText("COMBOIO: " + t.train.getTrainId() + "\nLOCAL: " + t.getCurrentLocationName(simulationTime) + "\nMOTIVO: " + reason);
         addLog("⚠ CONFLITO: " + t.train.getTrainId(), true);
         conflictPanel.setVisible(true);
         conflictPanel.toFront();
         autoCameraMode = false;
     }
 
-    // [VISUALIZAÇÃO - UPDATE FRAME]
     private void updateFrame() {
         GraphicsContext gc = canvas.getGraphicsContext2D();
         double w = getWidth(); double h = getHeight();
-        gc.setFill(Color.web("#0f172a"));
+        gc.setFill(Color.web("#0b1120"));
         gc.fillRect(0, 0, w, h);
         gc.save();
         gc.translate(translateX, translateY);
@@ -491,7 +546,6 @@ public class RailMapVisualizer extends StackPane {
         double viewScale = 1.0 / Math.max(0.2, scale);
 
         gc.setLineCap(javafx.scene.shape.StrokeLineCap.ROUND);
-
         for (VisualSegment s : segments) {
             double width = (s.isDouble ? 3.0 : 1.5) * viewScale;
             gc.setStroke(Color.rgb(255,255,255,0.1));
@@ -509,10 +563,8 @@ public class RailMapVisualizer extends StackPane {
             drawStation(gc, s.origName, s.p1, viewScale, drawn);
             drawStation(gc, s.destName, s.p2, viewScale, drawn);
         }
-
         for (VisualTrain t : allTrains) drawTrain(gc, t, viewScale);
         gc.restore();
-
         if (simulationTime != null) clockLabel.setText(simulationTime.format(DateTimeFormatter.ofPattern("HH:mm:ss")));
     }
 
@@ -522,8 +574,7 @@ public class RailMapVisualizer extends StackPane {
         double r = 2.5 * vs;
         gc.setFill(Color.WHITE);
         gc.fillOval(pos.getX() - r, pos.getY() - r, r*2, r*2);
-
-        if (scale > 0.6) {
+        if (scale > 0.3) {
             gc.setFont(Font.font("Arial", 9 * vs));
             gc.setFill(Color.web("#94a3b8"));
             gc.fillText(name, pos.getX() + r + 4, pos.getY() + 3*vs);
@@ -533,28 +584,22 @@ public class RailMapVisualizer extends StackPane {
     private void drawTrain(GraphicsContext gc, VisualTrain t, double vs) {
         Point2D p = t.getPosition(simulationTime);
         if (p == null) return;
-
         boolean waiting = t.isWaitingOrDelayed(simulationTime);
         boolean isFocus = (t == conflictFocusTrain);
-
         if (isPausedByConflict && !isFocus) gc.setGlobalAlpha(0.2);
-
         double r = (isFocus ? 10.0 : 6.0) * vs;
         Color c = waiting ? Color.web("#ef4444") : Color.web("#10b981");
-
         if (waiting || isFocus) {
             double pulse = r * (1.2 + 0.2 * Math.sin(System.currentTimeMillis() / 100.0));
             gc.setStroke(Color.web("#ef4444", 0.7));
             gc.setLineWidth(1.5 * vs);
             gc.strokeOval(p.getX() - pulse, p.getY() - pulse, pulse*2, pulse*2);
         }
-
         gc.setFill(c);
         gc.setEffect(new DropShadow(5 * vs, c));
         gc.fillOval(p.getX() - r, p.getY() - r, r*2, r*2);
         gc.setEffect(null);
-
-        if (scale > 0.6 || isFocus || waiting) {
+        if (scale > 0.4 || isFocus || waiting) {
             gc.setFill(Color.WHITE);
             gc.setFont(Font.font("Arial", FontWeight.BOLD, 9 * vs));
             gc.fillText(t.train.getTrainId(), p.getX() + r + 2, p.getY() - r);
@@ -562,7 +607,6 @@ public class RailMapVisualizer extends StackPane {
         gc.setGlobalAlpha(1.0);
     }
 
-    // [CÂMARA AUTOMÁTICA INTELIGENTE]
     private void updateCameraLogic() {
         if (conflictFocusTrain != null && isPausedByConflict) {
             Point2D p = conflictFocusTrain.getPosition(simulationTime);
@@ -574,14 +618,11 @@ public class RailMapVisualizer extends StackPane {
             }
             return;
         }
-
         if (!autoCameraMode) return;
-
         double sumX = 0, sumY = 0;
         int count = 0;
         double minX = Double.MAX_VALUE, maxX = -Double.MAX_VALUE;
         double minY = Double.MAX_VALUE, maxY = -Double.MAX_VALUE;
-
         if (simulationTime != null) {
             for (VisualTrain vt : allTrains) {
                 if (vt.isActive(simulationTime) || vt.hasInitialConflict) {
@@ -595,27 +636,20 @@ public class RailMapVisualizer extends StackPane {
                 }
             }
         }
-
         if (count == 0) return;
-
         double centerX = sumX / count;
         double centerY = sumY / count;
-
-        // Se houver só um comboio, foca nele
         if (count == 1) {
             targetScale = 1.5;
         } else {
-            // Se houver vários, tenta enquadrar todos com margem
             double width = Math.max(300, maxX - minX);
             double height = Math.max(300, maxY - minY);
             double scaleX = (getWidth() - 150) / width;
             double scaleY = (getHeight() - 150) / height;
-            targetScale = Math.max(0.5, Math.min(Math.min(scaleX, scaleY), 1.5));
+            targetScale = Math.max(0.4, Math.min(Math.min(scaleX, scaleY), 1.5));
         }
-
         targetTranslateX = (getWidth() / 2.0) - (centerX * targetScale);
         targetTranslateY = (getHeight() / 2.0) - (centerY * targetScale);
-
         applyCameraSmoothing();
     }
 
@@ -636,17 +670,10 @@ public class RailMapVisualizer extends StackPane {
         });
     }
 
-    private Button createGlassButton(String text) {
-        Button btn = new Button(text);
-        btn.setStyle("-fx-background-color: rgba(255, 255, 255, 0.1); -fx-text-fill: white; -fx-font-weight: bold; -fx-min-width: 30px; -fx-background-radius: 5; -fx-border-color: rgba(255,255,255,0.2);");
-        return btn;
-    }
-
     public void setSpeedFactor(double f) { userSpeedSetting = f; if(!isSlowMotionReplay && !isPausedByConflict) speedFactor = f; }
     public void stopAnimation() { if(timer != null) timer.stop(); }
     private void manualZoom(double f) { autoCameraMode = false; btnAutoCam.setSelected(false); targetScale *= f; }
 
-    // --- CLASSES INTERNAS ---
     private static class ConflictInfo {
         String station; int delayMinutes;
         ConflictInfo(String s, int d) { this.station = s; this.delayMinutes = d; }
@@ -671,9 +698,7 @@ public class RailMapVisualizer extends StackPane {
             return isWaitingBetweenStations(t);
         }
         boolean isWaitingBetweenStations(LocalTime t) {
-            for (int i = 0; i < movements.size() - 1; i++) {
-                if (t.isAfter(movements.get(i).end) && t.isBefore(movements.get(i+1).start)) return true;
-            }
+            for (int i = 0; i < movements.size() - 1; i++) if (t.isAfter(movements.get(i).end) && t.isBefore(movements.get(i+1).start)) return true;
             return false;
         }
         boolean isActive(LocalTime t) {
@@ -696,9 +721,7 @@ public class RailMapVisualizer extends StackPane {
                     return new Point2D(m.p1.getX() + (m.p2.getX() - m.p1.getX()) * r, m.p1.getY() + (m.p2.getY() - m.p1.getY()) * r);
                 }
             }
-            for (int i = 0; i < movements.size() - 1; i++) {
-                if (t.isAfter(movements.get(i).end) && t.isBefore(movements.get(i + 1).start)) return movements.get(i).p2;
-            }
+            for (int i = 0; i < movements.size() - 1; i++) if (t.isAfter(movements.get(i).end) && t.isBefore(movements.get(i + 1).start)) return movements.get(i).p2;
             if (!movements.isEmpty() && t.isBefore(movements.get(0).start)) {
                 LocalTime ref = hasInitialConflict ? scheduledStart : movements.get(0).start;
                 if (java.time.Duration.between(t, ref).toMinutes() <= 15) return movements.get(0).p1;
@@ -708,9 +731,7 @@ public class RailMapVisualizer extends StackPane {
         String getCurrentLocationName(LocalTime t) {
             if (t == null || movements.isEmpty()) return "?";
             if (hasInitialConflict && t.isBefore(movements.get(0).start)) return movements.get(0).fromStation;
-            for (int i = 0; i < movements.size() - 1; i++) {
-                if (t.isAfter(movements.get(i).end) && t.isBefore(movements.get(i+1).start)) return movements.get(i).destStation;
-            }
+            for (int i = 0; i < movements.size() - 1; i++) if (t.isAfter(movements.get(i).end) && t.isBefore(movements.get(i+1).start)) return movements.get(i).destStation;
             return "Em linha";
         }
     }
