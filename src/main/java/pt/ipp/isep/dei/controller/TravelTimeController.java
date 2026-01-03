@@ -243,6 +243,7 @@ public class TravelTimeController {
     /**
      * USEI11 - Gera o plano de upgrade ordenado para a rede da Bélgica.
      */
+
     public String generateBelgiumUpgradePlan() {
         // 1. Reset (Limpar dados antigos do serviço, se tiver método clear/reset)
         // upgradeService = new UpgradePlanService(); // O ideal é criar um novo ou limpar
