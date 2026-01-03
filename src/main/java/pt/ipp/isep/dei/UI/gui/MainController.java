@@ -9,7 +9,6 @@ import javafx.scene.layout.AnchorPane;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.VBox;
 import pt.ipp.isep.dei.UI.gui.views.*;
-import pt.ipp.isep.dei.UI.gui.views.TrainCRUDController;
 import pt.ipp.isep.dei.controller.TravelTimeController;
 import pt.ipp.isep.dei.domain.*;
 import javafx.animation.FadeTransition;
@@ -20,6 +19,7 @@ import pt.ipp.isep.dei.repository.LocomotiveRepository;
 import pt.ipp.isep.dei.repository.TrainRepository;
 import pt.ipp.isep.dei.repository.StationRepository;
 import pt.ipp.isep.dei.repository.SegmentLineRepository;
+import pt.ipp.isep.dei.repository.WagonRepository;
 
 import java.io.IOException;
 import java.net.URL;
@@ -27,7 +27,7 @@ import java.net.URL;
 /**
  * Main Controller for the JavaFX application.
  * Manages view navigation, dependency injection into sub-controllers,
- * and maintains global application state (e.g., last results, run status).
+ * and maintains global application state.
  */
 public class MainController {
 
@@ -58,6 +58,7 @@ public class MainController {
     private TrainRepository trainRepository = new TrainRepository();
     private FacilityRepository facilityRepository = new FacilityRepository();
     private LocomotiveRepository locomotiveRepository = new LocomotiveRepository();
+    private WagonRepository wagonRepository = new WagonRepository();
     private StationRepository stationRepository = new StationRepository();
     private SegmentLineRepository segmentLineRepository = new SegmentLineRepository();
 
@@ -91,7 +92,7 @@ public class MainController {
 
 
     /**
-     * Sets the core backend services (WMS, InventoryManager, Controllers).
+     * Sets the core backend services.
      */
     public void setBackendServices(WMS wms, InventoryManager manager,
                                    TravelTimeController ttc,
@@ -102,8 +103,10 @@ public class MainController {
         this.stationIndexManager = sim;
         this.spatialKDTree = kdt;
 
-        statusLabel.setText(String.format("Welcome! %d items, %d boxes in inventory.",
-                manager.getItemsCount(), wms.getInventory().getBoxes().size()));
+        if (statusLabel != null) {
+            statusLabel.setText(String.format("Welcome! %d items, %d boxes in inventory.",
+                    manager.getItemsCount(), wms.getInventory().getBoxes().size()));
+        }
     }
 
     @FXML
@@ -181,9 +184,6 @@ public class MainController {
                     ((Usei10Controller) controller).setServices(this, (StationIndexManager) backendService);
                 }
             }
-            // ✅ USEI12 and USEI14 Controllers are self-contained (they init their own services),
-            // so no explicit injection is strictly needed here, unless you want to pass main controller.
-
             else if (controller instanceof BDDADMainController) {
                 if (backendService instanceof MainController) {
                     ((BDDADMainController) controller).setServices((MainController) backendService);
@@ -324,18 +324,24 @@ public class MainController {
         loadView("esinf-usei10-view.fxml", this.stationIndexManager);
     }
 
-    // ✅ --- NEW HANDLER FOR USEI12 ---
     @FXML
     public void handleShowUSEI12(ActionEvent event) {
         statusLabel.setText("Minimal Backbone Network [USEI12]");
         loadView("esinf-usei12-view.fxml", null);
     }
 
-    // ✅ --- NEW HANDLER FOR USEI14 ---
     @FXML
     public void handleShowUSEI14(ActionEvent event) {
         statusLabel.setText("Max Throughput Analysis [USEI14]");
         loadView("esinf-usei14-view.fxml", null);
+    }
+
+    // --- USLP09 Handler: Redireciona para o Train CRUD ---
+    @FXML
+    public void handleShowUSLP09(ActionEvent event) {
+        statusLabel.setText("USLP09 - Assemble Train (Train CRUD)");
+        // Chama a vista existente do Train CRUD
+        loadTrainCrudView();
     }
 
     @FXML
@@ -353,26 +359,18 @@ public class MainController {
 
     @FXML
     public void handleShowSimulation(ActionEvent event) {
-        statusLabel.setText("USLP07 - Full Simulation and Conflicts (Com Visualização)");
+        statusLabel.setText("USLP07 - Full Simulation and Conflicts");
 
         try {
-            // [CORREÇÃO 1] Apontar para o NOVO ficheiro FXML que criámos (o que tem o mapa)
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/train-simulation-view.fxml"));
-
-            // [CORREÇÃO 2] Carregar primeiro! O loader vai instanciar o Controller definido no FXML automatically
             Parent root = loader.load();
-
-            // [CORREÇÃO 3] Obter a instância do controller que o Loader criou
             TrainSimulationController controller = loader.getController();
 
-            // [CORREÇÃO 4] Injetar as dependências nessa instância
             if (controller != null) {
                 controller.setDependencies(this, this.facilityRepository, this.dispatcherService, this.locomotiveRepository);
                 controller.initController();
-                // Nota: Não precisas de definir o botão 'setOnAction' aqui, o FXML novo já tem onAction="#runSimulation"
             }
 
-            // Colocar a vista no ecrã
             this.centerContentPane.getChildren().clear();
             this.centerContentPane.getChildren().add(root);
             AnchorPane.setTopAnchor(root, 0.0);
@@ -388,13 +386,14 @@ public class MainController {
     }
 
     public void loadTrainCrudView() {
-        statusLabel.setText("BDDAD Features: Train CRUD");
+        statusLabel.setText("BDDAD Features: Train CRUD / USLP09");
         centerContentPane.getChildren().clear();
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("/train-crud-view.fxml"));
             Parent root = loader.load();
             TrainCRUDController controller = loader.getController();
             if (controller != null) {
+                // Injeta as dependências necessárias para o CRUD
                 controller.setDependencies(this, this.trainRepository, this.facilityRepository, this.locomotiveRepository, this.networkService);
                 controller.initController();
             }
@@ -404,6 +403,7 @@ public class MainController {
             AnchorPane.setRightAnchor(root, 0.0);
             AnchorPane.setBottomAnchor(root, 0.0);
         } catch (Exception e) {
+            e.printStackTrace();
             statusLabel.setText("❌ Error loading Train CRUD view.");
         }
     }
@@ -417,18 +417,30 @@ public class MainController {
                 this.showNotification("Error: Could not find FXML for BDDAD Queries.", "error");
                 return;
             }
+
             FXMLLoader loader = new FXMLLoader(fxmlUrl);
-            BDADQueriesController controller = new BDADQueriesController();
-            controller.setMainController(this);
-            loader.setController(controller);
+
+            // --- CORREÇÃO AQUI ---
+            // Removemos: loader.setController(new BDADQueriesController());
+            // Deixamos o loader carregar o controlador definido no FXML:
             Parent root = loader.load();
+
+            // Recuperamos o controlador já criado pelo FXML
+            Object controller = loader.getController();
+            if (controller instanceof BDADQueriesController) {
+                ((BDADQueriesController) controller).setMainController(this);
+            }
+            // ---------------------
+
             this.centerContentPane.getChildren().clear();
             this.centerContentPane.getChildren().add(root);
             AnchorPane.setTopAnchor(root, 0.0);
             AnchorPane.setBottomAnchor(root, 0.0);
             AnchorPane.setLeftAnchor(root, 0.0);
             AnchorPane.setRightAnchor(root, 0.0);
+
         } catch (IOException e) {
+            e.printStackTrace(); // Isto ajuda a ver o erro na consola se persistir
             this.showNotification("Failed to load BDDAD Queries view: " + e.getMessage(), "error");
         }
     }
