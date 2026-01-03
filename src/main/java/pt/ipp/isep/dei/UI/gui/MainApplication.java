@@ -56,8 +56,10 @@ public class MainApplication extends Application {
             StationRepository estacaoRepo = new StationRepository();
             LocomotiveRepository locomotivaRepo = new LocomotiveRepository();
             SegmentLineRepository segmentoRepo = new SegmentLineRepository();
+            UpgradePlanService upgradeService = new UpgradePlanService();
+
             RailwayNetworkService networkService = new RailwayNetworkService(estacaoRepo, segmentoRepo);
-            travelTimeController = new TravelTimeController(estacaoRepo, locomotivaRepo, networkService, segmentoRepo);
+            travelTimeController = new TravelTimeController(estacaoRepo, locomotivaRepo, networkService, segmentoRepo, upgradeService);
             stationIndexManager = new StationIndexManager();
             List<EuropeanStation> europeanStations = manager.loadEuropeanStations("src/main/java/pt/ipp/isep/dei/FicheirosCSV/train_stations_europe.csv");
             stationIndexManager.buildIndexes(europeanStations);
