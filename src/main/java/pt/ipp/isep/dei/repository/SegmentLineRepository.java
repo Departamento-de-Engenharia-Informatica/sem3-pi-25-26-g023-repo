@@ -18,13 +18,19 @@ public class SegmentLineRepository {
     // Constant to prefix inverse segment IDs (CRITICAL FOR CONFLICTS)
     public static final String INVERSE_ID_PREFIX = "INV_";
     private static final double GENERIC_MAX_SPEED_KMH = 150.0;
+    private final List<LineSegment> inMemorySegments = new ArrayList<>();
 
     private final Map<String, LineSegment> segmentCache = new HashMap<>();
 
     // 🚨 TEMPORARY MOCK FOR FACILITY <-> SEGMENT LINKAGE 🚨
     private final Map<Integer, Integer[]> segmentFacilityMapping = new HashMap<>();
 
-
+    public void cleanDatabaseData() {
+        this.segmentCache.clear();
+        this.inMemorySegments.clear();
+        // Se estiver a usar a lista segmentFacilityMapping, limpe-a também, mas o crucial é o cache.
+        System.out.println("🧹 Repository cleaned: Old database data removed.");
+    }
     /**
      * Constructs the Segment Line Repository and initializes data loading.
      */
@@ -58,8 +64,31 @@ public class SegmentLineRepository {
         segmentFacilityMapping.put(21, new Integer[]{21, 16});
         segmentFacilityMapping.put(22, new Integer[]{16, 11});
     }
+    /**
+     * Guarda um segmento no Cache principal.
+     * Isto permite que o Main injete dados do CSV e o Controller os encontre.
+     */
+    public void save(LineSegment segment) {
+        if (segment != null) {
+            // CORREÇÃO CRÍTICA: Guardar no segmentCache, não na lista isolada!
+            // Assumindo que getIdSegmento() devolve int ou String, convertemos para String para ser a chave.
+            String idKey = String.valueOf(segment.getIdSegmento());
 
+            // Adiciona ou atualiza no mapa que o findAll usa
+            this.segmentCache.put(idKey, segment);
 
+            // Se quiser manter a lista por compatibilidade, pode, mas o importante é o Cache:
+            this.inMemorySegments.add(segment);
+        }
+    }
+
+    /**
+     * Retorna todos os segmentos (BD + CSV injetado).
+     */
+    public List<LineSegment> findAll() {
+        // Agora que o save() escreve no segmentCache, este método vai devolver TUDO (311 + 38)
+        return new ArrayList<>(segmentCache.values());
+    }
     /**
      * Loads segment data from the LINE_SEGMENT database table and creates inverse segments.
      */
@@ -168,12 +197,6 @@ public class SegmentLineRepository {
                 .filter(s -> (s.getIdEstacaoInicio() == stationAId && s.getIdEstacaoFim() == stationBId))
                 .findFirst();
     }
-
-    /**
-     * Returns all segments (original and inverse) currently loaded in the cache.
-     * @return A list of all {@link LineSegment} objects.
-     */
-    public List<LineSegment> findAll() { return new ArrayList<>(segmentCache.values()); }
 
     /**
      * Helper method to calculate line lengths (Currently unused/placeholder).

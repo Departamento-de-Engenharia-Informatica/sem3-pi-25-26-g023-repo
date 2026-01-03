@@ -61,8 +61,8 @@ public class StationRepository {
      */
     private void loadStationsFullDetail() throws SQLException {
         Set<Integer> uniqueFacilityIds = new HashSet<>();
-
-        // Pode falhar se RAILWAY_LINE não tiver start_facility_id
+// Verifique se os nomes são estes. Se der erro de "identificador inválido",
+// é porque na BD estas colunas chamam-se de outra forma.
         String sqlGetIds = "SELECT start_facility_id, end_facility_id FROM RAILWAY_LINE";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -80,6 +80,7 @@ public class StationRepository {
         // Pode falhar se FACILITY não tiver latitude/longitude
         String sqlGetDetailsBase = "SELECT facility_id, name, country, time_zone_group, latitude, longitude, is_city, is_main_station, is_airport FROM FACILITY WHERE facility_id IN (";
         StringBuilder sqlGetDetails = new StringBuilder(sqlGetDetailsBase);
+
         sqlGetDetails.append(uniqueFacilityIds.stream().map(String::valueOf).collect(Collectors.joining(",")));
         sqlGetDetails.append(") ORDER BY facility_id");
 
@@ -108,6 +109,7 @@ public class StationRepository {
      * Lê apenas da tabela FACILITY e inventa as coordenadas para a UI não rebentar.
      */
     private void loadStationsBasic() throws SQLException {
+        // Retirámos o "country" daqui porque a BD diz que a coluna não existe
         String sql = "SELECT facility_id, name FROM FACILITY";
 
         try (Connection conn = DatabaseConnection.getConnection();
@@ -115,17 +117,13 @@ public class StationRepository {
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                // Preenchemos os dados em falta com valores default
                 loadedEstacoes.add(new EuropeanStation(
                         rs.getInt("facility_id"),
                         rs.getString("name"),
-                        "PT", // Default Country
-                        "GMT", // Default Timezone
-                        41.15 + (Math.random() * 0.5), // Fake Lat (Porto area) para permitir calculo distancia
-                        -8.62 + (Math.random() * 0.5), // Fake Lon
-                        true,  // is_city
-                        false, // is_main
-                        false  // is_airport
+                        "BE", // Forçamos "BE" aqui para o filtro da USEI11 funcionar sempre
+                        "GMT",
+                        0.0, 0.0, // Coordenadas a zero pois o modo básico não as tem
+                        true, false, false
                 ));
             }
         }
