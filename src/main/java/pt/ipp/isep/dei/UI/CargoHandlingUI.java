@@ -82,7 +82,7 @@ public class CargoHandlingUI implements Runnable {
         do {
             showMenu();
             try {
-                option = readInt(0, 18, ANSI_BOLD + "Option: " + ANSI_RESET);
+                option = readInt(0, 19, ANSI_BOLD + "Option: " + ANSI_RESET);
                 handleOption(option);
             } catch (InputMismatchException e) {
                 showError("Invalid input. Please enter a number.");
@@ -115,6 +115,7 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + " 9. " + ANSI_RESET + "[USEI08] Spatial Queries - Search by Area (S2)");
         System.out.println(ANSI_GREEN + "10. " + ANSI_RESET + "[USEI09] Proximity Search - Nearest N (S2)");
         System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "[USEI10] Radius Search & Density Summary (S2)");
+        System.out.println(ANSI_GREEN + "19. " + ANSI_RESET + "[USEI11] Directed Line Upgrade Plan (Belgium) (S3)");
         System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "[USEI12] Minimal Backbone Network (S3)");
         System.out.println(ANSI_GREEN + "13. " + ANSI_RESET + "[USLP07] Run Full Simulation & Conflicts (S3)");
         System.out.println(ANSI_GREEN + "17. " + ANSI_RESET + "[USEI13] Rail Hub Centrality Analysis (S3)");
@@ -155,6 +156,7 @@ public class CargoHandlingUI implements Runnable {
             case 16: handleViewWarehouseInfo(); break;
             case 17: handleRailHubAnalysis(); break;
             case 18: handleRiskAwarePath(); break;
+            case 19: handleBelgiumUpgradePlan(); break;
             case 0: System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET); break;
             default: showError("Invalid option. Please select a valid number from the menu."); break;
         }
@@ -1235,6 +1237,31 @@ public class CargoHandlingUI implements Runnable {
             }
         } while (!input.equals("E"));
         showInfo("Exited query view.");
+    }
+
+    /**
+     * USEI11 - Lógica de Interface para o Plano de Upgrade da Bélgica.
+     */
+    private void handleBelgiumUpgradePlan() {
+        System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_BLUE + "      🚆 [USEI11] DIRECTED LINE UPGRADE PLAN 🚆      " + ANSI_RESET);
+        System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+
+        System.out.println(ANSI_CYAN + "Processing Belgian rail dependencies and detecting cycles..." + ANSI_RESET);
+
+        try {
+            // Executa a lógica através do controller
+            String report = travelTimeController.generateBelgiumUpgradePlan();
+
+            // Exibe o relatório com a ordenação topológica ou ciclos detetados
+            System.out.println(report);
+
+            // Gerar o diagrama DOT para visualização
+            // Opcional: upgradeService.exportToDot("belgium_upgrade_plan.dot");
+
+        } catch (Exception e) {
+            showError("Failed to generate upgrade plan: " + e.getMessage());
+        }
     }
 
     private String readString(String prompt) {

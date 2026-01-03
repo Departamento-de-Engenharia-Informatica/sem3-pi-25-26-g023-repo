@@ -1,13 +1,9 @@
 package pt.ipp.isep.dei.controller;
 
-import pt.ipp.isep.dei.domain.EuropeanStation;
-import pt.ipp.isep.dei.domain.Locomotive;
-import pt.ipp.isep.dei.domain.LineSegment;
-import pt.ipp.isep.dei.domain.RailwayPath;
+import pt.ipp.isep.dei.domain.*;
 import pt.ipp.isep.dei.repository.LocomotiveRepository;
 import pt.ipp.isep.dei.repository.SegmentLineRepository;
 import pt.ipp.isep.dei.repository.StationRepository;
-import pt.ipp.isep.dei.domain.RailwayNetworkService;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -25,15 +21,18 @@ public class TravelTimeController {
     private final LocomotiveRepository locomotivaRepo;
     private final RailwayNetworkService networkService;
     private final SegmentLineRepository segmentoRepo;
+    private final UpgradePlanService upgradeService;
 
     public TravelTimeController(StationRepository estacaoRepo,
                                 LocomotiveRepository locomotivaRepo,
                                 RailwayNetworkService networkService,
-                                SegmentLineRepository segmentoRepo) {
+                                SegmentLineRepository segmentoRepo,
+                                UpgradePlanService upgradeService) {
         this.estacaoRepo = estacaoRepo;
         this.locomotivaRepo = locomotivaRepo;
         this.networkService = networkService;
         this.segmentoRepo = segmentoRepo;
+        this.upgradeService = upgradeService;
     }
 
     public String calculateTravelTime(int idEstacaoPartida, int idEstacaoChegada, int idLocomotiva) {
@@ -240,6 +239,36 @@ public class TravelTimeController {
 
         return sb.toString();
     }
+
+    /**
+     * USEI11 - Gera o plano de upgrade ordenado para a rede da Bélgica.
+     */
+    public String generateBelgiumUpgradePlan() {
+        // 1. Reset (Limpar dados antigos do serviço, se tiver método clear/reset)
+        // upgradeService = new UpgradePlanService(); // O ideal é criar um novo ou limpar
+
+        // 2. Buscar TUDO ao Repositório
+        List<LineSegment> allSegments = segmentoRepo.findAll();
+
+        for (LineSegment seg : allSegments) {
+            int from = seg.getIdEstacaoInicio();
+            int to = seg.getIdEstacaoFim();
+
+            // Regista as estações para garantir que aparecem no gráfico
+            upgradeService.registerStation(from);
+            upgradeService.registerStation(to);
+
+            // Adiciona a dependência
+            upgradeService.addDependency(from, to);
+        }
+        String report = upgradeService.computeAndFormatUpgradePlan();
+        upgradeService.generateUpgradeDiagram("belgium_upgrade_plan.dot");
+        upgradeService.generateSVG("belgium_upgrade_plan.dot", "belgium_upgrade_plan.svg");
+
+        return report;
+    }
+
+
 
     public StationRepository getStationRepository() {
         return this.estacaoRepo;
