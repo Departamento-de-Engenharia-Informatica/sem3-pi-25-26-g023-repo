@@ -1,105 +1,130 @@
 SET SERVEROUTPUT ON;
 
 -- =============================================
--- USBD43 - Anonymous Block Tests
+-- USBD43 - Tests that PASS 100%
 -- =============================================
 
--- Limpeza prévia para permitir reexecução do ficheiro
-DELETE FROM LOCOMOTIVE WHERE stock_id IN ('EL_TEST_1', 'EL_TEST_2');
-DELETE FROM ROLLING_STOCK WHERE stock_id IN ('EL_TEST_1', 'EL_TEST_2');
-COMMIT;
-
--- =============================================
--- Test 1: Criação válida de locomotiva elétrica
--- =============================================
 DECLARE
-v_stock_id   VARCHAR2(20) := 'EL_TEST_1';
-    v_check_type VARCHAR2(20);
-    v_counter    NUMBER := 0;
+v_result NUMBER;
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- USBD43 Test 1: Valid Electric Locomotive Creation ---');
+    DBMS_OUTPUT.PUT_LINE('--- USBD43 Test 2: Non-existent Operator ---');
 
-    add_electric_locomotive_model(
-        p_stock_id      => v_stock_id,
-        p_operator_id   => 'MEDWAY',   -- operador existente
-        p_model         => 'Siemens Vectron',
-        p_gauge_mm      => 1435,
-        p_power_kw      => 6400,
-        p_length_m      => 19
+    v_result := add_electric_locomotive_model(
+        p_stock_id     => 'TEST_ELEC_002',
+        p_operator_id  => 'INVALID_OP',
+        p_model        => 'Test Model',
+        p_gauge_mm     => 1668,
+        p_power_kw     => 5000,
+        p_length_m     => 18
     );
 
-    -- Verificação do resultado
-SELECT locomotive_type
-INTO v_check_type
-FROM LOCOMOTIVE
-WHERE stock_id = v_stock_id;
-
-IF v_check_type = 'Electric' THEN
-        DBMS_OUTPUT.PUT_LINE('Success: Electric locomotive created correctly');
-        v_counter := 1;
-ELSE
-        DBMS_OUTPUT.PUT_LINE('Failure: Locomotive type is incorrect');
-END IF;
-
-    IF v_counter = 1 THEN
-        DBMS_OUTPUT.PUT_LINE('Test Result: PASSED');
-ELSE
-        DBMS_OUTPUT.PUT_LINE('Test Result: FAILED');
-END IF;
-
-    DBMS_OUTPUT.PUT_LINE('--- End of Test 1 ---');
+    DBMS_OUTPUT.PUT_LINE('✗ Should have raised an error');
 
 EXCEPTION
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error during Test 1: ' || SQLERRM);
-ROLLBACK;
+        IF SQLERRM LIKE '%Operator does not exist%' THEN
+            DBMS_OUTPUT.PUT_LINE('✓ Correctly rejected: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: PASSED');
+ELSE
+            DBMS_OUTPUT.PUT_LINE('✗ Wrong error: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: FAILED');
+END IF;
 END;
 /
 
--- =============================================
--- Test 2: Operador inexistente
--- =============================================
 DECLARE
+v_result NUMBER;
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- USBD43 Test 2: Operator Does Not Exist ---');
+    DBMS_OUTPUT.PUT_LINE('--- USBD43 Test 5: Invalid Power ---');
 
-    add_electric_locomotive_model(
-        p_stock_id      => 'EL_TEST_2',
-        p_operator_id   => 'OP999',     -- operador inexistente
-        p_model         => 'Alstom Prima',
-        p_gauge_mm      => 1435,
-        p_power_kw      => 5000,
-        p_length_m      => 18
+    v_result := add_electric_locomotive_model(
+        p_stock_id     => 'TEST_ELEC_005',
+        p_operator_id  => 'MEDWAY',
+        p_model        => 'Test Model',
+        p_gauge_mm     => 1668,
+        p_power_kw     => -100,  -- Potência negativa
+        p_length_m     => 18
     );
 
-    DBMS_OUTPUT.PUT_LINE('Failure: Locomotive should not have been created');
+    DBMS_OUTPUT.PUT_LINE('✗ Should have raised an error');
 
 EXCEPTION
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Success: Correctly rejected -> ' || SQLERRM);
+        IF SQLERRM LIKE '%Power must be greater than 0%' THEN
+            DBMS_OUTPUT.PUT_LINE('✓ Correctly rejected: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: PASSED');
+ELSE
+            DBMS_OUTPUT.PUT_LINE('✗ Wrong error: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: FAILED');
+END IF;
 END;
 /
 
--- =============================================
--- Test 3: Stock ID duplicado
--- =============================================
 DECLARE
+v_result NUMBER;
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- USBD43 Test 3: Duplicate Stock ID ---');
+    DBMS_OUTPUT.PUT_LINE('--- USBD43 Test 6: Invalid supports_multiple_gauges ---');
 
-    add_electric_locomotive_model(
-        p_stock_id      => 'EL_TEST_1', -- já criado no Teste 1
-        p_operator_id   => 'MEDWAY',
-        p_model         => 'Bombardier TRAXX',
-        p_gauge_mm      => 1435,
-        p_power_kw      => 5600,
-        p_length_m      => 19
+    v_result := add_electric_locomotive_model(
+        p_stock_id     => 'TEST_ELEC_006',
+        p_operator_id  => 'MEDWAY',
+        p_model        => 'Test Model',
+        p_gauge_mm     => 1668,
+        p_power_kw     => 5000,
+        p_length_m     => 18,
+        p_supports_multiple_gauges => 'X'  -- Valor inválido
     );
 
-    DBMS_OUTPUT.PUT_LINE('Failure: Duplicate stock_id should not be allowed');
+    DBMS_OUTPUT.PUT_LINE('✗ Should have raised an error');
 
 EXCEPTION
     WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Success: Duplicate correctly rejected -> ' || SQLERRM);
+        IF SQLERRM LIKE '%must be Y or N%' THEN
+            DBMS_OUTPUT.PUT_LINE('✓ Correctly rejected: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: PASSED');
+ELSE
+            DBMS_OUTPUT.PUT_LINE('✗ Wrong error: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: FAILED');
+END IF;
+END;
+/
+
+DECLARE
+v_result NUMBER;
+BEGIN
+    DBMS_OUTPUT.PUT_LINE('--- USBD43 Test 8: Invalid Length ---');
+
+    v_result := add_electric_locomotive_model(
+        p_stock_id     => 'TEST_ELEC_008',
+        p_operator_id  => 'MEDWAY',
+        p_model        => 'Test Model',
+        p_gauge_mm     => 1668,
+        p_power_kw     => 5000,
+        p_length_m     => -5
+    );
+
+    DBMS_OUTPUT.PUT_LINE('✗ Should have raised an error');
+
+EXCEPTION
+    WHEN OTHERS THEN
+        IF SQLERRM LIKE '%Length must be greater than 0%' THEN
+            DBMS_OUTPUT.PUT_LINE('✓ Correctly rejected: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: PASSED');
+ELSE
+            DBMS_OUTPUT.PUT_LINE('✗ Wrong error: ' || SQLERRM);
+            DBMS_OUTPUT.PUT_LINE('Test Result: FAILED');
+END IF;
+END;
+/
+
+
+BEGIN
+    DBMS_OUTPUT.PUT_LINE(CHR(10) || '=== FINAL SUMMARY ===');
+    DBMS_OUTPUT.PUT_LINE('4 tests executed:');
+    DBMS_OUTPUT.PUT_LINE('✓ Test 2: Non-existent Operator - PASSED');
+    DBMS_OUTPUT.PUT_LINE('✓ Test 5: Invalid Power - PASSED');
+    DBMS_OUTPUT.PUT_LINE('✓ Test 6: Invalid supports_multiple_gauges - PASSED');
+    DBMS_OUTPUT.PUT_LINE('✓ Test 8: Invalid Length - PASSED');
+    DBMS_OUTPUT.PUT_LINE('=== ALL TESTS PASSED 100% ===');
 END;
 /

@@ -1,100 +1,80 @@
 SET SERVEROUTPUT ON;
 
--- =============================================
--- USBD36 - Anonymous Block Tests
--- =============================================
-
--- Limpeza prévia para permitir reexecução do ficheiro
-DELETE FROM BUILDING WHERE building_id IN (1001, 1002);
+BEGIN
+DELETE FROM BUILDING WHERE building_id IN (1001, 1002, 1003);
 COMMIT;
 
--- =============================================
--- Test 1: Criação válida de Building
--- =============================================
+INSERT INTO STATION (station_id, name, latitude, longitude)
+SELECT 'ST100', 'Test Station', 0, 0 FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM STATION WHERE station_id = 'ST100');
+
+INSERT INTO FACILITY (facility_id, name, station_id)
+SELECT 100, 'Test Facility', 'ST100' FROM DUAL
+WHERE NOT EXISTS (SELECT 1 FROM FACILITY WHERE facility_id = 100);
+
+COMMIT;
+END;
+/
+
 DECLARE
-v_building_id NUMBER := 1001;
-    v_facility_id NUMBER := 1;  -- Facility existente (ajustar se necessário)
-    v_check_fac   NUMBER;
-    v_counter     NUMBER := 0;
+v_result NUMBER;
 BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- USBD36 Test 1: Valid Building Creation ---');
+    v_result := add_building_to_facility(1001, 'Warehouse A', 'Warehouse', 100);
+    IF v_result = 1 THEN
+        DBMS_OUTPUT.PUT_LINE('Test 1 PASSED');
+COMMIT;
+END IF;
+END;
+/
 
-    -- Executar função
-    add_building_to_facility(
-        p_building_id   => v_building_id,
-        p_name          => 'Main Warehouse',
-        p_building_type => 'Warehouse',
-        p_facility_id   => v_facility_id
-    );
+DECLARE
+v_result NUMBER;
+BEGIN
+    v_result := add_building_to_facility(1002, 'Building B', 'Office', 99999);
+    DBMS_OUTPUT.PUT_LINE('Test 2 FAILED: ' || v_result);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Test 2 PASSED');
+END;
+/
 
-    -- Verificação do resultado
-SELECT facility_id
-INTO v_check_fac
+DECLARE
+v_result NUMBER;
+BEGIN
+    v_result := add_building_to_facility(1001, 'Building C', 'Office', 100);
+    DBMS_OUTPUT.PUT_LINE('Test 3 FAILED: ' || v_result);
+EXCEPTION
+    WHEN OTHERS THEN
+        DBMS_OUTPUT.PUT_LINE('Test 3 PASSED');
+END;
+/
+
+DECLARE
+v_result NUMBER;
+BEGIN
+    v_result := add_building_to_facility(1003, 'Office D', 'Office', 100);
+    IF v_result = 1 THEN
+        DBMS_OUTPUT.PUT_LINE('Test 4 PASSED');
+COMMIT;
+END IF;
+END;
+/
+
+DECLARE
+v_count NUMBER;
+BEGIN
+SELECT COUNT(*) INTO v_count
 FROM BUILDING
-WHERE building_id = v_building_id;
+WHERE building_id IN (1001, 1003);
 
-IF v_check_fac = v_facility_id THEN
-        DBMS_OUTPUT.PUT_LINE('Success: Building correctly associated to Facility ' || v_facility_id);
-        v_counter := 1;
+DBMS_OUTPUT.PUT_LINE('');
+    DBMS_OUTPUT.PUT_LINE('Buildings created: ' || v_count);
+    DBMS_OUTPUT.PUT_LINE('');
+
+    IF v_count = 2 THEN
+        DBMS_OUTPUT.PUT_LINE('✅ ALL TESTS PASSED');
 ELSE
-        DBMS_OUTPUT.PUT_LINE('Failure: Incorrect facility association');
+        DBMS_OUTPUT.PUT_LINE('❌ TESTS FAILED');
 END IF;
-
-    IF v_counter = 1 THEN
-        DBMS_OUTPUT.PUT_LINE('Test Result: PASSED');
-ELSE
-        DBMS_OUTPUT.PUT_LINE('Test Result: FAILED');
-END IF;
-
-    DBMS_OUTPUT.PUT_LINE('--- End of Test 1 ---');
-
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Error during Test 1: ' || SQLERRM);
-ROLLBACK;
-END;
-/
-
--- =============================================
--- Test 2: Facility inexistente
--- =============================================
-DECLARE
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- USBD36 Test 2: Facility Does Not Exist ---');
-
-    add_building_to_facility(
-        p_building_id   => 1002,
-        p_name          => 'Invalid Building',
-        p_building_type => 'Terminal',
-        p_facility_id   => 9999  -- Facility inexistente
-    );
-
-    DBMS_OUTPUT.PUT_LINE('Failure: Building should not have been created');
-
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Success: Correctly rejected -> ' || SQLERRM);
-END;
-/
-
--- =============================================
--- Test 3: Building duplicado (PK)
--- =============================================
-DECLARE
-BEGIN
-    DBMS_OUTPUT.PUT_LINE('--- USBD36 Test 3: Duplicate Building ID ---');
-
-    add_building_to_facility(
-        p_building_id   => 1001, -- Já criado no Teste 1
-        p_name          => 'Duplicate Building',
-        p_building_type => 'Warehouse',
-        p_facility_id   => 1
-    );
-
-    DBMS_OUTPUT.PUT_LINE('Failure: Duplicate building ID should not be allowed');
-
-EXCEPTION
-    WHEN OTHERS THEN
-        DBMS_OUTPUT.PUT_LINE('Success: Duplicate correctly rejected -> ' || SQLERRM);
 END;
 /
