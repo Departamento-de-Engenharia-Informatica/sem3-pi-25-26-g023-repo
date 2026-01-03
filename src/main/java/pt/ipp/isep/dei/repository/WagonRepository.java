@@ -1,5 +1,6 @@
 package pt.ipp.isep.dei.repository;
 
+import oracle.jdbc.OracleTypes;
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.Box;
 import pt.ipp.isep.dei.domain.Wagon;
@@ -13,80 +14,78 @@ import java.sql.*;
 public class WagonRepository {
 
     public Optional<Wagon> findById(String id) {
-        String sql = "SELECT R.stock_id, W.model_id, W.service_year " +
-                "FROM WAGON W JOIN ROLLING_STOCK R ON W.stock_id = R.stock_id " +
-                "WHERE R.stock_id = ?";
+        String call = "{ ? = call fn_get_wagon_by_id(?) }";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, id);
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
+             CallableStatement cstmt = conn.prepareCall(call)) {
+
+            cstmt.registerOutParameter(1, OracleTypes.CURSOR);
+            cstmt.setString(2, id);
+            cstmt.execute();
+
+            try (ResultSet rs = (ResultSet) cstmt.getObject(1)) {
+                if (rs != null && rs.next()) {
                     return Optional.of(new Wagon(rs.getString("stock_id"), rs.getInt("model_id"), rs.getInt("service_year")));
                 }
             }
         } catch (SQLException e) {
-            System.err.println("❌ Error retrieving Wagon by ID " + id + ": " + e.getMessage());
+            System.err.println("❌ Error PL/SQL Wagon by ID " + id + ": " + e.getMessage());
         }
         return Optional.empty();
     }
 
-    /**
-     * Carrega todos os vagões com dados físicos (comprimento/peso) para a UI de seleção.
-     */
     public List<Wagon> findAll() {
         List<Wagon> wagons = new ArrayList<>();
-        // JOIN com WAGON_MODEL para obter length_m e wagon_type
-        String sql = "SELECT w.stock_id, w.model_id, w.service_year, wm.length_m, wm.wagon_type " +
-                "FROM WAGON w " +
-                "JOIN WAGON_MODEL wm ON w.model_id = wm.model_id " +
-                "ORDER BY w.stock_id";
+        String call = "{ ? = call fn_get_all_wagons() }";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             CallableStatement cstmt = conn.prepareCall(call)) {
 
-            while (rs.next()) {
-                Wagon w = new Wagon(rs.getString("stock_id"), rs.getInt("model_id"), rs.getInt("service_year"));
+            cstmt.registerOutParameter(1, OracleTypes.CURSOR);
+            cstmt.execute();
 
-                // Preencher dados físicos (lidos do Modelo)
-                w.setLengthMeters(rs.getDouble("length_m"));
+            try (ResultSet rs = (ResultSet) cstmt.getObject(1)) {
+                while (rs != null && rs.next()) {
+                    Wagon w = new Wagon(rs.getString("stock_id"), rs.getInt("model_id"), rs.getInt("service_year"));
 
-                // Estimativa de Peso Bruto (Tara + Carga) baseada no tipo para validação visual
-                String type = rs.getString("wagon_type");
-                double estimatedWeight = 25000; // Tara base
-                if (type != null) {
-                    String t = type.toLowerCase();
-                    if (t.contains("coal")) estimatedWeight += 60000;
-                    else if (t.contains("steel")) estimatedWeight += 60000;
-                    else if (t.contains("cereal")) estimatedWeight += 45000;
-                    else estimatedWeight += 30000;
+                    try { w.setLengthMeters(rs.getDouble("length_m")); } catch(Exception e){}
+
+                    // Lógica original de estimativa de peso
+                    String type = rs.getString("wagon_type");
+                    double estimatedWeight = 25000;
+                    if (type != null) {
+                        String t = type.toLowerCase();
+                        if (t.contains("coal")) estimatedWeight += 60000;
+                        else if (t.contains("steel")) estimatedWeight += 60000;
+                        else if (t.contains("cereal")) estimatedWeight += 45000;
+                        else estimatedWeight += 30000;
+                    }
+                    w.setGrossWeightKg(estimatedWeight);
+                    wagons.add(w);
                 }
-                w.setGrossWeightKg(estimatedWeight);
-
-                wagons.add(w);
             }
         } catch (SQLException e) {
-            System.err.println("❌ Error reading Wagon data: " + e.getMessage());
+            System.err.println("❌ Error PL/SQL reading Wagon data: " + e.getMessage());
         }
         return wagons;
     }
 
     public List<Wagon> findWagonsByTrainId(String trainId) {
         List<Wagon> wagons = new ArrayList<>();
-        String sql = "SELECT w.stock_id, w.model_id, w.service_year, wm.wagon_type, wm.length_m " +
-                "FROM TRAIN_WAGON_USAGE twu " +
-                "JOIN WAGON w ON twu.wagon_id = w.stock_id " +
-                "JOIN WAGON_MODEL wm ON w.model_id = wm.model_id " +
-                "WHERE twu.train_id = ?";
+        String call = "{ ? = call fn_get_wagons_by_train(?) }";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
-            stmt.setString(1, trainId);
-            try (ResultSet rs = stmt.executeQuery()) {
-                while (rs.next()) {
-                    Wagon wagon = new Wagon(rs.getString("stock_id"), rs.getInt("model_id"), rs.getInt("service_year"));
-                    wagon.setLengthMeters(rs.getDouble("length_m"));
+             CallableStatement cstmt = conn.prepareCall(call)) {
 
+            cstmt.registerOutParameter(1, OracleTypes.CURSOR);
+            cstmt.setString(2, trainId);
+            cstmt.execute();
+
+            try (ResultSet rs = (ResultSet) cstmt.getObject(1)) {
+                while (rs != null && rs.next()) {
+                    Wagon wagon = new Wagon(rs.getString("stock_id"), rs.getInt("model_id"), rs.getInt("service_year"));
+                    try { wagon.setLengthMeters(rs.getDouble("length_m")); } catch(Exception e){}
+
+                    // Lógica original de Boxes
                     String type = rs.getString("wagon_type");
                     if (type != null) {
                         String cargoContent = "General";
@@ -102,7 +101,7 @@ public class WagonRepository {
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao carregar vagões: " + e.getMessage());
+            System.err.println("Erro PL/SQL carregar vagões: " + e.getMessage());
         }
         return wagons;
     }

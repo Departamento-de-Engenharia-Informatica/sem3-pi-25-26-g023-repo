@@ -82,7 +82,7 @@ public class CargoHandlingUI implements Runnable {
         do {
             showMenu();
             try {
-                option = readInt(0, 16, ANSI_BOLD + "Option: " + ANSI_RESET);
+                option = readInt(0, 18, ANSI_BOLD + "Option: " + ANSI_RESET);
                 handleOption(option);
             } catch (InputMismatchException e) {
                 showError("Invalid input. Please enter a number.");
@@ -117,7 +117,9 @@ public class CargoHandlingUI implements Runnable {
         System.out.println(ANSI_GREEN + "11. " + ANSI_RESET + "[USEI10] Radius Search & Density Summary (S2)");
         System.out.println(ANSI_GREEN + "12. " + ANSI_RESET + "[USEI12] Minimal Backbone Network (S3)");
         System.out.println(ANSI_GREEN + "13. " + ANSI_RESET + "[USLP07] Run Full Simulation & Conflicts (S3)");
+        System.out.println(ANSI_GREEN + "17. " + ANSI_RESET + "[USEI13] Rail Hub Centrality Analysis (S3)");
         System.out.println(ANSI_GREEN + "14. " + ANSI_RESET + "[USEI14] Max Throughput Analysis (Edmonds-Karp) (S3)");
+        System.out.println(ANSI_GREEN + "18. " + ANSI_RESET + "[USEI15] Max Throughput Analysis (Edmonds-Karp) (S3)");
         System.out.println("\n" + ANSI_BOLD + ANSI_PURPLE + "--- System Information ---" + ANSI_RESET);
         System.out.println(ANSI_GREEN + "15. " + ANSI_RESET + "View Current Inventory");
         System.out.println(ANSI_GREEN + "16. " + ANSI_RESET + "View Warehouse Info");
@@ -151,8 +153,170 @@ public class CargoHandlingUI implements Runnable {
             case 14: handleMaxThroughput(); break;
             case 15: handleViewInventory(); break;
             case 16: handleViewWarehouseInfo(); break;
+            case 17: handleRailHubAnalysis(); break;
+            case 18: handleRiskAwarePath(); break;
             case 0: System.out.println(ANSI_CYAN + "\nExiting Cargo Handling Menu... 👋" + ANSI_RESET); break;
             default: showError("Invalid option. Please select a valid number from the menu."); break;
+        }
+    }
+
+    private void handleRiskAwarePath() {
+        Scanner sc = new Scanner(System.in); // Garante que tens o scanner disponível
+
+        try {
+            System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "=== [USEI15] RISK-AWARE SHORTEST PATH ANALYSIS ===" + ANSI_RESET);
+
+            // --- LEITURA DE ID DE ORIGEM (Apenas positivo) ---
+            int start;
+            do {
+                System.out.print("Introduza o ID da Estação de Origem (depart stid): ");
+                while (!sc.hasNextInt()) {
+                    System.out.println(ANSI_RED + "Erro: Por favor, introduza um número inteiro válido." + ANSI_RESET);
+                    sc.next();
+                }
+                start = sc.nextInt();
+                if (start <= 0) System.out.println(ANSI_RED + "Erro: O ID deve ser um número positivo." + ANSI_RESET);
+            } while (start <= 0);
+
+            // --- LEITURA DE ID DE DESTINO (Apenas positivo) ---
+            int target;
+            do {
+                System.out.print("Introduza o ID da Estação de Destino (target stid): ");
+                while (!sc.hasNextInt()) {
+                    System.out.println(ANSI_RED + "Erro: Por favor, introduza um número inteiro válido." + ANSI_RESET);
+                    sc.next();
+                }
+                target = sc.nextInt();
+                if (target <= 0) System.out.println(ANSI_RED + "Erro: O ID deve ser um número positivo." + ANSI_RESET);
+            } while (target <= 0);
+
+            // Caminhos dos teus ficheiros
+            String stFile = "src/main/java/pt/ipp/isep/dei/FicheirosCSV/stations.csv";
+            String lnFile = "src/main/java/pt/ipp/isep/dei/FicheirosCSV/lines.csv";
+
+            System.out.println(ANSI_CYAN + "\nAnalyzing network consistency..." + ANSI_RESET);
+            Graph g = CSVLoader.load(stFile, lnFile);
+
+            // Execução do Algoritmo
+            BellmanFord.PathResult result = BellmanFord.findPath(g, start, target);
+
+            // --- OUTPUT ESPERADO (EXPECTED RETURNS) ---
+
+            // 1. Se detetar um ciclo negativo (Erro de configuração)
+            if (result.cycle() != null) {
+                System.out.println("\n" + ANSI_RED + "!!! Negative cycle detected !!!" + ANSI_RESET);
+                System.out.println("Stations and edges involved in the inconsistent configuration:");
+
+                List<Integer> cycle = result.cycle();
+                for (int i = 0; i < cycle.size() - 1; i++) {
+                    int u = cycle.get(i);
+                    int v = cycle.get(i + 1);
+                    double edgeCost = 0;
+                    // Procura o custo da aresta para detalhar
+                    for(Edge e : g.adj.get(u)) if(e.to() == v) edgeCost = e.cost();
+
+                    System.out.printf("   Edge: %d -> %d (Cost: %.4f)%n", u, v, edgeCost);
+                }
+            }
+
+            // 2. Se encontrar o caminho com sucesso
+            else if (result.path() != null && !result.path().isEmpty()) {
+                System.out.println("\n" + ANSI_GREEN + "Shortest path found:" + ANSI_RESET);
+
+                // Formato pedido: (depart stid, cost, interm stid1, cost, ..., target stid)
+                List<Integer> path = result.path();
+                System.out.print("(" + path.get(0));
+
+                for (int i = 0; i < path.size() - 1; i++) {
+                    int u = path.get(i);
+                    int v = path.get(i + 1);
+                    double stepCost = 0;
+                    for(Edge e : g.adj.get(u)) if(e.to() == v) stepCost = e.cost();
+
+                    System.out.printf(", cost: %.4f, %d", stepCost, v);
+                }
+                System.out.println(")");
+                System.out.println(ANSI_BOLD + "Total cost to target: " + String.format("%.4f", result.totalCost()) + ANSI_RESET);
+            }
+
+            // 3. Caso não exista ligação
+            else {
+                System.out.println(ANSI_YELLOW + "\nNo path exists between the selected stations." + ANSI_RESET);
+            }
+
+            // 4. Retorno de Complexidade (Obrigatório)
+            System.out.println("\n" + ANSI_BOLD + "--- Temporal Analysis Complexity ---" + ANSI_RESET);
+            System.out.println("Complexity: O(T * V * E)");
+            System.out.println("Note: V = vertices, E = edges, T = time windows (for expanded graphs).");
+
+        } catch (Exception e) {
+            System.out.println(ANSI_RED + "Error: " + e.getMessage() + ANSI_RESET);
+        }
+    }
+
+    private void handleRailHubAnalysis() {
+        try {
+            System.out.println("\n" + ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+            System.out.println(ANSI_BOLD + ANSI_BLUE + "      🚆 [USEI13] RAIL HUB CENTRALITY ANALYSIS 🚆      " + ANSI_RESET);
+            System.out.println(ANSI_BOLD + ANSI_BLUE + "==========================================================" + ANSI_RESET);
+
+            // 1. Caminhos dos ficheiros (ajustados para a tua estrutura de pastas)
+            String stationsFile = "src/main/java/pt/ipp/isep/dei/FicheirosCSV/stations.csv";
+            String linesFile = "src/main/java/pt/ipp/isep/dei/FicheirosCSV/lines.csv";
+
+            System.out.print(ANSI_CYAN + "Loading CSV data from FicheirosCSV... " + ANSI_RESET);
+            // Carrega o grafo (Certifica-te que o CSVLoader está no teu package domain)
+            Graph g = CSVLoader.load(stationsFile, linesFile);
+            System.out.println(ANSI_GREEN + "Done!" + ANSI_RESET);
+
+            System.out.println(ANSI_CYAN + "Computing network metrics (this may take a moment)..." + ANSI_RESET);
+
+            // 2. Execução dos Algoritmos (Sempre sobre a rede total para rigor matemático)
+            DegreeStrength.compute(g);
+            HarmonicCloseness.compute(g);
+            Betweenness.compute(g);
+            HubScoreCalculator.compute(g);
+
+            // 3. Preparar e Ordenar o Ranking
+            List<StationMetrics> ranking = new ArrayList<>(g.metricsMap.values());
+            // Ordena por HubScore decrescente
+            ranking.sort((m1, m2) -> Double.compare(m2.hubScore, m1.hubScore));
+
+            // 4. Interação com o Utilizador: Escolher N
+            System.out.println("\n" + ANSI_YELLOW + "Total de estações processadas: " + ranking.size() + ANSI_RESET);
+            System.out.print(ANSI_YELLOW + "Quantas estações deseja visualizar no ranking? " + ANSI_RESET);
+
+            // Utiliza o teu método readInt para validar a entrada
+            int n = readInt(1, ranking.size(), "Introduza um número entre 1 e " + ranking.size() + ": ");
+
+            // 5. Apresentação dos Resultados
+            System.out.println("\n" + ANSI_BOLD + String.format("%-6s | %-25s | %-4s | %-8s | %-8s | %-8s",
+                    "ID", "Station Name", "Deg", "Strength", "BetwN", "HubScore") + ANSI_RESET);
+            System.out.println("------------------------------------------------------------------------------------");
+
+            for (int i = 0; i < n; i++) {
+                StationMetrics m = ranking.get(i);
+                System.out.printf("%-6d | %-25s | %-4d | %-8.2f | %-8.4f | " + ANSI_BOLD + ANSI_GREEN + "%-8.4f" + ANSI_RESET + "%n",
+                        m.getStation().idEstacao(),
+                        m.getStation().nome().length() > 25 ? m.getStation().nome().substring(0, 22) + "..." : m.getStation().nome(),
+                        m.degree,
+                        m.strength,
+                        m.betweennessNorm,
+                        m.hubScore);
+            }
+
+            // 6. Requisito da US: Análise de Complexidade para o Planeador
+            System.out.println("\n" + ANSI_BOLD + "--- Expected Return: Complexity Analysis ---" + ANSI_RESET);
+            System.out.println(ANSI_YELLOW + "Static Network Complexity: " + ANSI_RESET + "O(V * E + V^2 log V)");
+            System.out.println("   - Baseada nos algoritmos de Brandes (Betweenness) e Dijkstra (Closeness).");
+            System.out.println(ANSI_YELLOW + "Temporal Analysis Complexity: " + ANSI_RESET + "O(T * (V * E + V^2 log V))");
+            System.out.println("   - Em redes dinâmicas, a complexidade escala linearmente com o número de janelas temporais (T).");
+
+        } catch (java.io.FileNotFoundException e) {
+            System.out.println(ANSI_RED + "Error: CSV files not found in src/main/java/pt/ipp/isep/dei/FicheirosCSV/" + ANSI_RESET);
+        } catch (Exception e) {
+            System.out.println(ANSI_RED + "An error occurred: " + e.getMessage() + ANSI_RESET);
+            e.printStackTrace();
         }
     }
 

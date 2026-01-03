@@ -1,5 +1,6 @@
 package pt.ipp.isep.dei.repository;
 
+import oracle.jdbc.OracleTypes;
 import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.Locomotive;
 
@@ -10,26 +11,48 @@ import java.util.Optional;
 
 public class LocomotiveRepository {
 
+    // --- NOVO: Método de criação via Procedure (USLP08) ---
+    public boolean registerLocomotive(Locomotive loc) {
+        String call = "{ call pr_register_locomotive(?, ?, ?, ?, ?, ?) }";
+        try (Connection conn = DatabaseConnection.getConnection();
+             CallableStatement cstmt = conn.prepareCall(call)) {
+
+            // Usando os getters da tua classe Locomotive
+            cstmt.setString(1, String.valueOf(loc.getIdLocomotiva()));
+            cstmt.setString(2, loc.getModelo());
+            cstmt.setString(3, loc.getTipo());
+            cstmt.setDouble(4, loc.getPowerKW());
+            cstmt.setDouble(5, loc.getLengthMeters());
+            cstmt.setDouble(6, loc.getTotalWeightKg());
+
+            cstmt.execute();
+            return true;
+        } catch (SQLException e) {
+            System.err.println("❌ Erro PL/SQL registerLocomotive: " + e.getMessage());
+            return false;
+        }
+    }
+
     /**
-     * Encontra uma locomotiva pelo ID.
+     * Encontra uma locomotiva pelo ID via Function PL/SQL.
      */
     public Optional<Locomotive> findById(String idStr) {
-        String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model, L.length_m " +
-                "FROM LOCOMOTIVE L JOIN ROLLING_STOCK R ON L.stock_id = R.stock_id " +
-                "WHERE R.stock_id = ?";
+        String call = "{ ? = call fn_get_locomotive_by_id(?) }";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql)) {
+             CallableStatement cstmt = conn.prepareCall(call)) {
 
-            stmt.setString(1, idStr);
+            cstmt.registerOutParameter(1, OracleTypes.CURSOR);
+            cstmt.setString(2, idStr);
+            cstmt.execute();
 
-            try (ResultSet rs = stmt.executeQuery()) {
-                if (rs.next()) {
+            try (ResultSet rs = (ResultSet) cstmt.getObject(1)) {
+                if (rs != null && rs.next()) {
                     return Optional.of(mapResultSetToLocomotive(rs));
                 }
             }
         } catch (SQLException e) {
-            System.err.println("⚠️ Erro SQL ao buscar Locomotiva ID " + idStr + ": " + e.getMessage());
+            System.err.println("⚠️ Erro PL/SQL ao buscar Locomotiva ID " + idStr + ": " + e.getMessage());
         }
         return Optional.empty();
     }
@@ -40,41 +63,40 @@ public class LocomotiveRepository {
 
     public List<Locomotive> findAll() {
         List<Locomotive> locomotives = new ArrayList<>();
-        String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model, L.length_m " +
-                "FROM LOCOMOTIVE L JOIN ROLLING_STOCK R ON L.stock_id = R.stock_id " +
-                "ORDER BY R.stock_id";
+        String call = "{ ? = call fn_get_all_locomotives() }";
 
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             CallableStatement cstmt = conn.prepareCall(call)) {
 
-            while (rs.next()) {
-                locomotives.add(mapResultSetToLocomotive(rs));
+            cstmt.registerOutParameter(1, OracleTypes.CURSOR);
+            cstmt.execute();
+
+            try (ResultSet rs = (ResultSet) cstmt.getObject(1)) {
+                while (rs != null && rs.next()) {
+                    locomotives.add(mapResultSetToLocomotive(rs));
+                }
             }
         } catch (SQLException e) {
-            System.err.println("❌ Erro ao ler Locomotivas: " + e.getMessage());
+            System.err.println("❌ Erro PL/SQL ao ler Locomotivas: " + e.getMessage());
         }
         return locomotives;
     }
 
     /**
-     * CORREÇÃO AQUI: Tratamento robusto do ID para evitar NumberFormatException.
+     * Mapeamento mantido IDÊNTICO ao original para evitar NumberFormatException.
      */
     private Locomotive mapResultSetToLocomotive(ResultSet rs) throws SQLException {
         Object idObj = rs.getObject("stock_id");
         int id = 0;
 
-        // --- BLOCO DE CORREÇÃO DO ID (Remove NumberFormatException) ---
         try {
             if (idObj instanceof Number) {
                 id = ((Number) idObj).intValue();
             } else if (idObj != null) {
-                // Remove tudo o que não é digito (ex: "335.001" vira "335001")
                 String cleanId = idObj.toString().replaceAll("[^0-9]", "");
                 if (!cleanId.isEmpty()) {
                     id = Integer.parseInt(cleanId);
                 } else {
-                    // Fallback se o ID for puramente texto (ex: "CP-LOC") -> Usa HashCode para não crashar
                     id = idObj.toString().hashCode();
                 }
             }
@@ -82,15 +104,9 @@ public class LocomotiveRepository {
             System.err.println("⚠️ Erro ao converter ID '" + idObj + "'. Usando fallback seguro.");
             id = (idObj != null) ? idObj.hashCode() : 0;
         }
-        // -----------------------------------------------------------
 
-        double originalPower = rs.getDouble("power_kw");
-        double finalPower = originalPower;
-
-        // Fix de física (impede 0 kW)
-        if (finalPower < 1.0) {
-            finalPower = 4200.0;
-        }
+        double finalPower = rs.getDouble("power_kw");
+        if (finalPower < 1.0) finalPower = 4200.0;
 
         Locomotive loc = new Locomotive(
                 id,
@@ -102,12 +118,9 @@ public class LocomotiveRepository {
         try {
             double len = rs.getDouble("length_m");
             loc.setLengthMeters(len > 0 ? len : 22.0);
-        } catch (SQLException ignore) {
-            loc.setLengthMeters(22.0);
-        }
+        } catch (SQLException ignore) { loc.setLengthMeters(22.0); }
 
-        loc.setTotalWeightKg(80000.0); // Peso default
-
+        loc.setTotalWeightKg(80000.0);
         return loc;
     }
 }
