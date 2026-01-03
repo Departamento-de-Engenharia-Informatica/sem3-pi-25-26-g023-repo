@@ -97,6 +97,10 @@ typedef struct {
     // Estado do sistema
     int system_running;
     time_t start_time;
+
+    // --- NOVO: Descritor da Porta Serial do Arduino ---
+    int serial_fd;
+
 } StationManager;
 
 // ============================================
