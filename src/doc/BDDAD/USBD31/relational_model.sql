@@ -175,6 +175,14 @@ CREATE TABLE TRAIN_WAGON_USAGE (
                                    usage_date DATE
 );
 
+CREATE TABLE BUILDING (
+                          building_id NUMBER PRIMARY KEY,
+                          name VARCHAR2(100) NOT NULL,
+                          building_type VARCHAR2(50) NOT NULL,
+                          facility_id NUMBER NOT NULL
+);
+
+
 -- =============================================
 -- FOREIGN KEY CONSTRAINTS (IGUAL)
 -- =============================================
@@ -253,6 +261,9 @@ ALTER TABLE TRAIN_WAGON_USAGE ADD CONSTRAINT FK_USAGE_TRAIN
 
 ALTER TABLE TRAIN_WAGON_USAGE ADD CONSTRAINT FK_USAGE_WAGON
     FOREIGN KEY (wagon_id) REFERENCES WAGON(stock_id);
+
+ALTER TABLE BUILDING ADD CONSTRAINT FK_BUILDING_FACILITY
+    FOREIGN KEY (facility_id) REFERENCES FACILITY(facility_id);
 
 -- =============================================
 -- VERIFICATION
