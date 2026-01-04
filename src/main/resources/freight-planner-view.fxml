@@ -58,10 +58,13 @@
 
             <Region VBox.vgrow="ALWAYS" />
 
-            <HBox spacing="10">
-                <Button fx:id="calculateButton" onAction="#calculateRoute" maxWidth="Infinity" HBox.hgrow="ALWAYS" styleClass="success-button" text="Plan Optimal Route" />
-                <Button onAction="#clearList" styleClass="danger-button" text="Clear" />
-            </HBox>
+            <VBox spacing="10">
+                <Button fx:id="calculateButton" onAction="#calculateRoute" maxWidth="Infinity" styleClass="success-button" text="Plan Optimal Route" />
+
+                <Button fx:id="btnSaveRoute" onAction="#handleSaveRoute" maxWidth="Infinity" styleClass="action-button" text="Register Route in Database" disable="true" />
+
+                <Button onAction="#clearList" maxWidth="Infinity" styleClass="danger-button" text="Clear All" />
+            </VBox>
         </VBox>
 
         <VBox spacing="15" HBox.hgrow="ALWAYS">
