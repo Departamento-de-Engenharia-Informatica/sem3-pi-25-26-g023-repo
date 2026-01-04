@@ -189,6 +189,13 @@ public class MainController {
             else if (controller instanceof Usei11Controller) {
                 ((Usei11Controller) controller).setDependencies(this, this.networkService);
             }
+            // --- USEI13 & USEI15: Injeção do MainController para notificações ---
+            else if (controller instanceof Usei13Controller) {
+                ((Usei13Controller) controller).setDependencies(this);
+            }
+            else if (controller instanceof Usei15Controller) {
+                ((Usei15Controller) controller).setDependencies(this);
+            }
             // -----------------------------------------
             else if (controller instanceof BDDADMainController) {
                 if (backendService instanceof MainController) {
@@ -351,9 +358,21 @@ public class MainController {
     }
 
     @FXML
+    public void handleShowUSEI13(ActionEvent event) {
+        statusLabel.setText("Rail Hub Centrality Analysis [USEI13]");
+        loadView("esinf-usei13-view.fxml", this);
+    }
+
+    @FXML
     public void handleShowUSEI14(ActionEvent event) {
         statusLabel.setText("Max Throughput Analysis [USEI14]");
         loadView("esinf-usei14-view.fxml", null);
+    }
+
+    @FXML
+    public void handleShowUSEI15(ActionEvent event) {
+        statusLabel.setText("Risk-Aware Shortest Path [USEI15]");
+        loadView("esinf-usei15-view.fxml", this);
     }
 
     // --- USLP09 Handler: Redireciona para o Train CRUD ---

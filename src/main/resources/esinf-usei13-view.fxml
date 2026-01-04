@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="20.0" styleClass="content-pane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.Usei13Controller">
+    <padding>
+        <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
+    </padding>
+
+    <Label styleClass="view-title" text="USEI13 - Rail Hub Centrality Analysis" />
+
+    <HBox alignment="CENTER_LEFT" spacing="15.0">
+        <children>
+            <Label text="Limit Results (N):" />
+            <TextField fx:id="txtLimit" prefWidth="80.0" promptText="Optional" />
+            <Button mnemonicParsing="false" onAction="#handleComputeHubs" styleClass="action-button" text="Compute Hub Ranking" />
+        </children>
+    </HBox>
+
+    <TableView fx:id="tblHubs" VBox.vgrow="ALWAYS">
+        <columns>
+            <TableColumn fx:id="colId" prefWidth="100.0" text="Station ID" />
+            <TableColumn fx:id="colName" prefWidth="350.0" text="Station Name" />
+            <TableColumn fx:id="colHubScore" prefWidth="200.0" text="Hub Score (Mean)" />
+        </columns>
+    </TableView>
+</VBox>
