@@ -1,17 +1,19 @@
 package pt.ipp.isep.dei.controller;
 
 import pt.ipp.isep.dei.domain.*;
+import pt.ipp.isep.dei.repository.DatabaseRepository;
 import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.SegmentLineRepository;
 
+import java.sql.SQLException;
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class RoutePlannerController {
 
     private final RailwayNetworkService networkService;
     private final FacilityRepository facilityRepo;
     private final SegmentLineRepository segmentRepo;
+    private final DatabaseRepository databaseRepo; // Adicionado para persistência
 
     // Velocidade teórica para planeamento
     private static final double PLANNING_SPEED_LIMIT = 120.0;
@@ -22,6 +24,29 @@ public class RoutePlannerController {
         this.networkService = networkService;
         this.facilityRepo = facilityRepo;
         this.segmentRepo = segmentRepo;
+        this.databaseRepo = new DatabaseRepository(); // Inicialização do repositório de BD
+    }
+
+    /**
+     * EFETIVA GRAVAÇÃO NA BASE DE DADOS
+     * Converte os segmentos da PlannedRoute numa lista de Stations e persiste.
+     */
+    public void savePlannedRoute(String routeName, PlannedRoute plannedRoute, List<FreightRequest> freights) throws SQLException {
+        if (plannedRoute.segments().isEmpty()) return;
+
+        List<Station> stops = new ArrayList<>();
+        int trackerNode = plannedRoute.segments().get(0).getIdEstacaoInicio();
+        stops.add(new Station(trackerNode, getStationName(trackerNode), 0,0,0,0));
+
+        for (LineSegment seg : plannedRoute.segments()) {
+            int nextNode = (seg.getIdEstacaoInicio() == trackerNode) ? seg.getIdEstacaoFim() : seg.getIdEstacaoInicio();
+            stops.add(new Station(nextNode, getStationName(nextNode), 0,0,0,0));
+            trackerNode = nextNode;
+        }
+
+        // GERAR ID CURTO (Máx 10 chars para a BD)
+        String routeId = "R" + (System.currentTimeMillis() % 1000000000L);
+        databaseRepo.saveRoute(routeId, routeName, stops, freights);
     }
 
     public List<Station> getAllStations() {
@@ -110,9 +135,6 @@ public class RoutePlannerController {
         return calculateGreedyRoute(startStationId, freights);
     }
 
-    /**
-     * Algoritmo Principal com Manifesto Detalhado (Segmento a Segmento).
-     */
     private PlannedRoute calculateGreedyRoute(int startStationId, List<FreightRequest> freights) {
         List<FreightRequest> pending = new ArrayList<>();
         for (FreightRequest f : freights) {
@@ -157,27 +179,17 @@ public class RoutePlannerController {
                 break;
             }
 
-            // --- MELHORIA AQUI: Log Detalhado dos Segmentos ---
             if (!bestPath.getSegments().isEmpty()) {
                 fullRouteSegments.addAll(bestPath.getSegments());
-
                 manifestLog.add(String.format("   🚆 MOVE to %s (Leg Total: %.2f km)",
                         getStationName(bestTargetId), bestPath.getTotalDistance()));
 
-                // Simular o percurso segmento a segmento para mostrar no log
                 int trackerNode = currentStationId;
                 for (LineSegment seg : bestPath.getSegments()) {
-                    // Determinar próximo nó com base na topologia do segmento
                     int nextNode = (seg.getIdEstacaoInicio() == trackerNode) ? seg.getIdEstacaoFim() : seg.getIdEstacaoInicio();
-
-                    String segLog = String.format("      ↳ via [%s]: %s -> %s (%.2f km)",
-                            seg.getIdSegmento(),
-                            getStationName(trackerNode),
-                            getStationName(nextNode),
-                            seg.getComprimento());
-
-                    manifestLog.add(segLog);
-                    trackerNode = nextNode; // Avança o tracker
+                    manifestLog.add(String.format("      ↳ via [%s]: %s -> %s (%.2f km)",
+                            seg.getIdSegmento(), getStationName(trackerNode), getStationName(nextNode), seg.getComprimento()));
+                    trackerNode = nextNode;
                 }
             }
 

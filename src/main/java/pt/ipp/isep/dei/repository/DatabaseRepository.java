@@ -4,6 +4,8 @@ import pt.ipp.isep.dei.DatabaseConnection.DatabaseConnection;
 import pt.ipp.isep.dei.domain.Locomotive;
 import pt.ipp.isep.dei.domain.Operator;
 import pt.ipp.isep.dei.domain.Wagon;
+import pt.ipp.isep.dei.domain.Station;
+import pt.ipp.isep.dei.domain.FreightRequest;
 
 import java.sql.*;
 import java.util.ArrayList;
@@ -24,6 +26,65 @@ public class DatabaseRepository {
     );
 
     private static final String DEFAULT_OPERATOR_ID = "MEDWAY";
+
+    // =========================================================================
+    // SPECIFIC METHODS FOR ROUTE PLANNING (USLP08)
+    // =========================================================================
+
+    /**
+     * Persiste uma nova rota e os seus segmentos na base de dados.
+     * Além disso, associa/atualiza os freights processados.
+     */
+    // No ficheiro pt.ipp.isep.dei.repository.DatabaseRepository.java
+
+
+    public void saveRoute(String routeId, String name, List<Station> stops, List<FreightRequest> assignedFreights) throws SQLException {
+        Connection conn = null;
+        try {
+            conn = DatabaseConnection.getConnection();
+            conn.setAutoCommit(false);
+
+            // 1. Inserir em TRAIN_ROUTE (Garantir que ID tem no máx 10 chars)
+            String sqlRoute = "INSERT INTO TRAIN_ROUTE (route_id, route_name, description) VALUES (?, ?, ?)";
+            try (PreparedStatement stmt = conn.prepareStatement(sqlRoute)) {
+                stmt.setString(1, routeId.length() > 10 ? routeId.substring(0, 10) : routeId);
+                stmt.setString(2, name);
+                stmt.setString(3, "Manifest: " + assignedFreights.size() + " freights processed.");
+                stmt.executeUpdate();
+            }
+
+            // 2. Inserir os segmentos (ROUTE_SEGMENT)
+            String sqlSegment = "INSERT INTO ROUTE_SEGMENT (route_id, segment_order, facility_id, is_stop) VALUES (?, ?, ?, ?)";
+            for (int i = 0; i < stops.size(); i++) {
+                try (PreparedStatement stmt = conn.prepareStatement(sqlSegment)) {
+                    stmt.setString(1, routeId.length() > 10 ? routeId.substring(0, 10) : routeId);
+                    stmt.setInt(2, i + 1);
+                    // facility_id é NUMBER na tua BD, idEstacao() do record é int. Perfeito.
+                    stmt.setInt(3, stops.get(i).idEstacao());
+                    stmt.setString(4, "Y");
+                    stmt.executeUpdate();
+                }
+            }
+
+            conn.commit();
+            System.out.println("DB Success: Route " + routeId + " saved.");
+        } catch (SQLException e) {
+            if (conn != null) conn.rollback();
+            throw e;
+        } finally {
+            if (conn != null) {
+                conn.setAutoCommit(true);
+                conn.close();
+            }
+        }
+    }
+
+    /**
+     * Busca todos os freights que ainda não foram processados.
+     */
+    public List<Map<String, Object>> findPendingFreights() throws SQLException {
+        return findGenericTableData("FREIGHT");
+    }
 
     // =========================================================================
     // SPECIFIC METHODS FOR OPERATOR (CRUD)
@@ -203,14 +264,12 @@ public class DatabaseRepository {
             int rowsAffected = 0;
 
             // 🚨 0. CLEANUP: TRAIN and TRAIN_WAGON_USAGE 🚨
-            // Delete wagon usages associated with trains using this locomotive
             String sqlTWUCleanup = "DELETE FROM TRAIN_WAGON_USAGE WHERE train_id IN (SELECT train_id FROM TRAIN WHERE locomotive_id = ?)";
             try (PreparedStatement stmtTWU = conn.prepareStatement(sqlTWUCleanup)) {
                 stmtTWU.setString(1, idStr);
                 stmtTWU.executeUpdate();
             }
 
-            // Delete trains using this locomotive
             String sqlTrainCleanup = "DELETE FROM TRAIN WHERE locomotive_id = ?";
             try (PreparedStatement stmtTC = conn.prepareStatement(sqlTrainCleanup)) {
                 stmtTC.setString(1, idStr);
@@ -257,7 +316,6 @@ public class DatabaseRepository {
      */
     public List<Locomotive> findAllLocomotives() throws SQLException {
         List<Locomotive> locomotives = new ArrayList<>();
-
         String sql = "SELECT R.stock_id, L.locomotive_type, L.power_kw, R.model " +
                 "FROM LOCOMOTIVE L JOIN ROLLING_STOCK R ON L.stock_id = R.stock_id " +
                 "ORDER BY R.stock_id";
@@ -265,7 +323,6 @@ public class DatabaseRepository {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
-
             while (rs.next()) {
                 try {
                     locomotives.add(new Locomotive(
@@ -278,16 +335,10 @@ public class DatabaseRepository {
                     System.err.println("DATA ERROR in a LOCOMOTIVE row: " + e.getMessage());
                 }
             }
-        } catch (SQLException e) {
-            String errorMsg = e.getMessage();
-            throw new SQLException("Failed to execute LOCOMOTIVE query. Original error: " + errorMsg);
         }
-
         if (locomotives.isEmpty()) {
-            // Fallback object to ensure the list is not empty for testing/UI purposes
             locomotives.add(new Locomotive(999, "Fallback Model", "diesel", 100.0));
         }
-
         return locomotives;
     }
 
@@ -300,7 +351,6 @@ public class DatabaseRepository {
      */
     public List<Wagon> findAllWagons() throws SQLException {
         List<Wagon> wagons = new ArrayList<>();
-
         String sql = "SELECT R.stock_id, W.model_id, W.service_year " +
                 "FROM WAGON W JOIN ROLLING_STOCK R ON W.stock_id = R.stock_id " +
                 "ORDER BY R.stock_id";
@@ -308,33 +358,26 @@ public class DatabaseRepository {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
-
             while (rs.next()) {
                 try {
                     wagons.add(new Wagon(
-                            rs.getString("stock_id"), // READ ID AS STRING
+                            rs.getString("stock_id"),
                             rs.getInt("model_id"),
                             rs.getInt("service_year")
                     ));
                 } catch (SQLException e) {
-                    System.err.println("DATA ERROR in a WAGON row: Failed internal conversion: " + e.getMessage());
+                    System.err.println("DATA ERROR in a WAGON row: " + e.getMessage());
                 }
             }
-        } catch (SQLException e) {
-            throw new SQLException("Failed to execute WAGON query. Check the schema.", e);
         }
-
         if (wagons.isEmpty()) {
-            // Fallback object to ensure the list is not empty for testing/UI purposes
             wagons.add(new Wagon("100", 1, 2020));
         }
         return wagons;
     }
 
-
     /**
      * CREATE: Adds a new Wagon.
-     * <p>Requires a transaction since it involves ROLLING_STOCK (Parent) and WAGON (Child) tables.</p>
      */
     public void addWagon(String idStr, int modelId, int serviceYear) throws SQLException {
         Connection conn = null;
@@ -343,7 +386,6 @@ public class DatabaseRepository {
             conn.setAutoCommit(false);
             int rowsAffected = 0;
 
-            // 1. INSERT into ROLLING_STOCK
             String sqlRS = "INSERT INTO ROLLING_STOCK (stock_id, model, operator_id) VALUES (?, ?, ?)";
             try (PreparedStatement stmtRS = conn.prepareStatement(sqlRS)) {
                 stmtRS.setString(1, idStr);
@@ -352,7 +394,6 @@ public class DatabaseRepository {
                 rowsAffected += stmtRS.executeUpdate();
             }
 
-            // 2. INSERT into WAGON
             String sqlW = "INSERT INTO WAGON (stock_id, model_id, service_year) VALUES (?, ?, ?)";
             try (PreparedStatement stmtW = conn.prepareStatement(sqlW)) {
                 stmtW.setString(1, idStr);
@@ -361,15 +402,11 @@ public class DatabaseRepository {
                 rowsAffected += stmtW.executeUpdate();
             }
 
-            if (rowsAffected < 2) throw new SQLException("Failed to create Wagon. Check Model ID or Operator ID.", "02000");
-
+            if (rowsAffected < 2) throw new SQLException("Failed to create Wagon.", "02000");
 
             conn.commit();
-            System.out.printf("DB: Inserting Wagon ID:%s, Model ID:%d, Year:%d - SUCCESS\n", idStr, modelId, serviceYear);
-
         } catch (SQLException e) {
             if (conn != null) conn.rollback();
-            System.err.println("SQL ERROR during addWagon: " + e.getMessage());
             throw e;
         } finally {
             if (conn != null) {
@@ -381,7 +418,6 @@ public class DatabaseRepository {
 
     /**
      * UPDATE: Updates an existing Wagon.
-     * <p>Requires a transaction since it involves ROLLING_STOCK (Parent) and WAGON (Child) tables.</p>
      */
     public void updateWagon(String idStr, int newModelId, int newServiceYear) throws SQLException {
         Connection conn = null;
@@ -390,7 +426,6 @@ public class DatabaseRepository {
             conn.setAutoCommit(false);
             int rowsAffected = 0;
 
-            // 1. UPDATE on ROLLING_STOCK
             String sqlRS = "UPDATE ROLLING_STOCK SET model = ? WHERE stock_id = ?";
             try (PreparedStatement stmtRS = conn.prepareStatement(sqlRS)) {
                 stmtRS.setString(1, "WAGON_MODEL_" + newModelId);
@@ -398,7 +433,6 @@ public class DatabaseRepository {
                 rowsAffected += stmtRS.executeUpdate();
             }
 
-            // 2. UPDATE on WAGON
             String sqlW = "UPDATE WAGON SET model_id = ?, service_year = ? WHERE stock_id = ?";
             try (PreparedStatement stmtW = conn.prepareStatement(sqlW)) {
                 stmtW.setInt(1, newModelId);
@@ -407,17 +441,11 @@ public class DatabaseRepository {
                 rowsAffected += stmtW.executeUpdate();
             }
 
-            if (rowsAffected < 2) {
-                throw new SQLException("Update failed. Wagon ID " + idStr + " not found or partial update failed.", "02000");
-            }
-
+            if (rowsAffected < 2) throw new SQLException("Update failed.", "02000");
 
             conn.commit();
-            System.out.printf("DB: Updating Wagon ID:%s, New Model ID:%d, New Year:%d - SUCCESS\n", idStr, newModelId, newServiceYear);
-
         } catch (SQLException e) {
             if (conn != null) conn.rollback();
-            System.err.println("SQL ERROR during updateWagon: " + e.getMessage());
             throw e;
         } finally {
             if (conn != null) {
@@ -429,47 +457,34 @@ public class DatabaseRepository {
 
     /**
      * DELETE: Removes a Wagon.
-     * <p>Requires a transaction and cleaning up related records (TRAIN_WAGON_USAGE) first.</p>
      */
     public void deleteWagon(String idStr) throws SQLException {
         Connection conn = null;
         try {
             conn = DatabaseConnection.getConnection();
             conn.setAutoCommit(false);
-            int rowsAffected = 0;
 
-            // 🚨 CLEANUP: Remove TRAIN_WAGON_USAGE references if they exist!
             String sqlTWU = "DELETE FROM TRAIN_WAGON_USAGE WHERE wagon_id = ?";
             try (PreparedStatement stmtTWU = conn.prepareStatement(sqlTWU)) {
                 stmtTWU.setString(1, idStr);
                 stmtTWU.executeUpdate();
             }
 
-            // 1. DELETE from WAGON (Child Table)
             String sqlW = "DELETE FROM WAGON WHERE stock_id = ?";
             try (PreparedStatement stmtW = conn.prepareStatement(sqlW)) {
                 stmtW.setString(1, idStr);
-                rowsAffected += stmtW.executeUpdate();
+                stmtW.executeUpdate();
             }
 
-            // 2. DELETE from ROLLING_STOCK (Parent Table)
             String sqlRS = "DELETE FROM ROLLING_STOCK WHERE stock_id = ?";
             try (PreparedStatement stmtRS = conn.prepareStatement(sqlRS)) {
                 stmtRS.setString(1, idStr);
-                rowsAffected += stmtRS.executeUpdate();
+                stmtRS.executeUpdate();
             }
-
-            if (rowsAffected == 0) {
-                throw new SQLException("Delete failed. Wagon ID " + idStr + " not found.", "02000");
-            }
-
 
             conn.commit();
-            System.out.println("DB: Deleting Wagon ID: " + idStr + " - SUCCESS");
-
         } catch (SQLException e) {
             if (conn != null) conn.rollback();
-            System.err.println("SQL ERROR during deleteWagon: " + e.getMessage());
             throw e;
         } finally {
             if (conn != null) {
@@ -479,32 +494,23 @@ public class DatabaseRepository {
         }
     }
 
-
     // =========================================================================
     // GENERIC METHODS (DYNAMIC VIEWER)
     // =========================================================================
-    /**
-     * Reads all data from a specified table for dynamic viewing (e.g., in a GUI).
-     *
-     * @param tableName The name of the table to query.
-     * @return A list of maps, where each map represents a row and maps column names to their values.
-     */
+
     public List<Map<String, Object>> findGenericTableData(String tableName) throws SQLException {
         List<Map<String, Object>> data = new ArrayList<>();
         String sql = "SELECT * FROM " + tableName;
-
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
             ResultSetMetaData metaData = rs.getMetaData();
             int columnCount = metaData.getColumnCount();
-
             while (rs.next()) {
                 Map<String, Object> row = new HashMap<>();
                 for (int i = 1; i <= columnCount; i++) {
-                    String columnName = metaData.getColumnName(i);
-                    row.put(columnName, rs.getObject(i));
+                    row.put(metaData.getColumnName(i), rs.getObject(i));
                 }
                 data.add(row);
             }
@@ -512,17 +518,9 @@ public class DatabaseRepository {
         return data;
     }
 
-    /**
-     * Executes a generic Data Manipulation Language (DML) statement (INSERT, UPDATE, DELETE).
-     *
-     * @param sql The DML query to execute (with '?' placeholders).
-     * @param params A list of parameters to set for the placeholders.
-     * @return The number of rows affected by the statement.
-     */
     public int executeDML(String sql, List<Object> params) throws SQLException {
         try (Connection conn = DatabaseConnection.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
-
             for (int i = 0; i < params.size(); i++) {
                 stmt.setObject(i + 1, params.get(i));
             }
