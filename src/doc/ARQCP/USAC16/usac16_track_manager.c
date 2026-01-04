@@ -89,8 +89,7 @@ void set_track_free(Track* track) {
 
     printf("\nLiberando trilho %d...\n", track->id);
 
-    track->state = TRACK_FREE;
-    track->train_id = -1;
+   set_track_free_asm(track);
 
     printf("✅ Trilho %d liberado (LIVRE)\n", track->id);
     printf("📋 Info enviada para o Board\n");

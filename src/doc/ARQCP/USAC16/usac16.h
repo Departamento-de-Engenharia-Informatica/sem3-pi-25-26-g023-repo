@@ -34,6 +34,7 @@ void display_tracks(const Track tracks[], int count);
 void assign_track_to_train(Track* track, Train* train);
 void set_track_inoperative(Track* track);
 void set_track_free(Track* track);
+void set_track_free_asm(Track* track);
 void give_departure_order(Train* train, Track* track);
 void emergency_stop(void);
 
