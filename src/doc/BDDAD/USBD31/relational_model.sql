@@ -175,6 +175,7 @@ CREATE TABLE TRAIN_WAGON_USAGE (
                                    usage_date DATE
 );
 
+-- 18. BUILDING
 CREATE TABLE BUILDING (
                           building_id NUMBER PRIMARY KEY,
                           name VARCHAR2(100) NOT NULL,
@@ -184,7 +185,7 @@ CREATE TABLE BUILDING (
 
 
 -- =============================================
--- FOREIGN KEY CONSTRAINTS (IGUAL)
+-- FOREIGN KEY CONSTRAINTS
 -- =============================================
 
 ALTER TABLE RAILWAY_LINE ADD CONSTRAINT FK_RAILWAY_LINE_OPERATOR
