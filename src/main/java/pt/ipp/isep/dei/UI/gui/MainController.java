@@ -189,7 +189,13 @@ public class MainController {
                     ((BDDADMainController) controller).setServices((MainController) backendService);
                 }
             }
-            // --- END OF INJECTION ---
+            // --- NOVA INTEGRAÇÃO: USLP08 ---
+            else if (controller instanceof FreightPlannerController) {
+                if (backendService instanceof MainController) {
+                    ((FreightPlannerController) controller).setMainController((MainController) backendService);
+                }
+            }
+            // -------------------------------
 
             centerContentPane.getChildren().clear();
             centerContentPane.getChildren().add(view);
@@ -340,9 +346,17 @@ public class MainController {
     @FXML
     public void handleShowUSLP09(ActionEvent event) {
         statusLabel.setText("USLP09 - Assemble Train (Train CRUD)");
-        // Chama a vista existente do Train CRUD
         loadTrainCrudView();
     }
+
+    // --- NOVA FUNCIONALIDADE: USLP08 ---
+    @FXML
+    public void handleShowUSLP08(ActionEvent event) {
+        statusLabel.setText("USLP08 - Freight Route Planner");
+        // Passamos 'this' para que o loadView injete este MainController no FreightPlannerController
+        loadView("freight-planner-view.fxml", this);
+    }
+    // -----------------------------------
 
     @FXML
     public void handleShowESINF(ActionEvent event) {
@@ -420,9 +434,6 @@ public class MainController {
 
             FXMLLoader loader = new FXMLLoader(fxmlUrl);
 
-            // --- CORREÇÃO AQUI ---
-            // Removemos: loader.setController(new BDADQueriesController());
-            // Deixamos o loader carregar o controlador definido no FXML:
             Parent root = loader.load();
 
             // Recuperamos o controlador já criado pelo FXML
@@ -430,7 +441,6 @@ public class MainController {
             if (controller instanceof BDADQueriesController) {
                 ((BDADQueriesController) controller).setMainController(this);
             }
-            // ---------------------
 
             this.centerContentPane.getChildren().clear();
             this.centerContentPane.getChildren().add(root);
@@ -440,7 +450,7 @@ public class MainController {
             AnchorPane.setRightAnchor(root, 0.0);
 
         } catch (IOException e) {
-            e.printStackTrace(); // Isto ajuda a ver o erro na consola se persistir
+            e.printStackTrace();
             this.showNotification("Failed to load BDDAD Queries view: " + e.getMessage(), "error");
         }
     }

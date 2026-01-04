@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ComboBox?>
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.control.RadioButton?>
+<?import javafx.scene.control.ScrollPane?>
+<?import javafx.scene.control.Separator?>
+<?import javafx.scene.control.TextArea?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.control.ToggleGroup?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+
+<ScrollPane fitToWidth="true" fitToHeight="true" styleClass="content-pane" hbarPolicy="NEVER" vbarPolicy="AS_NEEDED" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.FreightPlannerController">
+    <content>
+        <VBox styleClass="view-container" spacing="20.0">
+            <padding>
+                <Insets bottom="20.0" left="25.0" right="25.0" top="20.0" />
+            </padding>
+
+            <VBox spacing="5.0">
+                <Label styleClass="view-title" text="Freight Route Planner (USLP08)" />
+                <Label styleClass="view-subtitle" text="Define shipments and calculate optimal locomotive paths." />
+            </VBox>
+
+            <Separator styleClass="separator" />
+
+            <HBox spacing="30.0" VBox.vgrow="ALWAYS">
+
+                <VBox spacing="15.0" HBox.hgrow="ALWAYS" maxWidth="500.0">
+                    <Label styleClass="section-title" text="1. Route Configuration" />
+
+                    <VBox spacing="10.0" style="-fx-padding: 10; -fx-border-color: #555; -fx-border-radius: 5;">
+                        <RadioButton fx:id="rbSimple" text="Simple Route (One Freight)" selected="true" styleClass="radio-button"/>
+                        <RadioButton fx:id="rbComplex" text="Complex Route (Multiple Freights)" styleClass="radio-button"/>
+                    </VBox>
+
+                    <Label styleClass="section-title" text="2. Add Freight" />
+
+                    <VBox styleClass="input-group">
+                        <Label text="Cargo Description:" />
+                        <TextField fx:id="descField" promptText="e.g. Steel Containers" />
+                    </VBox>
+
+                    <HBox spacing="15.0">
+                        <VBox styleClass="input-group" HBox.hgrow="ALWAYS">
+                            <Label text="Origin:" />
+                            <ComboBox fx:id="originCombo" promptText="Select Origin" maxWidth="Infinity" />
+                        </VBox>
+                        <VBox styleClass="input-group" HBox.hgrow="ALWAYS">
+                            <Label text="Destination:" />
+                            <ComboBox fx:id="destCombo" promptText="Select Destination" disable="true" maxWidth="Infinity" />
+                        </VBox>
+                    </HBox>
+
+                    <VBox styleClass="input-group">
+                        <Label text="Weight (tons):" />
+                        <TextField fx:id="weightField" promptText="0.0" />
+                    </VBox>
+
+                    <Button text="Add to List" onAction="#addFreight" styleClass="button-primary" maxWidth="Infinity" />
+
+                    <Label styleClass="section-title" text="Pending Freights" />
+                    <ListView fx:id="freightList" styleClass="list-view" VBox.vgrow="ALWAYS" prefHeight="150.0" />
+                    <Button text="Clear List" onAction="#clearList" styleClass="button" maxWidth="Infinity" />
+                </VBox>
+
+                <VBox spacing="15.0" HBox.hgrow="ALWAYS">
+                    <Label styleClass="section-title" text="3. Planning Execution" />
+
+                    <VBox styleClass="input-group">
+                        <Label text="Locomotive Start Location:" />
+                        <ComboBox fx:id="startStationCombo" promptText="Where is the train?" maxWidth="Infinity" />
+                    </VBox>
+
+                    <Button fx:id="calculateButton" text="Calculate Optimal Route" onAction="#calculateRoute"
+                            styleClass="action-button" maxWidth="Infinity" />
+
+                    <Label styleClass="section-title" text="Route Manifest &amp; Itinerary" />
+                    <TextArea fx:id="resultArea" editable="false" wrapText="true" VBox.vgrow="ALWAYS" styleClass="result-area" />
+
+                    <Label fx:id="statusLabel" styleClass="status-label" text="Ready." alignment="CENTER_RIGHT" maxWidth="Infinity"/>
+                </VBox>
+            </HBox>
+        </VBox>
+    </content>
+</ScrollPane>
