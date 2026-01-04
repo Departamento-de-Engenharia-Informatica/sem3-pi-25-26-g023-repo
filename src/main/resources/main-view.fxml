@@ -42,7 +42,7 @@
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI09" styleClass="sidebar-button" text="[USEI09] Nearest-N Search (S2)" />
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI10" styleClass="sidebar-button" text="[USEI10] Radius Search (S2)" />
 
-                        <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI11" styleClass="sidebar-button" text="[USEI11] Connectivity (S2)" />
+                        <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI11" styleClass="sidebar-button" text="[USEI11] Upgrade Plan (S3)" />
 
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI12" styleClass="sidebar-button" text="[USEI12] Minimal Backbone (S3)" />
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI13" styleClass="sidebar-button" text="[USEI13] Hub Centrality (S3)" />
