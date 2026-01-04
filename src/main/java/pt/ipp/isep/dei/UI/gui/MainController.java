@@ -185,9 +185,9 @@ public class MainController {
                     ((Usei10Controller) controller).setServices(this, (StationIndexManager) backendService);
                 }
             }
-            // --- USEI11: Injeção do NetworkService ---
             else if (controller instanceof Usei11Controller) {
-                ((Usei11Controller) controller).setDependencies(this, this.networkService);
+                // Passa o MainController e o travelTimeController que já tens inicializado no MainController
+                ((Usei11Controller) controller).setDependencies(this, this.travelTimeController);
             }
             // --- USEI13 & USEI15: Injeção do MainController para notificações ---
             else if (controller instanceof Usei13Controller) {
