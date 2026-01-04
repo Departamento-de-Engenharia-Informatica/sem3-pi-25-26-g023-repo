@@ -68,6 +68,7 @@ public class MainController {
             this.facilityRepository
     );
 
+    // Serviço CRUCIAL para USLP08, USLP09 e USEI11 (Grafo da Rede)
     private RailwayNetworkService networkService = new RailwayNetworkService(
             this.stationRepository,
             this.segmentLineRepository
@@ -184,12 +185,17 @@ public class MainController {
                     ((Usei10Controller) controller).setServices(this, (StationIndexManager) backendService);
                 }
             }
+            // --- USEI11: Injeção do NetworkService ---
+            else if (controller instanceof Usei11Controller) {
+                ((Usei11Controller) controller).setDependencies(this, this.networkService);
+            }
+            // -----------------------------------------
             else if (controller instanceof BDDADMainController) {
                 if (backendService instanceof MainController) {
                     ((BDDADMainController) controller).setServices((MainController) backendService);
                 }
             }
-            // --- NOVA INTEGRAÇÃO: USLP08 ---
+            // --- USLP08: Freight Planner ---
             else if (controller instanceof FreightPlannerController) {
                 if (backendService instanceof MainController) {
                     ((FreightPlannerController) controller).setMainController((MainController) backendService);
@@ -330,6 +336,14 @@ public class MainController {
         loadView("esinf-usei10-view.fxml", this.stationIndexManager);
     }
 
+    // --- NOVA US: USEI11 ---
+    @FXML
+    public void handleShowUSEI11(ActionEvent event) {
+        statusLabel.setText("Network Connectivity [USEI11]");
+        loadView("esinf-usei11-view.fxml", null);
+    }
+    // -----------------------
+
     @FXML
     public void handleShowUSEI12(ActionEvent event) {
         statusLabel.setText("Minimal Backbone Network [USEI12]");
@@ -349,14 +363,13 @@ public class MainController {
         loadTrainCrudView();
     }
 
-    // --- NOVA FUNCIONALIDADE: USLP08 ---
+    // --- USLP08 Handler: Freight Planner ---
     @FXML
     public void handleShowUSLP08(ActionEvent event) {
         statusLabel.setText("USLP08 - Freight Route Planner");
-        // Passamos 'this' para que o loadView injete este MainController no FreightPlannerController
+        // Passamos 'this' para que o loadView injete este MainController
         loadView("freight-planner-view.fxml", this);
     }
-    // -----------------------------------
 
     @FXML
     public void handleShowESINF(ActionEvent event) {
@@ -407,7 +420,7 @@ public class MainController {
             Parent root = loader.load();
             TrainCRUDController controller = loader.getController();
             if (controller != null) {
-                // Injeta as dependências necessárias para o CRUD
+                // Injeta as dependências necessárias para o CRUD e Assembler
                 controller.setDependencies(this, this.trainRepository, this.facilityRepository, this.locomotiveRepository, this.networkService);
                 controller.initController();
             }
