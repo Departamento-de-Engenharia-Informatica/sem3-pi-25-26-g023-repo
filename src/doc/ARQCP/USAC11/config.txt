@@ -1,0 +1,22 @@
+# ============================================
+# CONFIGURAÇÃO DE EXEMPLO - TESTES
+# ============================================
+
+# utilizadores
+USER;Alice Silva;alice;PASSWORD;3
+USER;Bob Santos;bob;SECRET;5
+
+# sensores
+SENSOR;TEMP;BUFFER_LEN;50;MM_WIN;5
+SENSOR;HUM;BUFFER_LEN;50;MM_WIN;5
+
+# tracks
+TRACK;1;FREE;-1
+TRACK;2;BUSY;10
+
+# trains
+TRAIN;10
+TRAIN;11
+
+# logs
+LOGCFG;NEXT_ID;1
