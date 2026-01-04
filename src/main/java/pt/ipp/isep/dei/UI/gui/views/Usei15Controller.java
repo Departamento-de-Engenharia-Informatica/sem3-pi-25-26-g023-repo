@@ -15,19 +15,11 @@ public class Usei15Controller {
     private MainController mainController;
     private Graph currentGraph;
 
-    /**
-     * O método initialize é chamado automaticamente pelo FXMLLoader
-     * APÓS o ficheiro FXML ter sido carregado e os componentes injetados.
-     */
     @FXML
     public void initialize() {
-        // 1. Configurar os conversores de texto para as ComboBox
         setupConverters();
-
-        // 2. Carregar o grafo e popular a primeira ComboBox
         loadInitialData();
 
-        // 3. Adicionar o Listener para filtrar destinos dinamicamente
         cmbOrigin.valueProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
                 filterDestinations(newVal);
@@ -119,13 +111,74 @@ public class Usei15Controller {
             if (result.cycle() != null) {
                 txtResultArea.setText("⚠️ CICLO NEGATIVO DETETADO!\nEstações no ciclo: " + result.cycle());
                 if (mainController != null) mainController.showNotification("Ciclo negativo!", "error");
-            } else if (result.path() != null && !result.path().isEmpty()) {
-                txtResultArea.setText("Caminho de Risco Mínimo (Bellman-Ford):\n" + result.path() +
-                        "\n\nCusto Total de Risco: " + String.format("%.4f", result.totalCost()));
+            }
+            else if (result.path() != null && !result.path().isEmpty()) {
+                // Lógica de formatação detalhada adicionada aqui
+                String detailedReport = formatDetailedPath(result.path(), result.totalCost());
+
+                txtResultArea.setText(detailedReport);
+
                 if (mainController != null) mainController.showNotification("Caminho calculado!", "success");
             }
         } catch (Exception e) {
             txtResultArea.setText("Erro na análise: " + e.getMessage());
+            e.printStackTrace();
         }
+    }
+
+    /**
+     * Gera um relatório detalhado com os custos entre cada estação.
+     */
+    private String formatDetailedPath(List<Integer> path, double totalCost) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("=== Caminho de Risco Mínimo (Bellman-Ford) ===\n\n");
+
+        double accumulatedCost = 0.0;
+
+        for (int i = 0; i < path.size() - 1; i++) {
+            int u = path.get(i);
+            int v = path.get(i + 1);
+
+            // Obtém nomes das estações
+            String startName = getStationName(u);
+            String endName = getStationName(v);
+
+            // Obtém o custo da aresta específica
+            double segmentCost = getEdgeWeight(u, v);
+            accumulatedCost += segmentCost;
+
+            sb.append(String.format("%d. [%s] -> [%s]\n", (i + 1), startName, endName));
+            sb.append(String.format("    Risco Segmento: %.4f | Acumulado: %.4f\n", segmentCost, accumulatedCost));
+        }
+
+        sb.append("\n==============================================\n");
+        sb.append("Caminho (IDs): " + path + "\n");
+        sb.append(String.format("Custo Total Final: %.4f", totalCost));
+
+        return sb.toString();
+    }
+
+    /**
+     * Auxiliar para buscar o peso da aresta entre dois nós.
+     */
+    private double getEdgeWeight(int u, int v) {
+        if (currentGraph != null && currentGraph.adj.containsKey(u)) {
+            for (Edge e : currentGraph.adj.get(u)) {
+                if (e.to() == v) {
+                    return e.weight();
+                }
+            }
+        }
+        return 0.0;
+    }
+
+    /**
+     * Auxiliar para buscar o nome da estação pelo ID.
+     */
+    private String getStationName(int id) {
+        if (currentGraph != null && currentGraph.metricsMap.containsKey(id)) {
+            return currentGraph.metricsMap.get(id).getStation().nome();
+        }
+        return "ID:" + id;
     }
 }
