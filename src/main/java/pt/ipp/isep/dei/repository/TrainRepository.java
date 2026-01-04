@@ -62,18 +62,18 @@ public class TrainRepository {
      */
     public List<String> findAllRouteIds() {
         List<String> routes = new ArrayList<>();
-        String sql = "SELECT route_id FROM TRAIN_ROUTE ORDER BY route_id ASC";
-
+        String call = "{ ? = call fn_get_all_route_ids() }";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql);
-             ResultSet rs = ps.executeQuery()) {
-
-            while (rs.next()) {
-                String id = rs.getString("route_id");
-                if (id != null) routes.add(id);
+             CallableStatement cstmt = conn.prepareCall(call)) {
+            cstmt.registerOutParameter(1, oracle.jdbc.OracleTypes.CURSOR);
+            cstmt.execute();
+            try (ResultSet rs = (ResultSet) cstmt.getObject(1)) {
+                while (rs != null && rs.next()) {
+                    routes.add(rs.getString("route_id"));
+                }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao buscar rotas: " + e.getMessage());
+            System.err.println("Erro PL/SQL: " + e.getMessage());
         }
         return routes;
     }
@@ -83,34 +83,22 @@ public class TrainRepository {
      * Usa a tabela ROUTE_SEGMENT para identificar a primeira e última paragem.
      */
     public Optional<Map<String, Object>> findRouteDetailsById(String routeId) {
-        String sql = "SELECT " +
-                "  (SELECT facility_id FROM ROUTE_SEGMENT WHERE route_id = ? AND segment_order = 1) as START_ID, " +
-                "  (SELECT facility_id FROM ROUTE_SEGMENT WHERE route_id = ? AND segment_order = " +
-                "      (SELECT MAX(segment_order) FROM ROUTE_SEGMENT WHERE route_id = ?)) as END_ID " +
-                "FROM DUAL";
-
+        String call = "{ ? = call fn_get_route_details(?) }";
         try (Connection conn = DatabaseConnection.getConnection();
-             PreparedStatement ps = conn.prepareStatement(sql)) {
-
-            ps.setString(1, routeId);
-            ps.setString(2, routeId);
-            ps.setString(3, routeId);
-
-            try (ResultSet rs = ps.executeQuery()) {
-                if (rs.next()) {
-                    int startId = rs.getInt("START_ID");
-                    int endId = rs.getInt("END_ID");
-
-                    if (startId > 0 && endId > 0) {
-                        Map<String, Object> details = new HashMap<>();
-                        details.put("start", startId);
-                        details.put("end", endId);
-                        return Optional.of(details);
-                    }
+             CallableStatement cstmt = conn.prepareCall(call)) {
+            cstmt.registerOutParameter(1, oracle.jdbc.OracleTypes.CURSOR);
+            cstmt.setString(2, routeId);
+            cstmt.execute();
+            try (ResultSet rs = (ResultSet) cstmt.getObject(1)) {
+                if (rs != null && rs.next()) {
+                    Map<String, Object> details = new HashMap<>();
+                    details.put("start", rs.getInt("START_ID"));
+                    details.put("end", rs.getInt("END_ID"));
+                    return Optional.of(details);
                 }
             }
         } catch (SQLException e) {
-            System.err.println("Erro ao carregar detalhes da rota: " + e.getMessage());
+            System.err.println("Erro PL/SQL: " + e.getMessage());
         }
         return Optional.empty();
     }

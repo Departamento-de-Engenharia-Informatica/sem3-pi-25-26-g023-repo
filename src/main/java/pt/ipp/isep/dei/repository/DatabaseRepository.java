@@ -39,43 +39,46 @@ public class DatabaseRepository {
 
 
     public void saveRoute(String routeId, String name, List<Station> stops, List<FreightRequest> assignedFreights) throws SQLException {
-        Connection conn = null;
-        try {
-            conn = DatabaseConnection.getConnection();
+        String sqlRoute = "{ call pr_insert_train_route(?, ?, ?) }";
+        String sqlSegment = "{ call pr_insert_route_segment(?, ?, ?, ?) }";
+
+        try (Connection conn = DatabaseConnection.getConnection()) {
             conn.setAutoCommit(false);
-
-            // 1. Inserir em TRAIN_ROUTE (Garantir que ID tem no máx 10 chars)
-            String sqlRoute = "INSERT INTO TRAIN_ROUTE (route_id, route_name, description) VALUES (?, ?, ?)";
-            try (PreparedStatement stmt = conn.prepareStatement(sqlRoute)) {
-                stmt.setString(1, routeId.length() > 10 ? routeId.substring(0, 10) : routeId);
-                stmt.setString(2, name);
-                stmt.setString(3, "Manifest: " + assignedFreights.size() + " freights processed.");
-                stmt.executeUpdate();
-            }
-
-            // 2. Inserir os segmentos (ROUTE_SEGMENT)
-            String sqlSegment = "INSERT INTO ROUTE_SEGMENT (route_id, segment_order, facility_id, is_stop) VALUES (?, ?, ?, ?)";
-            for (int i = 0; i < stops.size(); i++) {
-                try (PreparedStatement stmt = conn.prepareStatement(sqlSegment)) {
-                    stmt.setString(1, routeId.length() > 10 ? routeId.substring(0, 10) : routeId);
-                    stmt.setInt(2, i + 1);
-                    // facility_id é NUMBER na tua BD, idEstacao() do record é int. Perfeito.
-                    stmt.setInt(3, stops.get(i).idEstacao());
-                    stmt.setString(4, "Y");
-                    stmt.executeUpdate();
+            try {
+                String shortId = routeId.length() > 10 ? routeId.substring(0, 10) : routeId;
+                try (CallableStatement cstmt = conn.prepareCall(sqlRoute)) {
+                    cstmt.setString(1, shortId);
+                    cstmt.setString(2, name);
+                    cstmt.setString(3, "Manifest: " + assignedFreights.size() + " freights.");
+                    cstmt.execute();
                 }
+                try (CallableStatement cstmtSeg = conn.prepareCall(sqlSegment)) {
+                    for (int i = 0; i < stops.size(); i++) {
+                        cstmtSeg.setString(1, shortId);
+                        cstmtSeg.setInt(2, i + 1);
+                        cstmtSeg.setInt(3, stops.get(i).idEstacao());
+                        cstmtSeg.setString(4, "Y");
+                        cstmtSeg.execute();
+                    }
+                }
+                conn.commit();
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
             }
-
-            conn.commit();
-            System.out.println("DB Success: Route " + routeId + " saved.");
-        } catch (SQLException e) {
-            if (conn != null) conn.rollback();
-            throw e;
-        } finally {
-            if (conn != null) {
-                conn.setAutoCommit(true);
-                conn.close();
-            }
+        }
+    }
+    public void addElectricLocomotive(String modelName, double powerKW, double maxSpeed, double consumption, double voltage) throws SQLException {
+        String sql = "{ call pr_register_electric_locomotive(?, ?, ?, ?, ?, ?) }";
+        try (Connection conn = DatabaseConnection.getConnection();
+             CallableStatement cstmt = conn.prepareCall(sql)) {
+            cstmt.setString(1, modelName);
+            cstmt.setString(2, DEFAULT_OPERATOR_ID);
+            cstmt.setDouble(3, powerKW);
+            cstmt.setDouble(4, maxSpeed);
+            cstmt.setDouble(5, consumption);
+            cstmt.setDouble(6, voltage);
+            cstmt.execute();
         }
     }
 
