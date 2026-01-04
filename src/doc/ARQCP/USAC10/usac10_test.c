@@ -2,8 +2,50 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
-#include "hardware/sensors/config.h"
-#include "hardware/lightsigns/config.h"
+#include <ctype.h>
+
+// ============================================
+// DEFINIÇÕES DE CORES ANSI
+// ============================================
+#define COLOR_RESET   "\033[0m"
+#define COLOR_BOLD    "\033[1m"
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[33m"
+#define COLOR_BLUE    "\033[34m"
+#define COLOR_MAGENTA "\033[35m"
+#define COLOR_CYAN    "\033[36m"
+
+// ============================================
+// DEFINIÇÕES DO SISTEMA
+// ============================================
+#define MIN_TRACK_NUMBER 1
+#define MAX_TRACK_NUMBER 4
+#define NUM_TRACKS 4
+#define LEDS_PER_TRACK 3
+#define BLINK_INTERVAL 500
+
+// Definições de comandos
+#define CMD_GREEN_ON "GE"
+#define CMD_YELLOW_ON "YE"
+#define CMD_RED_ON "RE"
+#define CMD_RED_BLINK "RB"
+
+// Estados dos trilhos
+typedef enum {
+    TRACK_STATE_FREE,
+    TRACK_STATE_ASSIGNED,
+    TRACK_STATE_BUSY,
+    TRACK_STATE_INOPERATIVE
+} TrackState;
+
+// Pinos dos LEDs (simulação)
+int LED_PINS[4][3] = {
+    {2, 3, 4},
+    {5, 6, 7},
+    {8, 9, 10},
+    {11, 12, 13}
+};
 
 // ============================================
 // TESTES UNITÁRIOS PARA USAC10

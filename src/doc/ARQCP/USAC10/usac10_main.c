@@ -1,12 +1,51 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 #include <time.h>
-#include "hardware/sensors/config.h"
-#include "hardware/lightsigns/config.h"
-#include "../common/colors.h"
-#include "../common/utils.h"
+#include <ctype.h>
+#include <unistd.h>
+
+// ============================================
+// DEFINIÇÕES DE CORES ANSI
+// ============================================
+#define COLOR_RESET   "\033[0m"
+#define COLOR_BOLD    "\033[1m"
+#define COLOR_RED     "\033[31m"
+#define COLOR_GREEN   "\033[32m"
+#define COLOR_YELLOW  "\033[33m"
+#define COLOR_BLUE    "\033[34m"
+#define COLOR_MAGENTA "\033[35m"
+#define COLOR_CYAN    "\033[36m"
+
+#define MSG_SUCCESS   COLOR_GREEN
+#define MSG_INFO      COLOR_CYAN
+#define MSG_ERROR     COLOR_RED
+
+#define PRINT_SUCCESS(msg) printf("%s✓ %s%s\n", COLOR_GREEN, msg, COLOR_RESET)
+#define PRINT_ERROR(msg)   printf("%s✗ %s%s\n", COLOR_RED, msg, COLOR_RESET)
+
+// ============================================
+// DEFINIÇÕES DO SISTEMA
+// ============================================
+#define MIN_TRACK_NUMBER 1
+#define MAX_TRACK_NUMBER 4
+#define NUM_TRACKS 4
+#define LEDS_PER_TRACK 3
+#define BLINK_INTERVAL 500
+
+// Definições de comandos
+#define CMD_GREEN_ON "GE"
+#define CMD_YELLOW_ON "YE"
+#define CMD_RED_ON "RE"
+#define CMD_RED_BLINK "RB"
+
+// Estados dos trilhos
+typedef enum {
+    TRACK_STATE_FREE,
+    TRACK_STATE_ASSIGNED,
+    TRACK_STATE_BUSY,
+    TRACK_STATE_INOPERATIVE
+} TrackState;
 
 // ============================================
 // USAC10 MAIN - Teste Integrado dos Dispositivos
@@ -21,7 +60,37 @@ typedef struct {
 SerialPort sensor_port;
 SerialPort lightsigns_port;
 
-// Funções de simulação
+// Pinos dos LEDs (simulação)
+int LED_PINS[4][3] = {
+    {2, 3, 4},
+    {5, 6, 7},
+    {8, 9, 10},
+    {11, 12, 13}
+};
+
+// ============================================
+// FUNÇÕES AUXILIARES
+// ============================================
+
+// Limpa o buffer de entrada
+void clear_input_buffer() {
+    int c;
+    while ((c = getchar()) != '\n' && c != EOF);
+}
+
+// Obtém entrada válida do usuário
+int get_valid_input(const char* format, void* variable) {
+    char buffer[100];
+    if (fgets(buffer, sizeof(buffer), stdin) == NULL) {
+        return 0;
+    }
+    return sscanf(buffer, format, variable) == 1;
+}
+
+// ============================================
+// FUNÇÕES DE SIMULAÇÃO
+// ============================================
+
 void init_serial_ports() {
     memset(&sensor_port, 0, sizeof(sensor_port));
     memset(&lightsigns_port, 0, sizeof(lightsigns_port));
@@ -59,6 +128,10 @@ char* receive_from_sensors() {
     }
     return NULL;
 }
+
+// ============================================
+// FUNÇÕES DE TESTE
+// ============================================
 
 // Função para testar o componente Sensors
 void test_sensors_component() {
@@ -117,16 +190,17 @@ void test_lightsigns_component() {
         "RB,01"   // Trilho 1 vermelho piscante
     };
 
-    const char* expected_responses[] = {
-        "OK: TRILHO_1_VERMELHO",
-        "OK: TRILHO_2_AMARELO",
-        "OK: TRILHO_3_VERDE",
-        "OK: TRILHO_4_PISCANTE",
-        "OK: TRILHO_1_VERDE",
-        "OK: TRILHO_2_VERMELHO",
-        "OK: TRILHO_3_AMARELO",
-        "OK: TRILHO_1_PISCANTE"
-    };
+    // Removida a variável não utilizada
+    // const char* expected_responses[] = {
+    //     "OK: TRILHO_1_VERMELHO",
+    //     "OK: TRILHO_2_AMARELO",
+    //     "OK: TRILHO_3_VERDE",
+    //     "OK: TRILHO_4_PISCANTE",
+    //     "OK: TRILHO_1_VERDE",
+    //     "OK: TRILHO_2_VERMELHO",
+    //     "OK: TRILHO_3_AMARELO",
+    //     "OK: TRILHO_1_PISCANTE"
+    // };
 
     printf("\n1. Testando comandos válidos...\n");
     for (int i = 0; i < 8; i++) {
@@ -215,20 +289,6 @@ void test_integration() {
         PRINT_SUCCESS("ENVIADO");
         usleep(300000);
     }
-}
-
-// Função para exibir menu
-void display_usac10_menu() {
-    printf("\n%s==========================================%s\n", COLOR_CYAN, COLOR_RESET);
-    printf("%s        USAC10 - TESTE DE DISPOSITIVOS      %s\n", COLOR_CYAN, COLOR_RESET);
-    printf("%s==========================================%s\n\n", COLOR_CYAN, COLOR_RESET);
-
-    printf("Componentes disponíveis:\n");
-    printf("  1. %sSENSORS%s - Sensor DHT11 (Temperatura/Humidade)\n", COLOR_GREEN, COLOR_RESET);
-    printf("  2. %sLIGHTSIGNS%s - Controle de LEDs para trilhos\n", COLOR_YELLOW, COLOR_RESET);
-    printf("  3. %sINTEGRAÇÃO%s - Teste conjunto dos componentes\n", COLOR_BLUE, COLOR_RESET);
-    printf("  4. %sCENÁRIOS%s - Testes com cenários específicos\n", COLOR_MAGENTA, COLOR_RESET);
-    printf("  0. %sSAIR%s\n\n", COLOR_RED, COLOR_RESET);
 }
 
 // Cenários de teste específicos
@@ -325,6 +385,20 @@ void run_test_scenarios() {
 
         usleep(500000); // Pausa entre cenários
     }
+}
+
+// Função para exibir menu
+void display_usac10_menu() {
+    printf("\n%s==========================================%s\n", COLOR_CYAN, COLOR_RESET);
+    printf("%s        USAC10 - TESTE DE DISPOSITIVOS      %s\n", COLOR_CYAN, COLOR_RESET);
+    printf("%s==========================================%s\n\n", COLOR_CYAN, COLOR_RESET);
+
+    printf("Componentes disponíveis:\n");
+    printf("  1. %sSENSORS%s - Sensor DHT11 (Temperatura/Humidade)\n", COLOR_GREEN, COLOR_RESET);
+    printf("  2. %sLIGHTSIGNS%s - Controle de LEDs para trilhos\n", COLOR_YELLOW, COLOR_RESET);
+    printf("  3. %sINTEGRAÇÃO%s - Teste conjunto dos componentes\n", COLOR_BLUE, COLOR_RESET);
+    printf("  4. %sCENÁRIOS%s - Testes com cenários específicos\n", COLOR_MAGENTA, COLOR_RESET);
+    printf("  0. %sSAIR%s\n\n", COLOR_RED, COLOR_RESET);
 }
 
 // Função principal
