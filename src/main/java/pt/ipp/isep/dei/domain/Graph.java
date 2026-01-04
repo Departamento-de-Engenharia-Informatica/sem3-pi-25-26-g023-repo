@@ -11,12 +11,11 @@ public class Graph {
         adj.putIfAbsent(s.idEstacao(), new ArrayList<>());
     }
 
-    // MUDANÇA AQUI: Adicionar 'double cost' nos parâmetros
+
     public void addEdge(int u, int v, double weight, double cost) {
         if (adj.containsKey(u) && adj.containsKey(v)) {
-            // Passamos o 'cost' para o construtor da Edge
+            // Adicionamos APENAS a direção definida no CSV
             adj.get(u).add(new Edge(v, weight, cost));
-            adj.get(v).add(new Edge(u, weight, cost));
         }
     }
 }
