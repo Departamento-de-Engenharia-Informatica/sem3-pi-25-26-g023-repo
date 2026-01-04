@@ -1,44 +1,81 @@
 #include "usac13.h"
-#include <time.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
-// Simula leitura do sensor
-void get_sensor_data(SensorData* data) {
-    if (!data) return;
+/* Declaração de funções externas do Sprint 2 (Assembly) */
+/* Certifica-te que tens o extract_data.s compilado no projeto */
+extern int extract_data(char* str, char* token, char* unit, int* value);
 
-    // Simula valores aleatórios realistas
-    data->temperature = 20.0 + (rand() % 150) / 10.0;  // 20.0-35.0°C
-    data->humidity = 40.0 + (rand() % 300) / 10.0;     // 40.0-70.0%
+/* Inicializa a estrutura e aloca memória para os buffers */
+int sensors_init(SensorData *data, const SensorsConfig *config) {
+    if (!data || !config) return 0;
 
-    // Timestamp atual
-    time_t now = time(NULL);
-    struct tm* tm_info = localtime(&now);
-    strftime(data->timestamp, 20, "%Y-%m-%d %H:%M:%S", tm_info);
-}
+    /* Inicializar a zeros */
+    memset(data, 0, sizeof(SensorData));
 
-// Exibe dados formatados
-void display_sensor_data(const SensorData* data) {
-    if (!data) return;
+    /* Alocar buffer circular para temperatura */
+    data->temp_length = config->temp.buffer_length;
+    if (data->temp_length > 0) {
+        data->temp_buffer = (int *)calloc(data->temp_length, sizeof(int));
+        if (!data->temp_buffer) return 0;
+    }
 
-    printf("\n=== DADOS DOS SENSORES ===\n");
-    printf("Timestamp: %s\n", data->timestamp);
-    printf("Temperatura: %.1f °C\n", data->temperature);
-    printf("Humidade: %.1f %%\n", data->humidity);
-    printf("===========================\n");
-}
-
-// Simula múltiplas leituras
-int simulate_sensor_readings(void) {
-    printf("\nSimulando leituras dos sensores...\n");
-
-    SensorData readings[5];
-
-    for (int i = 0; i < 5; i++) {
-        get_sensor_data(&readings[i]);
-        printf("\nLeitura %d:\n", i + 1);
-        display_sensor_data(&readings[i]);
+    /* Alocar buffer circular para humidade */
+    data->hum_length = config->hum.buffer_length;
+    if (data->hum_length > 0) {
+        data->hum_buffer = (int *)calloc(data->hum_length, sizeof(int));
+        if (!data->hum_buffer) {
+            free(data->temp_buffer); /* Limpar se falhar o segundo */
+            return 0;
+        }
     }
 
     return 1;
+}
+
+/* Liberta a memória */
+void sensors_free(SensorData *data) {
+    if (!data) return;
+
+    if (data->temp_buffer) free(data->temp_buffer);
+    if (data->hum_buffer) free(data->hum_buffer);
+
+    /* Zera os ponteiros para evitar uso após free */
+    data->temp_buffer = NULL;
+    data->hum_buffer = NULL;
+}
+
+/* Função Wrapper que chama o Assembly para atualizar a struct */
+int update_sensors(SensorData *data, int temp_value, int hum_value) {
+    if (!data) return 0;
+
+    /* Invoca a função assembly update_sensor_buffer.s */
+    return update_sensor_buffer(data, temp_value, hum_value);
+}
+
+/* Função de simulação baseada no exemplo bom */
+int get_sensor_data_simulated(int *temp_value, int *hum_value) {
+    /* Simular resposta exata do Arduino */
+    char response[] = "TEMP &unit:celsius &value:23#HUM &unit:percentage &value:65";
+
+    printf("[SIMULACAO] Resposta recebida do Arduino: '%s'\n", response);
+
+    /* Variáveis auxiliares para o parser */
+    char unit_temp[20] = {0};
+    char unit_hum[20] = {0};
+
+    /* 1. Extrair Temperatura (Assembly Sprint 2) */
+    if (!extract_data(response, "TEMP", unit_temp, temp_value)) {
+        fprintf(stderr, "[ERRO] Falha ao extrair Temperatura\n");
+        return 0;
+    }
+
+    /* 2. Extrair Humidade (Assembly Sprint 2) */
+    if (!extract_data(response, "HUM", unit_hum, hum_value)) {
+        fprintf(stderr, "[ERRO] Falha ao extrair Humidade\n");
+        return 0;
+    }
+
+    return 1; /* Sucesso */
 }

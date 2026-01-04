@@ -1,62 +1,183 @@
+/* usac13_main.c - Versão Hardware Real */
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <fcntl.h>
+#include <termios.h>
+#include <errno.h>
 #include "usac13.h"
 
-void display_menu(void) {
-    printf("\n=== USAC13 - SENSORES DA ESTAÇÃO ===\n");
-    printf("1. Ler dados atuais dos sensores\n");
-    printf("2. Simular múltiplas leituras\n");
-    printf("3. Mostrar comando GTH\n");
-    printf("4. Testar integração\n");
-    printf("0. Sair\n");
-    printf("Opção: ");
+/* Definições da Porta Série (Ajusta conforme necessário, ex: ttyACM0 ou ttyUSB0) */
+#define SERIAL_PORT "/dev/ttyUSB0"
+#define BAUD_RATE B115200
+
+/* Declaração da função Assembly do Sprint 2 */
+extern int extract_data(char* str, char* token, char* unit, int* value);
+
+/* =========================================================================
+   FUNÇÕES DE CONFIGURAÇÃO DA PORTA SÉRIE (HARDWARE)
+   ========================================================================= */
+
+/* Configura a porta série para comunicação com o Arduino */
+int setup_serial_port(const char *portname) {
+    int fd = open(portname, O_RDWR | O_NOCTTY | O_SYNC);
+    if (fd < 0) {
+        fprintf(stderr, "[ERRO] Erro ao abrir %s: %s\n", portname, strerror(errno));
+        return -1;
+    }
+
+    struct termios tty;
+    if (tcgetattr(fd, &tty) != 0) {
+        fprintf(stderr, "[ERRO] tcgetattr: %s\n", strerror(errno));
+        return -1;
+    }
+
+    /* Configurar Baud Rate */
+    cfsetospeed(&tty, BAUD_RATE);
+    cfsetispeed(&tty, BAUD_RATE);
+
+    /* Configurar flags (8N1 - 8 data bits, No parity, 1 stop bit) */
+    tty.c_cflag = (tty.c_cflag & ~CSIZE) | CS8; /* 8 bits */
+    tty.c_cflag &= ~PARENB;                     /* Sem paridade */
+    tty.c_cflag &= ~CSTOPB;                     /* 1 stop bit */
+    tty.c_cflag |= (CLOCAL | CREAD);            /* Ignorar modem lines, enable receiver */
+
+    /* Raw mode (sem processamento de input/output) */
+    tty.c_lflag &= ~(ICANON | ECHO | ECHOE | ISIG);
+    tty.c_oflag &= ~OPOST;
+
+    /* Timeouts (Importante para não bloquear para sempre) */
+    tty.c_cc[VMIN]  = 0;            /* Non-blocking read */
+    tty.c_cc[VTIME] = 20;           /* 2 segundos timeout (decisegundos) */
+
+    if (tcsetattr(fd, TCSANOW, &tty) != 0) {
+        fprintf(stderr, "[ERRO] tcsetattr: %s\n", strerror(errno));
+        return -1;
+    }
+
+    return fd;
 }
 
+/* Envia comando GTH e lê a resposta do sensor real */
+int get_sensor_data_hardware(int fd, int *temp_val, int *hum_val) {
+    char buffer[256];
+    char cmd[] = "GTH"; /* Comando acordado com a equipa de Embedded */
+    int n;
+
+    /* 1. Limpar lixo do buffer de entrada */
+    tcflush(fd, TCIFLUSH);
+
+    /* 2. Enviar pedido */
+    n = write(fd, cmd, strlen(cmd));
+    if (n < 0) {
+        perror("Falha no write");
+        return 0;
+    }
+
+    /* 3. Aguardar resposta (Arduino demora a processar) */
+    usleep(200000); /* 200ms delay */
+
+    /* 4. Ler resposta */
+    memset(buffer, 0, sizeof(buffer));
+    n = read(fd, buffer, sizeof(buffer) - 1);
+
+    if (n > 0) {
+        buffer[n] = '\0';
+        printf("    [RX HARDWARE]: %s\n", buffer); // Debug: ver o que chegou
+
+        char unit_temp[20] = {0};
+        char unit_hum[20] = {0};
+
+        /* 5. Usar Assembly (Sprint 2) para extrair dados da string real */
+        int res_t = extract_data(buffer, "TEMP", unit_temp, temp_val);
+        int res_h = extract_data(buffer, "HUM", unit_hum, hum_val);
+
+        if (!res_t || !res_h) {
+            printf("    [ERRO] Falha no parser Assembly (formato inválido?)\n");
+            return 0;
+        }
+        return 1; // Sucesso
+    }
+
+    printf("    [ERRO] Sem resposta do sensor (timeout)\n");
+    return 0;
+}
+
+/* Helper para printar o estado (igual ao anterior) */
+void print_buffer_status(SensorData *data) {
+    printf("   > Buffer Temp (N=%d): [ ", data->temp_nelem);
+    for(int i = 0; i < data->temp_nelem; i++) {
+        int idx = (data->temp_tail + i) % data->temp_length;
+        printf("%d ", data->temp_buffer[idx]);
+    }
+    printf("]\n");
+
+    printf("   > Buffer Hum  (N=%d): [ ", data->hum_nelem);
+    for(int i = 0; i < data->hum_nelem; i++) {
+        int idx = (data->hum_tail + i) % data->hum_length;
+        printf("%d ", data->hum_buffer[idx]);
+    }
+    printf("]\n\n");
+}
+
+/* =========================================================================
+   MAIN
+   ========================================================================= */
 int main(void) {
-    SensorData current_data;
-    int option;
+    printf("=== USAC13 - Leitura de Sensores Reais (Hardware) ===\n");
 
-    printf("USAC13 - Obter dados dos Sensores\n");
-    printf("==================================\n");
+    /* 1. Inicializar Hardware */
+    printf("[1] A abrir porta série %s...\n", SERIAL_PORT);
+    int serial_fd = setup_serial_port(SERIAL_PORT);
 
-    srand(time(NULL)); // Inicializa gerador aleatório
+    if (serial_fd < 0) {
+        printf("[FATAL] Não foi possível ligar ao sensor. Verifica o cabo ou permissões (sudo).\n");
+        return 1;
+    }
+    printf("    Ligação estabelecida com sucesso.\n\n");
 
-    do {
-        display_menu();
-        scanf("%d", &option);
-        getchar(); // Limpa buffer
+    /* 2. Configuração de Memória */
+    SensorsConfig config;
+    config.temp.buffer_length = 5;
+    config.hum.buffer_length = 5;
 
-        switch (option) {
-            case 1:
-                get_sensor_data(&current_data);
-                display_sensor_data(&current_data);
-                break;
+    SensorData sensor_data;
 
-            case 2:
-                simulate_sensor_readings();
-                break;
+    if (!sensors_init(&sensor_data, &config)) {
+        close(serial_fd);
+        return 1;
+    }
+    printf("[2] Buffers inicializados.\n\n");
 
-            case 3:
-                printf("\nComando para sensores: %s\n", SENSOR_CMD);
-                printf("Formato esperado: TEMP&unit::celsius&value::XX#HUM&unit::percentage&value::XX\n");
-                break;
+    /* 3. Loop de Leitura Real */
+    printf("[3] A iniciar ciclo de leitura (CTRL+C para sair)...\n");
 
-            case 4:
-                printf("\nTestando integração com Manager...\n");
-                get_sensor_data(&current_data);
-                printf("Dados prontos para envio ao Manager:\n");
-                printf("TEMP&unit::celsius&value::%.1f#HUM&unit::percentage&value::%.1f\n",
-                       current_data.temperature, current_data.humidity);
-                break;
+    /* Fazemos 10 leituras como exemplo */
+    for (int i = 0; i < 10; i++) {
+        printf("--- Leitura #%d ---\n", i + 1);
 
-            case 0:
-                printf("A sair...\n");
-                break;
+        int t, h;
 
-            default:
-                printf("Opção inválida!\n");
+        /* Chamar função de Hardware em vez da simulada */
+        if (get_sensor_data_hardware(serial_fd, &t, &h)) {
+
+            /* Lógica C + Assembly para atualizar struct */
+            if (update_sensors(&sensor_data, t, h)) {
+                printf("    Atualizado: Temp=%d, Hum=%d\n",
+                       sensor_data.temp_current, sensor_data.hum_current);
+                print_buffer_status(&sensor_data);
+            }
         }
 
-    } while (option != 0);
+        /* Esperar 1 segundo entre leituras (polling) */
+        sleep(1);
+    }
+
+    /* 4. Limpeza */
+    printf("[4] A terminar...\n");
+    sensors_free(&sensor_data);
+    close(serial_fd);
 
     return 0;
 }
