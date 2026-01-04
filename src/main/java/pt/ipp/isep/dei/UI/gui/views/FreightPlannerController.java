@@ -8,11 +8,13 @@ import javafx.util.StringConverter;
 import pt.ipp.isep.dei.UI.gui.MainController;
 import pt.ipp.isep.dei.controller.RoutePlannerController;
 import pt.ipp.isep.dei.domain.FreightRequest;
+import pt.ipp.isep.dei.domain.Order;
 import pt.ipp.isep.dei.domain.Station;
-import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.domain.RailwayNetworkService;
+import pt.ipp.isep.dei.repository.FacilityRepository;
 import pt.ipp.isep.dei.repository.SegmentLineRepository;
 import pt.ipp.isep.dei.repository.StationRepository;
+import pt.ipp.isep.dei.domain.InventoryManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -22,7 +24,8 @@ public class FreightPlannerController {
     @FXML private RadioButton rbSimple;
     @FXML private RadioButton rbComplex;
 
-    @FXML private TextField descField;
+    // ComboBox para selecionar as Orders reais do seu sistema
+    @FXML private ComboBox<Order> orderCombo;
     @FXML private TextField weightField;
     @FXML private ComboBox<Station> originCombo;
     @FXML private ComboBox<Station> destCombo;
@@ -44,18 +47,13 @@ public class FreightPlannerController {
 
     @FXML
     public void initialize() {
-        // 1. Instanciar Repositórios
         FacilityRepository facilityRepo = new FacilityRepository();
         StationRepository stationRepo = new StationRepository();
         SegmentLineRepository segmentRepo = new SegmentLineRepository();
 
-        // 2. Instanciar Serviço de Rede
         RailwayNetworkService networkService = new RailwayNetworkService(stationRepo, segmentRepo);
-
-        // 3. Instanciar o Controller (CORREÇÃO: Agora recebe os 3 argumentos)
         this.controller = new RoutePlannerController(networkService, facilityRepo, segmentRepo);
 
-        // Configuração da UI
         routeTypeGroup = new ToggleGroup();
         rbSimple.setToggleGroup(routeTypeGroup);
         rbComplex.setToggleGroup(routeTypeGroup);
@@ -63,23 +61,17 @@ public class FreightPlannerController {
         routeTypeGroup.selectedToggleProperty().addListener((obs, oldVal, newVal) -> {
             if (rbSimple.isSelected() && pendingFreights.size() > 1) {
                 clearList();
-                statusLabel.setText("Mode changed to Simple. List cleared.");
+                statusLabel.setText("Modo Simples: Lista limpa.");
             }
         });
 
         loadStations();
+        loadOrdersFromInventory();
         setupOriginListener();
     }
 
     private void loadStations() {
-        // Usa o método getActiveStations para filtrar apenas estações com carris
         List<Station> stations = controller.getActiveStations();
-
-        if (stations.isEmpty()) {
-            statusLabel.setText("⚠️ No connected stations found via Repositories.");
-            resultArea.setText("Warning: Facility or Segment repositories returned no data.\nPlease ensure database is populated.");
-        }
-
         ObservableList<Station> obsStations = FXCollections.observableArrayList(stations);
 
         StringConverter<Station> converter = new StringConverter<>() {
@@ -93,26 +85,36 @@ public class FreightPlannerController {
 
         originCombo.setItems(obsStations);
         originCombo.setConverter(converter);
-
         destCombo.setConverter(converter);
-
         startStationCombo.setItems(obsStations);
         startStationCombo.setConverter(converter);
+    }
+
+    private void loadOrdersFromInventory() {
+        InventoryManager invManager = new InventoryManager();
+        List<Order> orders = invManager.getOrders();
+
+        if (orders != null && !orders.isEmpty()) {
+            orderCombo.setItems(FXCollections.observableArrayList(orders));
+            orderCombo.setConverter(new StringConverter<Order>() {
+                @Override
+                public String toString(Order o) {
+                    return o == null ? "" : "Order ID: " + o.orderId + " (Prioridade: " + o.priority + ")";
+                }
+                @Override
+                public Order fromString(String s) { return null; }
+            });
+        } else {
+            statusLabel.setText("⚠️ Nenhuma order carregada no ItemRepository.");
+        }
     }
 
     private void setupOriginListener() {
         originCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
             if (newVal != null) {
-                // Filtra destinos usando o grafo em memória
                 List<Station> possible = controller.getReachableDestinations(newVal.idEstacao());
                 destCombo.setItems(FXCollections.observableArrayList(possible));
                 destCombo.setDisable(false);
-
-                if (possible.isEmpty()) {
-                    statusLabel.setText("⚠️ Selected origin is isolated.");
-                } else {
-                    statusLabel.setText("Select destination.");
-                }
             } else {
                 destCombo.setItems(FXCollections.emptyObservableList());
                 destCombo.setDisable(true);
@@ -124,48 +126,47 @@ public class FreightPlannerController {
     public void addFreight() {
         try {
             if (rbSimple.isSelected() && !pendingFreights.isEmpty()) {
-                showAlert(Alert.AlertType.WARNING, "Limit Reached", "Simple Route allows only 1 freight order.");
+                showAlert(Alert.AlertType.WARNING, "Limite", "Rota Simples permite apenas 1 order.");
                 return;
             }
 
-            String desc = descField.getText();
+            Order selected = orderCombo.getValue();
             Station origin = originCombo.getValue();
             Station dest = destCombo.getValue();
-            String weightStr = weightField.getText();
 
-            if (desc.isEmpty() || origin == null || dest == null) {
-                showAlert(Alert.AlertType.WARNING, "Missing Data", "Please fill description, origin and destination.");
+            if (selected == null || origin == null || dest == null) {
+                showAlert(Alert.AlertType.WARNING, "Dados em Falta", "Selecione a Order, Origem e Destino.");
                 return;
             }
 
             double weight = 0.0;
-            if (!weightStr.isEmpty()) weight = Double.parseDouble(weightStr);
+            if (!weightField.getText().isEmpty()) weight = Double.parseDouble(weightField.getText());
 
+            // Cria o FreightRequest usando o ID real da Order
             FreightRequest req = controller.createFreightRequest(
-                    "FR-" + (pendingFreights.size() + 1),
+                    selected.orderId,
                     origin.idEstacao(),
                     dest.idEstacao(),
-                    desc,
+                    "Transporte Order " + selected.orderId,
                     weight
             );
 
             pendingFreights.add(req);
             updateList();
 
-            descField.clear();
+            orderCombo.getSelectionModel().clearSelection();
             weightField.clear();
-            originCombo.getSelectionModel().clearSelection();
-            statusLabel.setText("Freight added.");
+            statusLabel.setText("Carga da Order " + selected.orderId + " adicionada.");
 
         } catch (Exception e) {
-            showAlert(Alert.AlertType.ERROR, "Error", e.getMessage());
+            showAlert(Alert.AlertType.ERROR, "Erro", e.getMessage());
         }
     }
 
     private void updateList() {
         ObservableList<String> items = FXCollections.observableArrayList();
         for (FreightRequest f : pendingFreights) {
-            items.add(String.format("%s | %d -> %d | %.1ft", f.getDescription(), f.getOriginStationId(), f.getDestinationStationId(), f.getWeightTons()));
+            items.add(String.format("%s | %d -> %d | %.1ft", f.getId(), f.getOriginStationId(), f.getDestinationStationId(), f.getWeightTons()));
         }
         freightList.setItems(items);
     }
@@ -175,55 +176,32 @@ public class FreightPlannerController {
         pendingFreights.clear();
         updateList();
         resultArea.clear();
-        statusLabel.setText("List cleared.");
     }
 
     @FXML
     public void calculateRoute() {
         Station start = startStationCombo.getValue();
-        if (start == null) {
-            showAlert(Alert.AlertType.WARNING, "Start Station", "Select where the locomotive starts.");
-            return;
-        }
-        if (pendingFreights.isEmpty()) {
-            showAlert(Alert.AlertType.WARNING, "No Freights", "Add freights first.");
-            return;
-        }
+        if (start == null || pendingFreights.isEmpty()) return;
 
         try {
-            List<Station> reachableFromStart = controller.getReachableDestinations(start.idEstacao());
-            int firstPickup = pendingFreights.get(0).getOriginStationId();
-
-            // Verifica se a locomotiva consegue chegar à primeira carga
-            boolean canReach = (start.idEstacao() == firstPickup) ||
-                    reachableFromStart.stream().anyMatch(s -> s.idEstacao() == firstPickup);
-
-            if (!canReach) {
-                showAlert(Alert.AlertType.ERROR, "Impossible Route",
-                        "Locomotive at " + start.nome() + " cannot reach the first freight origin (ID: " + firstPickup + ").");
-                return;
-            }
-
-            statusLabel.setText("Calculating...");
             boolean isSimple = rbSimple.isSelected();
-
             RoutePlannerController.PlannedRoute route = controller.planRoute(start.idEstacao(), pendingFreights, isSimple);
+
+            // ADICIONADO: Salvar a rota para importação na USLP09
+            InventoryManager.savePlannedRoute(route);
 
             StringBuilder sb = new StringBuilder();
             sb.append("=== ROUTE MANIFEST ===\n");
             sb.append("Type: ").append(isSimple ? "Simple" : "Complex").append("\n");
             sb.append("Total Distance: ").append(String.format("%.2f km", route.getTotalDistance())).append("\n\n");
 
-            for (String line : route.manifest()) {
-                sb.append(line).append("\n");
-            }
+            for (String line : route.manifest()) sb.append(line).append("\n");
 
             resultArea.setText(sb.toString());
-            statusLabel.setText("Calculation complete.");
+            statusLabel.setText("Cálculo concluído. Rota guardada para importação.");
 
         } catch (Exception e) {
-            resultArea.setText("Error: " + e.getMessage());
-            e.printStackTrace();
+            resultArea.setText("Erro: " + e.getMessage());
         }
     }
 
@@ -232,9 +210,6 @@ public class FreightPlannerController {
         alert.setTitle(title);
         alert.setHeaderText(null);
         alert.setContentText(content);
-        if (getClass().getResource("/style.css") != null) {
-            alert.getDialogPane().getStylesheets().add(getClass().getResource("/style.css").toExternalForm());
-        }
         alert.showAndWait();
     }
 }

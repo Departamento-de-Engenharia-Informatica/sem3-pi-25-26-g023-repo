@@ -1,6 +1,5 @@
 package pt.ipp.isep.dei.domain;
 
-
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -9,13 +8,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
+import pt.ipp.isep.dei.controller.RoutePlannerController;
 
 /**
- * Manages the loading and storage of all inventory-related domain objects (Items,
- * Warehouses, Wagons, Orders, Returns, and European Stations) from external CSV files.
- * <p>
- * It provides methods for silent loading (ignoring parsing errors) and maintains counts
- * for main statistical summaries.
+ * Manages the loading and storage of all inventory-related domain objects.
  */
 public class InventoryManager {
 
@@ -33,23 +29,36 @@ public class InventoryManager {
     private int validStationCount = 0;
     private int invalidStationCount = 0;
 
-    /**
-     * Default constructor.
-     */
+    // NOVO: Armazenamento temporário da rota planeada para importação na USLP09
+    private static RoutePlannerController.PlannedRoute lastPlannedRoute = null;
+
     public InventoryManager() {
-        // Initialization handled in load methods
+    }
+
+    public static void savePlannedRoute(RoutePlannerController.PlannedRoute route) {
+        lastPlannedRoute = route;
+    }
+
+    public static RoutePlannerController.PlannedRoute getLastPlannedRoute() {
+        return lastPlannedRoute;
     }
 
     /**
-     * Loads items from the CSV file in silent mode.
-     *
-     * @param filePath The path to the CSV file containing item data.
-     * @throws IOException if an error occurs while reading the file.
+     * Retorna as encomendas carregadas do sistema.
      */
+    public List<Order> getOrders() {
+        try {
+            return loadOrders("src/main/java/pt/ipp/isep/dei/FicheirosCSV/orders.csv",
+                    "src/main/java/pt/ipp/isep/dei/FicheirosCSV/order_lines.csv");
+        } catch (IOException e) {
+            return new ArrayList<>();
+        }
+    }
+
     public void loadItems(String filePath) throws IOException {
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // Skip header
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 5) continue;
@@ -60,24 +69,17 @@ public class InventoryManager {
                     String unit = p[3].trim();
                     double weight = Double.parseDouble(p[4].trim());
                     items.put(sku, new Item(sku, name, category, unit, weight));
-                } catch (Exception e) { /* Silently ignore */ }
+                } catch (Exception e) { }
             }
         }
         this.itemsCount = items.size();
     }
 
-    /**
-     * Loads bays from the warehouses CSV file in silent mode and organizes them into {@link Warehouse} objects.
-     *
-     * @param filePath The path to the CSV file containing bay data.
-     * @return A list of all loaded {@link Bay} objects.
-     * @throws IOException if an error occurs while reading the file.
-     */
     public List<Bay> loadBays(String filePath) throws IOException {
         List<Bay> allBays = new ArrayList<>();
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // Skip header
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 4) continue;
@@ -86,11 +88,8 @@ public class InventoryManager {
                     int aisle = Integer.parseInt(p[1].trim());
                     int bay = Integer.parseInt(p[2].trim());
                     int capacity = Integer.parseInt(p[3].trim());
-
                     Bay newBay = new Bay(warehouseId, aisle, bay, capacity);
                     allBays.add(newBay);
-
-                    // Find or create warehouse
                     Warehouse wh = warehouses.stream()
                             .filter(w -> w.getWarehouseId().equals(warehouseId))
                             .findFirst()
@@ -100,7 +99,7 @@ public class InventoryManager {
                                 return w;
                             });
                     wh.addBay(newBay);
-                } catch (Exception e) { /* Silently ignore */ }
+                } catch (Exception e) { }
             }
         }
         warehouses.sort(Comparator.comparing(Warehouse::getWarehouseId));
@@ -109,29 +108,16 @@ public class InventoryManager {
         return allBays;
     }
 
-    /**
-     * Returns an unmodifiable list of all loaded warehouses.
-     *
-     * @return An unmodifiable list of {@link Warehouse} objects.
-     */
     public List<Warehouse> getWarehouses() {
         return Collections.unmodifiableList(warehouses);
     }
 
-    /**
-     * Loads wagons with boxes from the CSV file in silent mode.
-     *
-     * @param filePath The path to the CSV file containing wagon and box data.
-     * @return A list of all loaded {@link Wagon} objects.
-     * @throws IOException if an error occurs while reading the file.
-     */
     public List<Wagon> loadWagons(String filePath) throws IOException {
         Map<String, Wagon> wagons = new LinkedHashMap<>();
         DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
-
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // Skip header
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 6) continue;
@@ -142,97 +128,61 @@ public class InventoryManager {
                     int qty = Integer.parseInt(p[3].trim());
                     String expRaw = p[4].trim();
                     String recvRaw = p[5].trim();
-
                     if (!items.containsKey(sku)) continue;
-
                     LocalDate expiry = null;
                     if (!expRaw.isEmpty() && !expRaw.equals("null")) {
-                        try {
-                            expiry = LocalDate.parse(expRaw);
-                        } catch (Exception e) { /* Silently ignore date parsing errors */ }
+                        try { expiry = LocalDate.parse(expRaw); } catch (Exception e) { }
                     }
-
                     LocalDateTime receivedAt = LocalDateTime.parse(recvRaw, fmt);
-
                     Box box = new Box(boxId, sku, qty, expiry, receivedAt, null, null);
                     wagons.computeIfAbsent(wagonId, Wagon::new).addBox(box);
-                } catch (Exception e) { /* Silently ignore parsing errors */ }
+                } catch (Exception e) { }
             }
         }
         this.wagonsCount = wagons.size();
         return new ArrayList<>(wagons.values());
     }
 
-    /**
-     * Loads returns from clients from the CSV file in silent mode.
-     *
-     * @param filePath The path to the CSV file containing return data.
-     * @return A list of all loaded {@link Return} objects.
-     * @throws IOException if an error occurs while reading the file.
-     */
     public List<Return> loadReturns(String filePath) throws IOException {
         List<Return> list = new ArrayList<>();
         DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
             String line;
-            br.readLine(); // Skip header
-
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 5) continue;
                 try {
                     String id = p[0].trim();
                     if (id.startsWith("\uFEFF")) { id = id.substring(1); }
-
                     String sku = p[1].trim();
                     int qty = Integer.parseInt(p[2].trim());
                     String reason = p[3].trim();
-
-                    LocalDateTime ts;
-                    try {
-                        ts = LocalDateTime.parse(p[4].trim(), fmt);
-                    } catch (Exception e) { continue; } // Skip if timestamp is invalid
-
+                    LocalDateTime ts = LocalDateTime.parse(p[4].trim(), fmt);
                     LocalDateTime exp = null;
                     if (p.length > 5) {
                         String expRaw = p[5].trim();
                         if (!expRaw.isEmpty() && !expRaw.equals("null") && !expRaw.equals("N/A")) {
                             try {
-                                if (expRaw.contains("T")) {
-                                    exp = LocalDateTime.parse(expRaw, fmt);
-                                } else {
-                                    exp = LocalDate.parse(expRaw).atStartOfDay();
-                                }
-                            } catch (Exception e) { /* Silently ignore expiry date parsing errors */ }
+                                if (expRaw.contains("T")) exp = LocalDateTime.parse(expRaw, fmt);
+                                else exp = LocalDate.parse(expRaw).atStartOfDay();
+                            } catch (Exception e) { }
                         }
                     }
-
-                    Return returnItem = new Return(id, sku, qty, reason, ts, exp);
-                    list.add(returnItem);
-
-                } catch (Exception e) { /* Silently ignore parsing errors */ }
+                    list.add(new Return(id, sku, qty, reason, ts, exp));
+                } catch (Exception e) { }
             }
         }
         this.returnsCount = list.size();
         return list;
     }
 
-    /**
-     * Loads orders and their respective lines from CSV files in silent mode.
-     *
-     * @param ordersPath The path to the CSV file containing order header data.
-     * @param linesPath The path to the CSV file containing order line data.
-     * @return A list of all loaded {@link Order} objects that contain at least one line.
-     * @throws IOException if an error occurs while reading the files.
-     */
     public List<Order> loadOrders(String ordersPath, String linesPath) throws IOException {
         Map<String, Order> orders = new LinkedHashMap<>();
         DateTimeFormatter fmt = DateTimeFormatter.ISO_DATE_TIME;
-
-        // Load orders
         try (BufferedReader br = new BufferedReader(new FileReader(ordersPath))) {
             String line;
-            br.readLine(); // Skip header
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 3) continue;
@@ -241,14 +191,12 @@ public class InventoryManager {
                     LocalDate due = LocalDateTime.parse(p[1].trim(), fmt).toLocalDate();
                     int priority = Integer.parseInt(p[2].trim());
                     orders.put(id, new Order(id, priority, due));
-                } catch (Exception e) { /* Silently ignore parsing errors */ }
+                } catch (Exception e) { }
             }
         }
-
-        // Load order lines
         try (BufferedReader br = new BufferedReader(new FileReader(linesPath))) {
             String line;
-            br.readLine(); // Skip header
+            br.readLine();
             while ((line = br.readLine()) != null) {
                 String[] p = line.contains(";") ? line.split(";") : line.split(",");
                 if (p.length < 4) continue;
@@ -257,206 +205,80 @@ public class InventoryManager {
                     int lineNo = Integer.parseInt(p[1].trim());
                     String sku = p[2].trim();
                     int qty = Integer.parseInt(p[3].trim());
-
                     if (orders.containsKey(orderId)) {
                         orders.get(orderId).lines.add(new OrderLine(lineNo, sku, qty));
                     }
-                } catch (Exception e) { /* Silently ignore parsing errors */ }
+                } catch (Exception e) { }
             }
         }
-
-        // Filter out orders with no lines
-        List<Order> result = new ArrayList<>();
-        for (Order order : orders.values()) {
-            if (!order.lines.isEmpty()) {
-                result.add(order);
-            }
-        }
+        List<Order> result = orders.values().stream().filter(o -> !o.lines.isEmpty()).collect(Collectors.toList());
         this.ordersCount = result.size();
         return result;
     }
 
-    /**
-     * Loads European stations from CSV file.
-     *
-     * <p>This method implements hybrid mapping logic to support two different CSV file formats
-     * (test format vs. production/KDTree format) based on the number of fields.</p>
-     *
-     * @param filePath The path to the CSV file containing European station data.
-     * @return A list of valid {@link EuropeanStation} objects loaded.
-     * @throws RuntimeException if the file cannot be read (required for JUnit testing).
-     */
     public List<EuropeanStation> loadEuropeanStations(String filePath) {
         List<EuropeanStation> stations = new ArrayList<>();
-        this.validStationCount = 0;
-        this.invalidStationCount = 0;
-
         int currentId = 1;
-
         try (BufferedReader br = new BufferedReader(new FileReader(filePath))) {
-            br.readLine(); // Skip header
+            br.readLine();
             String line;
-
             while ((line = br.readLine()) != null) {
                 if (line.trim().isEmpty()) continue;
-
                 String[] fields = parseCSVLine(line);
-
                 try {
-                    final int EXPECTED_DATA_FIELDS = 8;
-                    int offset;
-
-                    // 1. Determine offset and mapping order
-                    if (fields.length == EXPECTED_DATA_FIELDS) {
-                        // TEST file (8 columns: station, lat, lon, country...)
-                        offset = 0;
-                    } else if (fields.length == EXPECTED_DATA_FIELDS + 1) {
-                        // PRODUCTION file (9 columns: ID, country, ?, TZG, Name, Lat, Lon, ...)
-                        offset = 1; // ID is in column 0, data starts at 1.
-                    } else {
-                        throw new IllegalArgumentException("Unexpected number of columns: " + fields.length);
-                    }
-
-                    // 2. Mapping
-                    String stationName;
-                    double latitude;
-                    double longitude;
-                    String country;
-                    String timeZoneGroup;
-                    boolean isCity;
-                    boolean isMainStation;
-                    boolean isAirport;
-
-
-                    // CRITICAL HYBRID MAPPING LOGIC:
+                    String stationName, country, timeZoneGroup;
+                    double lat, lon;
+                    boolean city, main, airport;
                     if (fields.length == 8) {
-                        // Unit Test Mapping (headers: station, latitude, longitude, country, timeZoneGroup, isCity, isMainStation, isAirport)
-                        stationName = fields[0].trim();
-                        latitude = Double.parseDouble(fields[1].trim());
-                        longitude = Double.parseDouble(fields[2].trim());
-                        country = fields[3].trim();
-                        timeZoneGroup = fields[4].trim();
-                        isCity = parseBoolean(fields[5].trim());
-                        isMainStation = parseBoolean(fields[6].trim());
-                        isAirport = parseBoolean(fields[7].trim());
+                        stationName = fields[0].trim(); lat = Double.parseDouble(fields[1].trim());
+                        lon = Double.parseDouble(fields[2].trim()); country = fields[3].trim();
+                        timeZoneGroup = fields[4].trim(); city = parseBoolean(fields[5].trim());
+                        main = parseBoolean(fields[6].trim()); airport = parseBoolean(fields[7].trim());
                     } else {
-                        // Production/KDTree Mapping (9 columns, non-standard order - the one the user stated works)
-                        // Note: fields[0] is the ID.
-                        country = fields[0].trim();
-                        timeZoneGroup = fields[2].trim();
-                        stationName = fields[3].trim();
-                        latitude = Double.parseDouble(fields[4].trim());
-                        longitude = Double.parseDouble(fields[5].trim());
-                        isCity = parseBoolean(fields[6].trim());
-                        isMainStation = parseBoolean(fields[7].trim());
-                        isAirport = parseBoolean(fields[8].trim());
+                        country = fields[0].trim(); timeZoneGroup = fields[2].trim();
+                        stationName = fields[3].trim(); lat = Double.parseDouble(fields[4].trim());
+                        lon = Double.parseDouble(fields[5].trim()); city = parseBoolean(fields[6].trim());
+                        main = parseBoolean(fields[7].trim()); airport = parseBoolean(fields[8].trim());
                     }
-
-
-                    // Validations...
-                    if (stationName.isEmpty() || country.isEmpty() || timeZoneGroup.isEmpty() || latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-                        throw new IllegalArgumentException("Invalid data found.");
-                    }
-
-                    // OBJECT CREATION
-                    EuropeanStation station = new EuropeanStation(
-                            currentId,
-                            stationName,
-                            country,
-                            timeZoneGroup,
-                            latitude,
-                            longitude,
-                            isCity,
-                            isMainStation,
-                            isAirport);
-
-                    stations.add(station);
+                    stations.add(new EuropeanStation(currentId++, stationName, country, timeZoneGroup, lat, lon, city, main, airport));
                     this.validStationCount++;
-
-                    currentId++; // Increment the ID for the next record
-                } catch (Exception e) {
-                    this.invalidStationCount++;
-                }
+                } catch (Exception e) { this.invalidStationCount++; }
             }
-        } catch (IOException e) {
-            // Throw RuntimeException (JUnit requirement for non-existent file tests)
-            throw new RuntimeException("Failed to load European stations file: " + e.getMessage(), e);
-        }
-
+        } catch (IOException e) { throw new RuntimeException(e); }
         return stations;
     }
 
-    // --- Statistics Getters ---
-
     public Inventory getInventory() { return inventory; }
-    /** Returns an unmodifiable map of all loaded items, keyed by SKU. */
     public Map<String, Item> getItemsMap() { return Collections.unmodifiableMap(items); }
-    /** Returns a mutable list of all loaded items. */
     public List<Item> getItems() { return new ArrayList<>(items.values()); }
-    /** Returns the count of unique items loaded. */
     public int getItemsCount() { return itemsCount; }
-    /** Returns the count of all bays loaded across all warehouses. */
     public int getBaysCount() { return baysCount; }
-    /** Returns the count of warehouses loaded. */
     public int getWarehouseCount() { return warehouseCount; }
-    /** Returns the count of wagons loaded. */
     public int getWagonsCount() { return wagonsCount; }
-    /** Returns the count of client returns loaded. */
     public int getReturnsCount() { return returnsCount; }
-    /** Returns the count of valid orders loaded (with at least one line). */
     public int getOrdersCount() { return ordersCount; }
-    /** Returns the count of European stations successfully parsed and validated. */
     public int getValidStationCount() { return validStationCount; }
-    /** Returns the count of records skipped due to parsing or validation errors during station loading. */
     public int getInvalidStationCount() { return invalidStationCount; }
 
-
-    // --- Private Helper Methods ---
-
-    /**
-     * Parses a string into a boolean, accepting "True" (case-insensitive) as true.
-     *
-     * @param text The string to parse.
-     * @return true if the string is "True" (case-insensitive), false otherwise.
-     */
     private boolean parseBoolean(String text) {
         return text != null && text.trim().equalsIgnoreCase("True");
     }
 
-    /**
-     * Robust CSV line parser that handles quoted fields and delimiters (commas or semicolons) within values.
-     *
-     * @param line The raw line string from the CSV file.
-     * @return An array of strings representing the fields in the line.
-     */
     private String[] parseCSVLine(String line) {
         List<String> fields = new ArrayList<>();
         StringBuilder currentField = new StringBuilder();
         boolean inQuotes = false;
-
         for (int i = 0; i < line.length(); i++) {
             char c = line.charAt(i);
-
             if (inQuotes) {
                 if (c == '"') {
-                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') {
-                        currentField.append('"');
-                        i++;
-                    } else {
-                        inQuotes = false;
-                    }
-                } else {
-                    currentField.append(c);
-                }
+                    if (i + 1 < line.length() && line.charAt(i + 1) == '"') { currentField.append('"'); i++; }
+                    else inQuotes = false;
+                } else currentField.append(c);
             } else {
-                if (c == '"') {
-                    inQuotes = true;
-                } else if (c == ',') {
-                    fields.add(currentField.toString());
-                    currentField.setLength(0);
-                } else {
-                    currentField.append(c);
-                }
+                if (c == '"') inQuotes = true;
+                else if (c == ',') { fields.add(currentField.toString()); currentField.setLength(0); }
+                else currentField.append(c);
             }
         }
         fields.add(currentField.toString());
