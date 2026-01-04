@@ -6,33 +6,54 @@ import java.io.IOException;
 import java.util.*;
 
 /**
- * Service dedicated to Network Flow Analysis (USEI14 - Sprint 3).
- * Works with CSV snapshots (stations.csv, lines.csv) instead of the live Database.
+ * Service dedicated to network flow analysis (USEI14).
+ * This class implements maximum flow logic to determine the total transport
+ * capacity between two network hubs.
+ *
+ * The solution is based on the Edmonds-Karp algorithm, which is an implementation
+ * of the Ford-Fulkerson method that uses Breadth-First Search (BFS) to find
+ * augmenting paths. This approach ensures that the path selected in each iteration
+ * is the shortest in terms of number of edges, optimizing the algorithm's convergence.
  */
 public class RailwayFlowService {
 
-    // --- Estruturas em Memória (CSV Cache) ---
+    /** Mapping of IDs to station names loaded from snapshots. */
     private final Map<Integer, String> csvStationNames = new HashMap<>();
+
+    /** List of line segments processed from the data files. */
     private final List<LineSegment> csvSegments = new ArrayList<>();
+
+    /** State flag to control data loading. */
     private boolean csvLoaded = false;
 
-    // Capacidade assumida se o CSV não tiver essa coluna
-    private static final double DEFAULT_CAPACITY = 20.0;
-
     public RailwayFlowService() {
-        // Construtor vazio, não precisa de Repositories da DB
     }
 
     /**
-     * Carrega o grafo a partir dos ficheiros CSV.
+     * Data structure to encapsulate the results of the maximum flow calculation.
+     * Includes the route summary, the flow value, and the corresponding complexity analysis.
+     */
+    public record MaxFlowResult(String source, String sink, int maxFlow, String complexity) {
+        @Override
+        public String toString() {
+            return String.format("Summary: Source: %s, Sink: %s, Max Throughput: %d units.\nComplexity Analysis: %s",
+                    source, sink, maxFlow, complexity);
+        }
+    }
+
+    /**
+     * Parses station and connection data from CSV files.
+     * * @param stationsFile Path to the station metadata file.
+     * @param linesFile Path to the file containing segments and their capacities.
+     * @throws IOException If an error occurs while reading the files.
      */
     public void loadGraphFromCSV(String stationsFile, String linesFile) throws IOException {
-        if (csvLoaded) return; // Evita recarregar
+        if (csvLoaded) return;
 
         csvStationNames.clear();
         csvSegments.clear();
 
-        // 1. Carregar Estações
+        // 1. Loading Stations
         try (BufferedReader br = new BufferedReader(new FileReader(stationsFile))) {
             String line = br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
@@ -47,23 +68,21 @@ public class RailwayFlowService {
             }
         }
 
-        // 2. Carregar Linhas
+        // 2. Loading Connections and Capacities
         try (BufferedReader br = new BufferedReader(new FileReader(linesFile))) {
             String line = br.readLine(); // Skip header
             while ((line = br.readLine()) != null) {
                 String[] parts = line.split(",");
-                if (parts.length >= 3) {
+                if (parts.length >= 4) {
                     try {
                         int from = Integer.parseInt(parts[0].trim());
                         int to = Integer.parseInt(parts[1].trim());
                         double dist = Double.parseDouble(parts[2].trim());
-
-                        // Capacidade default para simulação
-                        double capacity = DEFAULT_CAPACITY;
+                        int capacity = Integer.parseInt(parts[3].trim());
 
                         LineSegment seg = new LineSegment(
                                 "CSV-" + from + "-" + to,
-                                from, to, dist, 0, (int) capacity, null, null
+                                from, to, dist, 0, capacity, null, null
                         );
                         csvSegments.add(seg);
 
@@ -76,87 +95,122 @@ public class RailwayFlowService {
         System.out.println("LOG: RailwayFlowService loaded " + csvStationNames.size() + " stations and " + csvSegments.size() + " segments.");
     }
 
+    /**
+     * Returns all loaded stations, sorted by ID.
+     */
     public Map<Integer, String> getAllCsvStations() {
         return new TreeMap<>(csvStationNames);
     }
 
+    /**
+     * Resolves the name of a station based on its identifier.
+     */
     public String getStationNameById(int id) {
-        return csvStationNames.getOrDefault(id, null);
+        return csvStationNames.getOrDefault(id, "ID:" + id);
     }
 
     /**
-     * USEI14 - Maximum throughput (Edmonds-Karp Algorithm).
+     * Calculates the maximum flow between a source and a destination hub.
+     * * The algorithm builds a residual graph where capacities are iteratively updated.
+     * In each step, an augmenting path is sought. If found, the total flow is
+     * increased by the "bottleneck" value of the path, and residual capacities
+     * (both forward and backward edges) are updated accordingly.
+     * * @param sourceId The ID of the source station.
+     * @param sinkId The ID of the destination station.
+     * @return An object containing flow details and O(V * E^2) time complexity.
      */
-    public double maximumThroughput(int sourceId, int sinkId) {
+    public MaxFlowResult calculateMaximumThroughput(int sourceId, int sinkId) {
         if (!csvLoaded || csvSegments.isEmpty()) {
-            throw new RuntimeException("CSV Data not loaded. Call loadGraphFromCSV() first.");
+            throw new RuntimeException("Data not loaded. Please execute loadGraphFromCSV first.");
         }
 
-        // Construção do Grafo Residual
-        Map<Integer, Map<Integer, Double>> residualGraph = new HashMap<>();
+        // Residual graph representation: Map<Source, Map<Destination, Capacity>>
+        Map<Integer, Map<Integer, Integer>> residualGraph = new HashMap<>();
 
+        // Initialize the residual graph considering the bidirectionality of the tracks
         for (LineSegment seg : csvSegments) {
             int u = seg.getIdEstacaoInicio();
             int v = seg.getIdEstacaoFim();
-            double capacity = (double) seg.getNumberTracks();
+            int cap = seg.getNumberTracks();
 
-            // Forward
-            residualGraph.computeIfAbsent(u, k -> new HashMap<>()).put(v, capacity);
-            residualGraph.computeIfAbsent(v, k -> new HashMap<>()).putIfAbsent(u, 0.0);
-
-            // Backward/Bidirecional
-            residualGraph.computeIfAbsent(v, k -> new HashMap<>()).put(u, capacity);
-            residualGraph.computeIfAbsent(u, k -> new HashMap<>()).putIfAbsent(v, 0.0);
+            residualGraph.computeIfAbsent(u, k -> new HashMap<>()).put(v, cap);
+            residualGraph.computeIfAbsent(v, k -> new HashMap<>()).put(u, cap);
         }
 
-        double maxFlow = 0.0;
+        int maxFlow = 0;
         Map<Integer, Integer> parentMap = new HashMap<>();
 
-        // Loop Edmonds-Karp (BFS)
-        while (bfsAugmentingPath(residualGraph, sourceId, sinkId, parentMap)) {
-            double pathFlow = Double.MAX_VALUE;
+        // While an augmenting path with available capacity exists
+        while (bfsShortestAugmentingPath(residualGraph, sourceId, sinkId, parentMap)) {
+
+            // Identify the bottleneck capacity (minimum residual capacity) in the found path
+            int pathFlow = Integer.MAX_VALUE;
             int curr = sinkId;
+
             while (curr != sourceId) {
                 int prev = parentMap.get(curr);
-                pathFlow = Math.min(pathFlow, residualGraph.get(prev).get(curr));
+                int availableCap = residualGraph.get(prev).get(curr);
+                pathFlow = Math.min(pathFlow, availableCap);
+                curr = prev;
+            }
+
+            // Update residual capacities and back-edges
+            curr = sinkId;
+            while (curr != sourceId) {
+                int prev = parentMap.get(curr);
+
+                // Reduce capacity in the direction of the flow
+                int oldFwd = residualGraph.get(prev).get(curr);
+                residualGraph.get(prev).put(curr, oldFwd - pathFlow);
+
+                // Increase capacity in the reverse direction (flow cancellation)
+                int oldBwd = residualGraph.get(curr).getOrDefault(prev, 0);
+                residualGraph.get(curr).put(prev, oldBwd + pathFlow);
+
                 curr = prev;
             }
 
             maxFlow += pathFlow;
-            curr = sinkId;
-            while (curr != sourceId) {
-                int prev = parentMap.get(curr);
-                double oldFwd = residualGraph.get(prev).get(curr);
-                residualGraph.get(prev).put(curr, oldFwd - pathFlow);
-
-                double oldBwd = residualGraph.get(curr).getOrDefault(prev, 0.0);
-                residualGraph.get(curr).put(prev, oldBwd + pathFlow);
-                curr = prev;
-            }
         }
-        return maxFlow;
+
+        String sourceName = getStationNameById(sourceId);
+        String sinkName = getStationNameById(sinkId);
+
+        return new MaxFlowResult(sourceName, sinkName, maxFlow, "O(V * E^2)");
     }
 
-    private boolean bfsAugmentingPath(Map<Integer, Map<Integer, Double>> rGraph, int source, int sink, Map<Integer, Integer> parent) {
+    /**
+     * Finds the shortest augmenting path between source and sink in the residual graph.
+     * Uses BFS to ensure the selected path has the minimum number of edges,
+     * satisfying the Edmonds-Karp strategy.
+     * * @return true if a path with positive capacity exists to the destination.
+     */
+    private boolean bfsShortestAugmentingPath(Map<Integer, Map<Integer, Integer>> rGraph, int source, int sink, Map<Integer, Integer> parent) {
         parent.clear();
         Queue<Integer> q = new LinkedList<>();
         Set<Integer> visited = new HashSet<>();
+
         q.add(source);
         visited.add(source);
         parent.put(source, -1);
 
         while (!q.isEmpty()) {
             int u = q.poll();
+
             if (u == sink) return true;
 
-            Map<Integer, Double> neighbors = rGraph.get(u);
+            Map<Integer, Integer> neighbors = rGraph.get(u);
             if (neighbors != null) {
-                for (Map.Entry<Integer, Double> entry : neighbors.entrySet()) {
+                for (Map.Entry<Integer, Integer> entry : neighbors.entrySet()) {
                     int v = entry.getKey();
-                    if (!visited.contains(v) && entry.getValue() > 0) {
+                    int residualCap = entry.getValue();
+
+                    // Only explore unvisited edges with remaining residual capacity
+                    if (!visited.contains(v) && residualCap > 0) {
                         visited.add(v);
                         parent.put(v, u);
                         q.add(v);
+
                         if (v == sink) return true;
                     }
                 }

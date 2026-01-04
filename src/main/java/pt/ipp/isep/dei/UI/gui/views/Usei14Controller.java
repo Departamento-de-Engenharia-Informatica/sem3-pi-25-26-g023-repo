@@ -60,7 +60,6 @@ public class Usei14Controller {
             e.printStackTrace();
         }
     }
-
     @FXML
     void onCalculate(ActionEvent event) {
         String sourceStr = cmbSource.getValue();
@@ -71,17 +70,25 @@ public class Usei14Controller {
             return;
         }
 
-        int sourceId = stationStringToIntMap.get(sourceStr);
-        int sinkId = stationStringToIntMap.get(sinkStr);
+        Integer sourceId = stationStringToIntMap.get(sourceStr);
+        Integer sinkId = stationStringToIntMap.get(sinkStr);
 
-        if (sourceId == sinkId) {
+        if (sourceId == null || sinkId == null) {
+            showAlert("Error", "Station mapping not found.");
+            return;
+        }
+
+        if (sourceId.equals(sinkId)) {
             showAlert("Warning", "Source and Sink cannot be the same.");
             return;
         }
 
         try {
             long startTime = System.nanoTime();
-            double maxFlow = flowService.maximumThroughput(sourceId, sinkId);
+
+            // CORREÇÃO: Chama o método correto e recebe o Record
+            RailwayFlowService.MaxFlowResult result = flowService.calculateMaximumThroughput(sourceId, sinkId);
+
             long endTime = System.nanoTime();
             double durationMs = (endTime - startTime) / 1_000_000.0;
 
@@ -91,14 +98,18 @@ public class Usei14Controller {
             sb.append(String.format("From: %s\n", sourceStr));
             sb.append(String.format("To:   %s\n", sinkStr));
             sb.append("--------------------------------------------------\n");
-            sb.append(String.format("MAXIMUM THROUGHPUT: %.0f trains/day\n", maxFlow));
+            // Agora usamos result.maxFlow()
+            sb.append(String.format("MAXIMUM THROUGHPUT: %d trains/day\n", result.maxFlow()));
             sb.append("--------------------------------------------------\n");
+            // Adicionamos a complexidade obrigatória
+            sb.append("Complexity: ").append(result.complexity()).append("\n");
             sb.append(String.format("Time elapsed: %.2f ms", durationMs));
 
             txtResult.setText(sb.toString());
 
         } catch (Exception e) {
             showAlert("Error", "Calculation failed: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

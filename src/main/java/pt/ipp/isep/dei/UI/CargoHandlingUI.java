@@ -395,18 +395,23 @@ public class CargoHandlingUI implements Runnable {
         long startTime = System.nanoTime();
 
         try {
-            // Chama o algoritmo no flowService
-            double maxFlow = flowService.maximumThroughput(sourceId, sinkId);
+            // CORREÇÃO: Chama o novo método e recebe o Record com o resultado completo
+            RailwayFlowService.MaxFlowResult result = flowService.calculateMaximumThroughput(sourceId, sinkId);
 
             long endTime = System.nanoTime();
             double durationMs = (endTime - startTime) / 1_000_000.0;
 
-            System.out.println("\n" + ANSI_BOLD + "--- RESULT ---" + ANSI_RESET);
-            System.out.printf("Maximum Throughput from %s to %s:%n", sourceName, sinkName);
-            System.out.printf(ANSI_GREEN + ANSI_BOLD + "%.0f trains/day%n" + ANSI_RESET, maxFlow);
-            System.out.printf(ANSI_ITALIC + "(Calculation took %.2f ms)%n" + ANSI_RESET, durationMs);
+            System.out.println("\n" + ANSI_BOLD + "--- RESULT (Expected Returns) ---" + ANSI_RESET);
+            System.out.printf("Source Station: %s (ID: %d)%n", result.source(), sourceId);
+            System.out.printf("Target Station: %s (ID: %d)%n", result.sink(), sinkId);
+            System.out.println("----------------------------------");
+            System.out.printf(ANSI_GREEN + ANSI_BOLD + "MAX FLOW: %d units (trains/tracks)%n" + ANSI_RESET, result.maxFlow());
+            System.out.println("----------------------------------");
+            System.out.println(ANSI_BOLD + "Temporal Analysis Complexity:" + ANSI_RESET);
+            System.out.println("   " + result.complexity());
+            System.out.printf(ANSI_ITALIC + "(Execution took %.2f ms)%n" + ANSI_RESET, durationMs);
 
-            if (maxFlow == 0) {
+            if (result.maxFlow() == 0) {
                 System.out.println(ANSI_YELLOW + "Warning: Max flow is 0. Check if stations are connected." + ANSI_RESET);
             }
 
