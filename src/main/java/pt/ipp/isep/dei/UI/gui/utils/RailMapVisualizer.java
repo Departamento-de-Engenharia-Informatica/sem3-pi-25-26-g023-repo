@@ -1,7 +1,6 @@
 package pt.ipp.isep.dei.UI.gui.utils;
 
 import javafx.animation.AnimationTimer;
-import javafx.animation.FadeTransition;
 import javafx.animation.ScaleTransition;
 import javafx.geometry.Insets;
 import javafx.geometry.Point2D;
@@ -34,9 +33,8 @@ public class RailMapVisualizer extends StackPane {
     private final Pane canvasPane;
     private final VBox notificationPanel;
     private VBox notificationContent;
-    private Button notificationToggle; // Botão pequeno
+    private Button notificationToggle;
 
-    // Painéis de Aviso
     private final VBox conflictPanel;
     private final VBox successPanel;
 
@@ -48,9 +46,9 @@ public class RailMapVisualizer extends StackPane {
     private final Map<String, ConflictInfo> conflictRegistry = new HashMap<>();
 
     // --- CÂMARA ---
-    private double scale = 0.6; // Zoom inicial um pouco maior já que o mapa encolheu
+    private double scale = 0.55;
     private double translateX = 0, translateY = 0;
-    private double targetScale = 0.6;
+    private double targetScale = 0.55;
     private double targetTranslateX = 0, targetTranslateY = 0;
     private boolean autoCameraMode = true;
     private double lastMouseX, lastMouseY;
@@ -79,21 +77,21 @@ public class RailMapVisualizer extends StackPane {
 
         // 1. Layer Mapa
         this.canvasPane = new Pane();
-        this.canvas = new Canvas(2000, 3000);
+        this.canvas = new Canvas(2500, 3500); // Canvas grande para caber tudo
         this.canvasPane.getChildren().add(canvas);
         canvas.widthProperty().bind(this.widthProperty());
         canvas.heightProperty().bind(this.heightProperty());
 
-        setupGeographicallyAccurateMap(); // MAPA COMPACTADO
+        setupGeographicallyAccurateMap(); // MAPA COMPLETO USBD32
 
-        // 2. Layer HUD (Log Minimalista)
+        // 2. Layer HUD
         this.notificationPanel = createNotificationPanel();
 
         // 3. Layer Relógio
         this.clockLabel = new Label("00:00:00");
         this.clockLabel.setStyle("-fx-text-fill: white; -fx-font-family: 'Monospaced'; -fx-font-size: 28px; -fx-font-weight: bold; -fx-effect: dropshadow(three-pass-box, rgba(0,0,0,0.8), 5, 0, 0, 1);");
 
-        // 4. Layer Controlos
+        // 4. Controlos
         this.btnZoomIn = createGlassButton("+");
         this.btnZoomIn.setOnAction(e -> manualZoom(1.2));
         this.btnZoomOut = createGlassButton("-");
@@ -109,20 +107,17 @@ public class RailMapVisualizer extends StackPane {
         controlsBox.setPadding(new Insets(20));
         controlsBox.setPickOnBounds(false);
 
-        // 5. Layer Modais
+        // 5. Painéis
         this.conflictPanel = createConflictPanel();
         this.successPanel = createSuccessPanel();
 
         this.getChildren().addAll(canvasPane, clockLabel, notificationPanel, controlsBox, conflictPanel, successPanel);
 
-        // --- POSICIONAMENTO ---
+        // Posicionamento
         StackPane.setAlignment(clockLabel, Pos.TOP_CENTER);
         StackPane.setMargin(clockLabel, new Insets(25, 0, 0, 0));
-
-        // LOG: Canto Superior Esquerdo, mas pequeno
         StackPane.setAlignment(notificationPanel, Pos.TOP_LEFT);
         StackPane.setMargin(notificationPanel, new Insets(20, 0, 0, 20));
-
         StackPane.setAlignment(controlsBox, Pos.TOP_RIGHT);
         StackPane.setAlignment(conflictPanel, Pos.CENTER);
         StackPane.setAlignment(successPanel, Pos.CENTER);
@@ -130,27 +125,79 @@ public class RailMapVisualizer extends StackPane {
         setupInteraction();
     }
 
-    // --- PAINEL DE LOG MINIMALISTA ---
+    // --- MAPA ATUALIZADO (USBD32 COMPLETO) ---
+    private void setupGeographicallyAccurateMap() {
+        // Eixo Y: Cresce para Baixo (Norte no topo -> 0, Sul em baixo -> 1000+)
+        // Eixo X: Cresce para Direita (Oeste/Mar -> 0, Este/Interior -> 1000+)
+
+        // --- EXTREMO NORTE (Fronteira) ---
+        addStation("Valenca", 400, 100);
+        addStation("Sao Pedro da Torre", 390, 160);
+        addStation("Vila Nova da Cerveira", 370, 220);
+        addStation("Carvalha", 360, 260); // Perto de Caminha
+        addStation("Caminha", 350, 300);
+
+        // --- ZONA VIANA DO CASTELO ---
+        addStation("Carreco", 340, 360);
+        addStation("Viana do Castelo", 340, 420);
+        addStation("Darque", 360, 440);
+        addStation("Barroselas", 380, 490);
+
+        // --- ZONA BARCELOS / NINE ---
+        addStation("Tamel", 400, 540);
+        addStation("Barcelos", 410, 580);
+        addStation("Midoes", 430, 620);
+        addStation("Nine", 450, 660); // NÓ PRINCIPAL (Minho vs Braga)
+
+        // --- RAMAL DE BRAGA & EXTENSÃO (Leste de Nine) ---
+        // A linha vai para a direita (Este)
+        addStation("Tadim", 520, 650); // Opcional, mas dá escala
+        addStation("Braga", 580, 640);
+
+        // Extensão "Fictícia" USBD32 (Continua para Norte/Leste de Braga)
+        addStation("Manzagao", 640, 620);
+        addStation("Cerqueiral", 680, 590);
+        addStation("Gemieira", 720, 560);
+        addStation("Paredes de Coura", 650, 450); // Liga de volta ao norte (teoricamente)
+
+        // --- DESCENDO PARA O PORTO (Sul de Nine) ---
+        addStation("Lousado", 450, 720); // Nó de Guimarães
+        addStation("Senhora das Dores", 480, 710); // Perto de Lousado (Ramal Guimarães)
+        addStation("Famalicao", 450, 760);
+        addStation("Sao Frutuoso", 450, 800);
+        addStation("Leandro", 450, 830);
+        addStation("Sao Romao", 450, 860);
+
+        // --- ZONA GRANDE PORTO ---
+        addStation("Ermesinde", 460, 920); // Nó do Douro
+
+        // Linha de Cintura / Leixões (Oeste de Ermesinde/Contumil)
+        addStation("Sao Gemil", 420, 940);
+        addStation("Sao Mamede de Infesta", 380, 940);
+        addStation("Leca do Balio", 340, 930);
+        addStation("Leixoes", 290, 920); // Porto de Leixões (Carga)
+
+        // Entrada na cidade
+        addStation("Contumil", 460, 960);
+        addStation("Porto Campanha", 440, 1000); // Principal
+        addStation("Porto Sao Bento", 400, 1020); // Término no centro
+
+        // --- SUL DO DOURO (Contexto) ---
+        addStation("General Torres", 440, 1050);
+        addStation("Vila Nova de Gaia", 440, 1080);
+    }
+
+    // --- (RESTO DO CÓDIGO INALTERADO) ---
+
     private VBox createNotificationPanel() {
         VBox container = new VBox(5);
         container.setMaxWidth(250);
-        container.setPickOnBounds(false); // Permite clicar através das áreas vazias
+        container.setPickOnBounds(false);
 
-        // Botão Toggle Pequeno e Discreto
         notificationToggle = new Button("📄 LOG");
         notificationToggle.setFont(Font.font("System", FontWeight.BOLD, 10));
-        // Estilo: Pequeno, fundo escuro semi-transparente, borda subtil
-        notificationToggle.setStyle(
-                "-fx-background-color: rgba(30, 41, 59, 0.8); " +
-                        "-fx-text-fill: #94a3b8; " +
-                        "-fx-background-radius: 4; " +
-                        "-fx-border-color: #475569; " +
-                        "-fx-border-radius: 4; " +
-                        "-fx-cursor: hand; " +
-                        "-fx-padding: 4 8;"
-        );
+        notificationToggle.setStyle("-fx-background-color: rgba(30, 41, 59, 0.8); -fx-text-fill: #94a3b8; -fx-background-radius: 4; -fx-border-color: #475569; -fx-border-radius: 4; -fx-cursor: hand; -fx-padding: 4 8;");
 
-        // Área de Conteúdo (Escondida por defeito)
         notificationContent = new VBox(5);
         notificationContent.setPadding(new Insets(8));
         notificationContent.setStyle("-fx-background-color: rgba(15, 23, 42, 0.95); -fx-background-radius: 4; -fx-border-color: #475569; -fx-border-width: 1;");
@@ -161,17 +208,14 @@ public class RailMapVisualizer extends StackPane {
         scroll.setStyle("-fx-background: transparent; -fx-background-color: transparent;");
         scroll.setMaxHeight(200);
 
-        // Wrapper para controlar visibilidade
         VBox contentWrapper = new VBox(scroll);
         contentWrapper.setVisible(false);
-        contentWrapper.setManaged(false); // Não ocupa espaço quando invisível
+        contentWrapper.setManaged(false);
 
-        // Ação do Botão
         notificationToggle.setOnAction(e -> {
             boolean isVisible = contentWrapper.isVisible();
             contentWrapper.setVisible(!isVisible);
             contentWrapper.setManaged(!isVisible);
-
             if (!isVisible) {
                 notificationToggle.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-background-radius: 4; -fx-padding: 4 8;");
                 notificationToggle.setText("✖ FECHAR");
@@ -185,85 +229,6 @@ public class RailMapVisualizer extends StackPane {
         return container;
     }
 
-    // --- MAPA COMPACTADO (Correção de Velocidade Visual) ---
-    private void setupGeographicallyAccurateMap() {
-        // Reduzi as distâncias verticais (Y) para evitar "linhas gigantes" onde o comboio parece voar.
-        // O mapa fica mais "apertado" verticalmente.
-
-        // --- LINHA DO MINHO ---
-        addStation("Valenca", 300, 100);
-        addStation("Sao Pedro da Torre", 305, 150); // Encurtado
-        addStation("Vila Nova de Cerveira", 290, 210);
-        addStation("Caminha", 280, 270);
-        addStation("Ancora Praia", 280, 320);
-        addStation("Afife", 280, 360);
-        addStation("Viana do Castelo", 280, 420); // Reduzido de 550 para 420
-
-        addStation("Barcelos", 350, 520);
-        addStation("Nine", 400, 600); // Reduzido de 780 para 600
-
-        // Ramal de Braga
-        addStation("Tadim", 450, 580);
-        addStation("Braga", 500, 570);
-
-        // Descendo para Porto (Compactado)
-        addStation("Famalicao", 400, 650);
-        addStation("Trofa", 400, 700);
-
-        // Ramal Guimarães
-        addStation("Santo Tirso", 450, 690);
-        addStation("Vizela", 500, 680);
-        addStation("Guimaraes", 550, 670);
-
-        // --- GRANDE PORTO (Compactado) ---
-        addStation("Ermesinde", 420, 760);
-        addStation("Rio Tinto", 410, 800);
-        addStation("Contumil", 400, 840);
-
-        // Porto Central
-        addStation("Porto Campanha", 380, 900); // Era 1200, agora 900. Muito mais perto.
-        addStation("Porto Sao Bento", 340, 930);
-
-        // --- LINHA DO DOURO ---
-        addStation("Valongo", 460, 770);
-        addStation("Paredes", 520, 780);
-        addStation("Penafiel", 580, 790);
-        addStation("Caide", 650, 800);
-        addStation("Marco de Canaveses", 750, 820);
-        addStation("Regua", 900, 850);
-        addStation("Pinhao", 1000, 860);
-        addStation("Pocinho", 1200, 870);
-
-        // --- SUL DO PORTO ---
-        addStation("General Torres", 380, 960);
-        addStation("Vila Nova de Gaia", 380, 1000);
-        addStation("Granja", 370, 1060);
-        addStation("Espinho", 360, 1120);
-        addStation("Esmoriz", 360, 1180);
-        addStation("Ovar", 355, 1260);
-        addStation("Estarreja", 350, 1340);
-        addStation("Aveiro", 340, 1450);
-
-        addStation("Mealhada", 360, 1550);
-        addStation("Pampilhosa", 370, 1620);
-        addStation("Coimbra B", 370, 1700);
-        addStation("Coimbra", 400, 1720);
-
-        addStation("Alfarelos", 350, 1780);
-        addStation("Pombal", 360, 1900);
-        addStation("Entroncamento", 380, 2100);
-        addStation("Lisboa Oriente", 300, 2400);
-        addStation("Lisboa Santa Apolonia", 280, 2480);
-
-        // --- LINHA DA BEIRA ALTA ---
-        addStation("Mortagua", 450, 1640);
-        addStation("Santa Comba Dao", 520, 1660);
-        addStation("Mangualde", 600, 1680);
-        addStation("Guarda", 800, 1660);
-        addStation("Vilar Formoso", 950, 1680);
-    }
-
-    // --- PAINEL DE SUCESSO ---
     private VBox createSuccessPanel() {
         VBox panel = new VBox(15);
         panel.setAlignment(Pos.CENTER);
@@ -272,14 +237,11 @@ public class RailMapVisualizer extends StackPane {
 
         Label icon = new Label("✔ SUCESSO");
         icon.setStyle("-fx-text-fill: #10b981; -fx-font-size: 32px; -fx-font-weight: bold; -fx-effect: dropshadow(gaussian, black, 2, 1, 0, 0);");
-
         Label title = new Label("SIMULAÇÃO TERMINADA");
         title.setStyle("-fx-text-fill: white; -fx-font-size: 22px; -fx-font-weight: bold;");
-
         Label desc = new Label("Todos os conflitos foram resolvidos e os horários cumpridos.");
         desc.setStyle("-fx-text-fill: #d1fae5; -fx-font-size: 16px; -fx-text-alignment: center;");
         desc.setWrapText(true);
-
         Button btnRestart = new Button("FECHAR / REINICIAR");
         btnRestart.setStyle("-fx-background-color: #10b981; -fx-text-fill: white; -fx-font-weight: bold; -fx-padding: 12 30; -fx-background-radius: 8; -fx-cursor: hand; -fx-font-size: 14px;");
         btnRestart.setOnAction(e -> panel.setVisible(false));
@@ -298,14 +260,11 @@ public class RailMapVisualizer extends StackPane {
         }
     }
 
-    // --- (Resto do código de lógica de simulação e desenho mantido igual) ---
-
     public void addLog(String msg, boolean isCritical) {
         Label lbl = new Label((isCritical ? "⚠ " : "➤ ") + msg);
         lbl.setWrapText(true);
         lbl.setMaxWidth(220);
         lbl.setFont(Font.font("Segoe UI", FontWeight.NORMAL, 11));
-
         if (isCritical) {
             lbl.setStyle("-fx-text-fill: #ff6b6b; -fx-font-weight: bold; -fx-background-color: rgba(255,0,0,0.15); -fx-padding: 3; -fx-background-radius: 3;");
         } else {
@@ -355,15 +314,12 @@ public class RailMapVisualizer extends StackPane {
 
         Label icon = new Label("⚠ COLISÃO EVITADA");
         icon.setStyle("-fx-text-fill: #ef4444; -fx-font-size: 26px; -fx-font-weight: bold;");
-
         Label desc = new Label("Sistemas de segurança ativados.");
         desc.setId("conflictDesc");
         desc.setStyle("-fx-text-fill: #cbd5e1; -fx-font-size: 16px; -fx-text-alignment: center;");
         desc.setWrapText(true);
-
         Button btn = new Button("VISUALIZAR AÇÃO (Retomar)");
         btn.setStyle("-fx-background-color: white; -fx-text-fill: #0f172a; -fx-font-weight: bold; -fx-padding: 12 25; -fx-background-radius: 20; -fx-cursor: hand; -fx-font-size: 14px;");
-
         btn.setOnAction(e -> {
             panel.setVisible(false);
             isPausedByConflict = false;
@@ -372,7 +328,6 @@ public class RailMapVisualizer extends StackPane {
             slowMotionEndTime = System.currentTimeMillis() + 3000;
             addLog("▶ Retomando tráfego...", false);
         });
-
         panel.getChildren().addAll(icon, desc, btn);
         panel.setVisible(false);
         return panel;
@@ -450,7 +405,7 @@ public class RailMapVisualizer extends StackPane {
 
         autoCameraMode = true;
         btnAutoCam.setSelected(true);
-        scale = 0.6; // Ajuste de zoom inicial
+        scale = 0.55;
         updateFrame();
         addLog("Rede carregada.", false);
     }
