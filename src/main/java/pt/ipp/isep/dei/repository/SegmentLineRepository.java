@@ -9,91 +9,119 @@ import java.util.stream.Collectors;
 
 /**
  * Repository class responsible for loading and managing {@link LineSegment} entities.
- *
- * <p>It loads segments from the database and creates inverse segments to support
- * bidirectional route simulation. It uses an in-memory cache for fast lookup.</p>
+ * Uses a hardcoded mapping to link segments to facilities since the DB table lacks FKs.
  */
 public class SegmentLineRepository {
 
-    // Constant to prefix inverse segment IDs (CRITICAL FOR CONFLICTS)
     public static final String INVERSE_ID_PREFIX = "INV_";
     private static final double GENERIC_MAX_SPEED_KMH = 150.0;
-    private final List<LineSegment> inMemorySegments = new ArrayList<>();
 
     private final Map<String, LineSegment> segmentCache = new HashMap<>();
 
-    // 🚨 TEMPORARY MOCK FOR FACILITY <-> SEGMENT LINKAGE 🚨
+    // Mapping: Segment ID -> {Start Facility ID, End Facility ID}
     private final Map<Integer, Integer[]> segmentFacilityMapping = new HashMap<>();
 
-    public void cleanDatabaseData() {
-        this.segmentCache.clear();
-        this.inMemorySegments.clear();
-        // Se estiver a usar a lista segmentFacilityMapping, limpe-a também, mas o crucial é o cache.
-        System.out.println("🧹 Repository cleaned: Old database data removed.");
-    }
-    /**
-     * Constructs the Segment Line Repository and initializes data loading.
-     */
     public SegmentLineRepository() {
-        System.out.println("SegmentLineRepository: Initialized (Loading data from DB).");
+        System.out.println("SegmentLineRepository: Initialized.");
         loadSegmentsFromDatabase();
     }
 
+    public void cleanDatabaseData() {
+        this.segmentCache.clear();
+    }
+
     /**
-     * Populates the hardcoded mapping between segment IDs (integer key) and the start/end facility IDs.
+     * Define a topologia da rede manualmente baseada na descrição das Linhas (Lxxx).
      */
     private void populateFacilityMapping() {
-        // Mapping maintained for graph consistency
+        // L001: S. Bento (7) <-> Campanhã (5)
         segmentFacilityMapping.put(1, new Integer[]{7, 5});
+
+        // L002: Campanhã (5) <-> Contumil (13)
         segmentFacilityMapping.put(3, new Integer[]{5, 13});
-        segmentFacilityMapping.put(30, new Integer[]{13, 43});
-        segmentFacilityMapping.put(31, new Integer[]{43, 45});
-        segmentFacilityMapping.put(33, new Integer[]{45, 48});
-        segmentFacilityMapping.put(35, new Integer[]{48, 50});
+
+        // L003: Contumil (13) <-> Nine (20)
+        // Mapeamos ambos os segmentos para cobrir o troço
         segmentFacilityMapping.put(10, new Integer[]{13, 20});
+        segmentFacilityMapping.put(11, new Integer[]{13, 20});
+
+        // L004: Nine (20) <-> Barcelos (8)
         segmentFacilityMapping.put(15, new Integer[]{20, 8});
+        segmentFacilityMapping.put(16, new Integer[]{20, 8});
+
+        // L005: Barcelos (8) <-> Darque (12)
         segmentFacilityMapping.put(14, new Integer[]{8, 12});
+        segmentFacilityMapping.put(12, new Integer[]{8, 12});
+        segmentFacilityMapping.put(13, new Integer[]{8, 12});
+
+        // L006: Darque (12) <-> Viana (17)
+        // Nota: O ID do segmento é 20, cuidado para não confundir com ID da estação Nine
         segmentFacilityMapping.put(20, new Integer[]{12, 17});
+
+        // L007: Viana (17) <-> Caminha (21)
         segmentFacilityMapping.put(18, new Integer[]{17, 21});
+        segmentFacilityMapping.put(21, new Integer[]{17, 21});
+        segmentFacilityMapping.put(22, new Integer[]{17, 21});
+
+        // L008: Caminha (21) <-> S. Pedro (16)
         segmentFacilityMapping.put(25, new Integer[]{21, 16});
+
+        // L009: S. Pedro (16) <-> Valença (11)
         segmentFacilityMapping.put(26, new Integer[]{16, 11});
-        segmentFacilityMapping.put(11, new Integer[]{20, 18});
-        segmentFacilityMapping.put(16, new Integer[]{18, 8});
-        segmentFacilityMapping.put(12, new Integer[]{12, 17});
-        segmentFacilityMapping.put(13, new Integer[]{17, 12});
-        segmentFacilityMapping.put(21, new Integer[]{21, 16});
-        segmentFacilityMapping.put(22, new Integer[]{16, 11});
+
+        // L010: Contumil (13) <-> S. Gemil (43)
+        segmentFacilityMapping.put(30, new Integer[]{13, 43}); // Inverso na definição de rota, mas bidirecional aqui
+
+        // L011: S. Gemil (43) <-> S. Mamede (45)
+        segmentFacilityMapping.put(31, new Integer[]{43, 45});
+        segmentFacilityMapping.put(32, new Integer[]{43, 45});
+
+        // L012: S. Mamede (45) <-> Leça (48)
+        segmentFacilityMapping.put(33, new Integer[]{45, 48});
+        segmentFacilityMapping.put(34, new Integer[]{45, 48});
+
+        // L013: Leça (48) <-> Leixões (50)
+        segmentFacilityMapping.put(35, new Integer[]{48, 50});
+        segmentFacilityMapping.put(36, new Integer[]{48, 50});
+
+        // --- NOVAS LINHAS (USBD32) ---
+
+        // L030: Ramal Braga (Nine -> Braga)
+        // Segmento '50' (ID string)
+        segmentFacilityMapping.put(50, new Integer[]{20, 30});
+
+        // L031: Nine (20) -> Manzagão (31)
+        segmentFacilityMapping.put(51, new Integer[]{20, 31});
+        segmentFacilityMapping.put(52, new Integer[]{20, 31});
+        segmentFacilityMapping.put(53, new Integer[]{20, 31});
+        segmentFacilityMapping.put(54, new Integer[]{20, 31});
+        segmentFacilityMapping.put(55, new Integer[]{20, 31});
+
+        // L032: Manzagão (31) -> Cerqueiral (32)
+        segmentFacilityMapping.put(58, new Integer[]{31, 32});
+
+        // L035: Cerqueiral (32) -> Gemieira (33)
+        segmentFacilityMapping.put(59, new Integer[]{32, 33});
+
+        // L036: Gemieira (33) -> Paredes de Coura (35)
+        segmentFacilityMapping.put(60, new Integer[]{33, 35});
+
+        // L037: Paredes de Coura (35) -> Valença (11)
+        segmentFacilityMapping.put(61, new Integer[]{35, 11});
     }
-    /**
-     * Guarda um segmento no Cache principal.
-     * Isto permite que o Main injete dados do CSV e o Controller os encontre.
-     */
+
     public void save(LineSegment segment) {
         if (segment != null) {
-            // CORREÇÃO CRÍTICA: Guardar no segmentCache, não na lista isolada!
-            // Assumindo que getIdSegmento() devolve int ou String, convertemos para String para ser a chave.
             String idKey = String.valueOf(segment.getIdSegmento());
-
-            // Adiciona ou atualiza no mapa que o findAll usa
             this.segmentCache.put(idKey, segment);
-
-            // Se quiser manter a lista por compatibilidade, pode, mas o importante é o Cache:
-            this.inMemorySegments.add(segment);
         }
     }
 
-    /**
-     * Retorna todos os segmentos (BD + CSV injetado).
-     */
     public List<LineSegment> findAll() {
-        // Agora que o save() escreve no segmentCache, este método vai devolver TUDO (311 + 38)
         return new ArrayList<>(segmentCache.values());
     }
-    /**
-     * Loads segment data from the LINE_SEGMENT database table and creates inverse segments.
-     */
-    private void loadSegmentsFromDatabase() {
 
+    private void loadSegmentsFromDatabase() {
         populateFacilityMapping();
 
         String sql = "SELECT segment_id, length_m, number_tracks, siding_position, siding_length " +
@@ -116,9 +144,11 @@ public class SegmentLineRepository {
                 Double sidingLength = rs.getDouble("siding_length");
                 if (rs.wasNull()) sidingLength = null;
 
+                // Tenta encontrar mapeamento para este segmento
                 Integer[] facilities = segmentFacilityMapping.get(segmentIdInt);
 
                 if (facilities == null || facilities.length < 2) {
+                    // Se não estiver no mapa, não conseguimos ligar a estações, ignoramos para o grafo
                     continue;
                 }
 
@@ -126,7 +156,7 @@ public class SegmentLineRepository {
                 int endFacilityId = facilities[1];
                 double lengthKm = lengthM / 1000.0;
 
-                // Segment 1: A -> B (Original ID)
+                // Segmento Ida (A -> B)
                 LineSegment segAB = new LineSegment(
                         segmentId,
                         startFacilityId,
@@ -139,7 +169,7 @@ public class SegmentLineRepository {
                 segmentCache.put(segmentId, segAB);
                 segmentsCount++;
 
-                // Segment 2: B -> A (Inverse)
+                // Segmento Volta (B -> A) - Inverso
                 String inverseId = INVERSE_ID_PREFIX + segmentId;
                 LineSegment segBA = new LineSegment(
                         inverseId,
@@ -154,20 +184,13 @@ public class SegmentLineRepository {
                 segmentsCount++;
             }
 
-            System.out.println("SegmentLineRepository: Successfully loaded " + segmentsCount + " segments (including inverses) from DB/Mapping.");
-
+            System.out.println("SegmentLineRepository: Loaded " + segmentsCount + " segments (inc. inverses) via Mapping.");
 
         } catch (SQLException e) {
-            System.err.println("SegmentLineRepository: ❌ FATAL ERROR loading segments from DB. Check DDL or connection: " + e.getMessage());
+            System.err.println("SegmentLineRepository: ❌ Error loading segments: " + e.getMessage());
         }
     }
 
-    /**
-     * Finds a list of segments by their IDs.
-     *
-     * @param segmentIds The list of segment ID strings (including inverse IDs).
-     * @return A list of matching {@link LineSegment} objects.
-     */
     public List<LineSegment> findByIds(List<String> segmentIds) {
         return segmentIds.stream()
                 .filter(segmentCache::containsKey)
@@ -175,33 +198,13 @@ public class SegmentLineRepository {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Finds a single segment by its ID.
-     *
-     * @param id The segment ID string.
-     * @return An {@link Optional} containing the segment if found, or empty otherwise.
-     */
     public Optional<LineSegment> findById(String id) {
         return Optional.ofNullable(segmentCache.get(id));
     }
 
-    /**
-     * Finds the direct segment going from Station A to Station B.
-     *
-     * @param stationAId The ID of the starting station.
-     * @param stationBId The ID of the ending station.
-     * @return An {@link Optional} containing the segment, if a direct mapping is found.
-     */
     public Optional<LineSegment> findDirectSegment(int stationAId, int stationBId) {
         return segmentCache.values().stream()
                 .filter(s -> (s.getIdEstacaoInicio() == stationAId && s.getIdEstacaoFim() == stationBId))
                 .findFirst();
-    }
-
-    /**
-     * Helper method to calculate line lengths (Currently unused/placeholder).
-     */
-    private Map<Integer, Double> calculateAllLineLengthsKm() {
-        return new HashMap<>();
     }
 }
