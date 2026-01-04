@@ -45,7 +45,9 @@
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI11" styleClass="sidebar-button" text="[USEI11] Connectivity (S2)" />
 
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI12" styleClass="sidebar-button" text="[USEI12] Minimal Backbone (S3)" />
+                        <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI13" styleClass="sidebar-button" text="[USEI13] Hub Centrality (S3)" />
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI14" styleClass="sidebar-button" text="[USEI14] Max Throughput (S3)" />
+                        <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI15" styleClass="sidebar-button" text="[USEI15] Negative Paths (S3)" />
 
                         <Label styleClass="sidebar-section-title" text="Database (S3)" />
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowBDDAD" styleClass="sidebar-button" text="BDDAD CRUD" />

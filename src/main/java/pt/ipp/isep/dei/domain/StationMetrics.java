@@ -8,4 +8,17 @@ public class StationMetrics {
 
     public StationMetrics(Station station) { this.station = station; }
     public Station getStation() { return station; }
+
+
+    public int getStid() {
+        return station.idEstacao();
+    }
+
+    public String getStname() {
+        return station.nome();
+    }
+
+    public double getHubScore() {
+        return hubScore;
+    }
 }

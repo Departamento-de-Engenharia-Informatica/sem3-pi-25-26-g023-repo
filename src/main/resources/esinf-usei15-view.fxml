@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+
+<VBox spacing="20.0" styleClass="content-pane" xmlns="http://javafx.com/javafx/21" xmlns:fx="http://javafx.com/fxml/1" fx:controller="pt.ipp.isep.dei.UI.gui.views.Usei15Controller">
+    <padding>
+        <Insets bottom="25.0" left="25.0" right="25.0" top="25.0" />
+    </padding>
+
+    <Label styleClass="view-title" text="USEI15 - Risk-Aware Shortest Path" />
+    <Label text="Detects shortest paths in networks with negative risk weights using Bellman-Ford." styleClass="view-description" />
+
+    <GridPane hgap="15.0" vgap="15.0">
+        <columnConstraints>
+            <ColumnConstraints minWidth="120.0" />
+            <ColumnConstraints hgrow="ALWAYS" />
+        </columnConstraints>
+        <children>
+            <Label text="Origin Station:" GridPane.columnIndex="0" GridPane.rowIndex="0" />
+            <ComboBox fx:id="cmbOrigin" maxWidth="Infinity" promptText="Select origin station..." GridPane.columnIndex="1" GridPane.rowIndex="0" />
+
+            <Label text="Target Station:" GridPane.columnIndex="0" GridPane.rowIndex="1" />
+            <ComboBox fx:id="cmbDest" maxWidth="Infinity" promptText="Select destination station..." GridPane.columnIndex="1" GridPane.rowIndex="1" />
+
+            <Button onAction="#handleRunBellmanFord" styleClass="action-button" text="Calculate Path" GridPane.columnIndex="1" GridPane.rowIndex="2" />
+        </children>
+    </GridPane>
+
+    <VBox spacing="10.0" VBox.vgrow="ALWAYS">
+        <children>
+            <Label style="-fx-font-weight: bold;" text="Analysis Result:" />
+            <TextArea fx:id="txtResultArea" editable="false" styleClass="text-area-mono" VBox.vgrow="ALWAYS" />
+        </children>
+    </VBox>
+</VBox>
