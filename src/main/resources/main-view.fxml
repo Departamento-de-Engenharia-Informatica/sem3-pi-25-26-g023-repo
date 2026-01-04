@@ -33,10 +33,10 @@
 
                         <Label styleClass="sidebar-section-title" text="Railway Ops (S1/S2/S3)" />
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowSimulation" styleClass="sidebar-button" text="[USLP07/10] Full Simulation (S3)" />
-
+                        <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSLP08" styleClass="sidebar-button" text="[USLP08] Freight Planner (S3)" />
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSLP09" styleClass="sidebar-button" text="[USLP09] Assemble Train (S3)" />
 
-                        <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSLP08" styleClass="sidebar-button" text="[USLP08] Freight Planner (S3)" />
+
 
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI06" styleClass="sidebar-button" text="[USEI06] Station Index (S2)" />
                         <Button maxWidth="1.7976931348623157E308" onAction="#handleShowUSEI07" styleClass="sidebar-button" text="[USEI07] Analyze 2D-Tree (S2)" />
