@@ -77,7 +77,7 @@ public class TrainCRUDController {
 
     // --- CONTROLO DE EDIÇÃO ---
     private String pendingLocomotiveId = null;
-    private List<String> pendingWagonIds = new ArrayList<>(); // Lista de vagões a selecionar após carga
+    private List<String> pendingWagonIds = new ArrayList<>();
 
     // Constants
     private static final double ROUTE_MAX_LENGTH_METERS = 500.0;
@@ -105,7 +105,6 @@ public class TrainCRUDController {
         setupValidationListeners();
         setupCustomCellFactories();
 
-        // --- LÓGICA DE SEGURANÇA DO BOTÃO (USLP09) ---
         BooleanBinding invalidFields = trainIdField.textProperty().isEmpty()
                 .or(operatorIdCombo.valueProperty().isNull())
                 .or(departureDateField.valueProperty().isNull())
@@ -129,7 +128,6 @@ public class TrainCRUDController {
             endFacilityColumn.setCellValueFactory(new PropertyValueFactory<>("endFacilityId"));
             if (routeColumn != null) routeColumn.setCellValueFactory(new PropertyValueFactory<>("routeId"));
 
-            // Listener para Seleção na Tabela -> Edição
             trainTable.getSelectionModel().selectedItemProperty().addListener((obs, oldS, newS) -> {
                 if (newS != null) populateForm(newS);
             });
@@ -141,7 +139,6 @@ public class TrainCRUDController {
             startFacilityCombo.getSelectionModel().selectedItemProperty().addListener((obs, oldVal, newVal) -> {
                 if (newVal != null) {
                     if (networkService != null) filterEndFacilities(newVal.getKey());
-                    // Chama a versão Async para não bloquear a UI e calcular distâncias
                     updateAvailableStockAsync(newVal.getKey());
                 } else {
                     endFacilityCombo.getItems().clear();
@@ -168,9 +165,6 @@ public class TrainCRUDController {
         });
     }
 
-    /**
-     * OTIMIZAÇÃO: Carregamento Paralelo
-     */
     public void initController() {
         if(progressIndicator != null) progressIndicator.setVisible(true);
         System.out.println("🚀 A iniciar carregamento paralelo de dados...");
@@ -229,9 +223,7 @@ public class TrainCRUDController {
         new Thread(task).start();
     }
 
-    // --- POPULAR FORMULÁRIO (EDIÇÃO) ---
     private void populateForm(Train train) {
-        // 1. Dados Básicos
         trainIdField.setText(train.getTrainId());
         operatorIdCombo.setValue(train.getOperatorId());
         if (train.getDepartureTime() != null) {
@@ -240,10 +232,8 @@ public class TrainCRUDController {
         }
         routeIdCombo.setValue(train.getRouteId());
 
-        // 2. Guardar a Locomotiva para seleção posterior
         this.pendingLocomotiveId = train.getLocomotiveId();
 
-        // 3. Buscar a Composição (Vagões) Assincronamente
         Task<List<String>> loadConsistTask = new Task<>() {
             @Override
             protected List<String> call() {
@@ -252,16 +242,13 @@ public class TrainCRUDController {
 
             @Override
             protected void succeeded() {
-                // Guardamos os IDs para selecionar depois
                 pendingWagonIds = getValue();
 
-                // 4. Selecionar Estação Partida -> Dispara o Listener -> Dispara updateAvailableStockAsync
                 startFacilityCombo.getItems().stream()
                         .filter(e -> e.getKey() == train.getStartFacilityId())
                         .findFirst()
                         .ifPresent(startFacilityCombo::setValue);
 
-                // 5. Selecionar Estação Chegada
                 endFacilityCombo.getItems().stream()
                         .filter(e -> e.getKey() == train.getEndFacilityId())
                         .findFirst()
@@ -271,7 +258,7 @@ public class TrainCRUDController {
         new Thread(loadConsistTask).start();
     }
 
-    // --- CÁLCULO E ORDENAÇÃO (USLP09) ---
+    // --- CORREÇÃO: Usar NetworkService para calcular distância real ---
     private void updateAvailableStockAsync(int startStationId) {
         if(progressIndicator != null) progressIndicator.setVisible(true);
 
@@ -298,7 +285,24 @@ public class TrainCRUDController {
                     for (Locomotive l : allLocomotivesCache) {
                         EuropeanStation currentLoc = getRandomStation();
                         String status = (Math.random() > 0.8) ? "IN_TRANSIT" : "PARKED";
-                        double dist = calculateDistance(startStation, currentLoc);
+
+                        double dist = 0.0;
+                        // Calcula distância usando os carris (Segmentos)
+                        if (currentLoc != null && startStation.getIdEstacao() != currentLoc.getIdEstacao()) {
+                            RailwayPath path = networkService.findFastestPath(
+                                    startStation.getIdEstacao(),
+                                    currentLoc.getIdEstacao(),
+                                    100.0 // Velocidade teórica
+                            );
+
+                            if (path != null) {
+                                dist = path.getTotalDistance();
+                            } else {
+                                dist = 99999.9; // Inalcançável
+                                status = "UNREACHABLE";
+                            }
+                        }
+
                         String locName = (currentLoc != null) ? currentLoc.getStation() : "Unknown";
                         wrappedLocos.add(new RollingStockItem<>(l, status, locName, dist));
                     }
@@ -309,18 +313,35 @@ public class TrainCRUDController {
                     for (Wagon w : allWagonsCache) {
                         EuropeanStation currentLoc = getRandomStation();
                         String status = (Math.random() > 0.8) ? "IN_TRANSIT" : "PARKED";
-                        double dist = calculateDistance(startStation, currentLoc);
+
+                        double dist = 0.0;
+                        if (currentLoc != null && startStation.getIdEstacao() != currentLoc.getIdEstacao()) {
+                            RailwayPath path = networkService.findFastestPath(
+                                    startStation.getIdEstacao(),
+                                    currentLoc.getIdEstacao(),
+                                    100.0
+                            );
+
+                            if (path != null) {
+                                dist = path.getTotalDistance();
+                            } else {
+                                dist = 99999.9; // Inalcançável
+                                status = "UNREACHABLE";
+                            }
+                        }
+
                         String locName = (currentLoc != null) ? currentLoc.getStation() : "Unknown";
                         wrappedWagons.add(new RollingStockItem<>(w, status, locName, dist));
                     }
                 }
 
-                // Ordenar: Parked descendente de distância
+                // Ordenar: Parked -> Menor Distância Primeiro
                 Comparator<RollingStockItem<?>> sorter = (o1, o2) -> {
                     int statusCompare = o1.getStatus().compareTo(o2.getStatus());
                     if (statusCompare != 0) return statusCompare;
+
                     if ("PARKED".equals(o1.getStatus())) {
-                        return Double.compare(o2.getDistanceKm(), o1.getDistanceKm());
+                        return Double.compare(o1.getDistanceKm(), o2.getDistanceKm()); // ASCENDENTE (mais perto primeiro)
                     }
                     return 0;
                 };
@@ -344,27 +365,23 @@ public class TrainCRUDController {
                     cmbLocomotive.setItems(FXCollections.observableArrayList(locos));
                     wagonListView.setItems(FXCollections.observableArrayList(wagons));
 
-                    // --- RE-SELEÇÃO AUTOMÁTICA (EDIÇÃO) ---
-
-                    // 1. Locomotiva
+                    // Re-seleção
                     if (pendingLocomotiveId != null) {
                         cmbLocomotive.getItems().stream()
                                 .filter(wrapper -> wrapper.getItem().getLocomotiveId().equals(pendingLocomotiveId))
                                 .findFirst()
                                 .ifPresent(cmbLocomotive::setValue);
-                        pendingLocomotiveId = null; // Reset
+                        pendingLocomotiveId = null;
                     }
 
-                    // 2. Vagões (Multi-seleção)
                     if (pendingWagonIds != null && !pendingWagonIds.isEmpty()) {
                         wagonListView.getSelectionModel().setSelectionMode(SelectionMode.MULTIPLE);
-                        // Iterar pela UI list e selecionar se o ID estiver na lista pendente
                         for (RollingStockItem<Wagon> wrapper : wagonListView.getItems()) {
                             if (pendingWagonIds.contains(wrapper.getItem().getIdWagon())) {
                                 wagonListView.getSelectionModel().select(wrapper);
                             }
                         }
-                        pendingWagonIds.clear(); // Reset
+                        pendingWagonIds.clear();
                     }
                 }
             }
@@ -372,7 +389,7 @@ public class TrainCRUDController {
         new Thread(calculationTask).start();
     }
 
-    // --- Validations & Helpers ---
+    // --- Helpers de Validação ---
 
     private void setupValidationListeners() {
         if(cmbLocomotive != null)
@@ -537,22 +554,6 @@ public class TrainCRUDController {
         }
     }
 
-    private double calculateDistance(EuropeanStation s1, EuropeanStation s2) {
-        if (s1 == null || s2 == null) return 0.0;
-        double lat1 = s1.getLatitude();
-        double lon1 = s1.getLongitude();
-        double lat2 = s2.getLatitude();
-        double lon2 = s2.getLongitude();
-        final int R = 6371;
-        double dLat = Math.toRadians(lat2 - lat1);
-        double dLon = Math.toRadians(lon2 - lon1);
-        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
-                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        return R * c;
-    }
-
     private EuropeanStation getRandomStation() {
         if (allStationsCache == null || allStationsCache.isEmpty()) return null;
         return allStationsCache.get(new Random().nextInt(allStationsCache.size()));
@@ -593,6 +594,8 @@ public class TrainCRUDController {
             }
             if ("IN_TRANSIT".equals(status)) {
                 return String.format("%s (In Transit to %s)", itemName, locationName);
+            } else if ("UNREACHABLE".equals(status)) {
+                return String.format("%s (Unreachable at %s)", itemName, locationName);
             } else {
                 return String.format("%s (Parked at %s - %.1f km away)", itemName, locationName, distanceKm);
             }
