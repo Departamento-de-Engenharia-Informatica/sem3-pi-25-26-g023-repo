@@ -11,13 +11,57 @@ import java.util.Optional;
 
 public class LocomotiveRepository {
 
-    // --- NOVO: Método de criação via Procedure (USLP08) ---
+    /**
+     * Regista um novo modelo de locomotiva elétrica chamando a função PL/SQL (USLP08).
+     *
+     * @param stockId O ID da locomotiva (ex: matrícula)
+     * @param operatorId O ID do operador (deve existir na tabela OPERATOR)
+     * @param model O modelo da locomotiva
+     * @param gauge A bitola em mm (deve existir na tabela GAUGE)
+     * @param powerKw A potência em kW
+     * @param length O comprimento em metros
+     * @param supportsMultipleGauges Se suporta múltiplas bitolas (true/false)
+     * @return true se registado com sucesso, false caso contrário.
+     */
+    public boolean registerElectricLocomotive(String stockId, String operatorId, String model,
+                                              double gauge, double powerKw, double length,
+                                              boolean supportsMultipleGauges) {
+        String sql = "{ ? = call add_electric_locomotive_model(?, ?, ?, ?, ?, ?, ?) }";
+
+        try (Connection conn = DatabaseConnection.getConnection();
+             CallableStatement cstmt = conn.prepareCall(sql)) {
+
+            // Configurar parâmetro de retorno
+            cstmt.registerOutParameter(1, OracleTypes.NUMBER);
+
+            // Configurar parâmetros de entrada
+            cstmt.setString(2, stockId);
+            cstmt.setString(3, operatorId);
+            cstmt.setString(4, model);
+            cstmt.setDouble(5, gauge);
+            cstmt.setDouble(6, powerKw);
+            cstmt.setDouble(7, length);
+            cstmt.setString(8, supportsMultipleGauges ? "Y" : "N");
+
+            cstmt.execute();
+
+            // Verificar retorno da função PL/SQL (1 = sucesso)
+            int result = cstmt.getInt(1);
+            return result == 1;
+
+        } catch (SQLException e) {
+            System.err.println("❌ Erro ao registar locomotiva elétrica: " + e.getMessage());
+            return false;
+        }
+    }
+
+    // --- Métodos Existentes Mantidos (USLP03 / Integração Geral) ---
+
     public boolean registerLocomotive(Locomotive loc) {
         String call = "{ call pr_register_locomotive(?, ?, ?, ?, ?, ?) }";
         try (Connection conn = DatabaseConnection.getConnection();
              CallableStatement cstmt = conn.prepareCall(call)) {
 
-            // Usando os getters da tua classe Locomotive
             cstmt.setString(1, String.valueOf(loc.getIdLocomotiva()));
             cstmt.setString(2, loc.getModelo());
             cstmt.setString(3, loc.getTipo());
@@ -33,9 +77,6 @@ public class LocomotiveRepository {
         }
     }
 
-    /**
-     * Encontra uma locomotiva pelo ID via Function PL/SQL.
-     */
     public Optional<Locomotive> findById(String idStr) {
         String call = "{ ? = call fn_get_locomotive_by_id(?) }";
 
@@ -82,9 +123,6 @@ public class LocomotiveRepository {
         return locomotives;
     }
 
-    /**
-     * Mapeamento mantido IDÊNTICO ao original para evitar NumberFormatException.
-     */
     private Locomotive mapResultSetToLocomotive(ResultSet rs) throws SQLException {
         Object idObj = rs.getObject("stock_id");
         int id = 0;
