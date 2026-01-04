@@ -90,7 +90,7 @@ Advanced C and Assembly routines for hardware control, sensor management, and sy
 * **USAC10: Station Control Hardware** 🔌
     * [🔧 Arduino Source](src/doc/ARQCP/USAC10/hardware/station_ctrl/station_ctrl.ino)
 * **USAC11: Dynamic Config Loader** ⚙️
-    * [📄 Implementation](src/doc/ARQCP/USAC11/config_loader.c)
+    * [📄 Implementation](src/doc/ARQCP/USAC11/encrypt_data.s)
 * **USAC12: Log Creator System** 📝
     * [📄 Implementation](src/doc/ARQCP/USAC12/usac12_log_creator.c)
 * **USAC13: Sensor Data Handler** 📡
