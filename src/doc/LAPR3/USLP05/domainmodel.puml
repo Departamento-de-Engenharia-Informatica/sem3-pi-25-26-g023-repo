@@ -9,7 +9,7 @@ skinparam classAttributeIconSize 0
 hide empty methods
 hide circles
 
-' --- DOMAIN MODEL - CLASSES PURAS (Agrupamentos removidos para evitar erro) ---
+' --- DOMAIN MODEL - INFRAESTRUTURA FÍSICA ---
 
     class RailwayNetwork {
         name
@@ -38,6 +38,11 @@ hide circles
         hasWarehouse
         hasRefrigerated
     }
+
+    class Track {
+        trackNumber (1-99)
+    }
+
     abstract class Facility {
         name
         facilityId : int
@@ -69,6 +74,9 @@ hide circles
 
     Station "1" -- "0..*" RefrigeratedArea : "can have"
     Station "1" -- "0..*" GrainSilo : "can have"
+    Station "1" -- "1..99" Track : has >
+
+    ' --- AGENTES E EQUIPAMENTO ---
 
     class TrainOperator {
         id
@@ -110,6 +118,8 @@ hide circles
     TrainOperator "1" -- "0..*" RollingStock : owns
     LineOwner "1" -- "0..*" RailwayLine : owns
 
+    ' --- OPERAÇÃO E LOGÍSTICA ---
+
     class Freight {
         freightId
         status
@@ -139,6 +149,8 @@ hide circles
 
     TrainTrip "1" -- "1" PlannedRoute : follows >
     TrainTrip "1" -- "1..*" TrainEvent : records >
+
+    ' --- ARMAZÉM E STOCK ---
 
     class Warehouse extends Building {
         warehouseId
@@ -195,44 +207,13 @@ hide circles
     Return "*" -- "1" Item : concerns >
     Quarantine "1" -- "0..*" Return : holds >
 
-    class StationMngtSystem {
-        manageStation()
-    }
-    class Track {
-        trackNumber (1-99)
-    }
-    class StationLog {
-        timestamp
-        message
-    }
-
-    StationMngtSystem "1" -- "1" StationLog : writes to >
-
-    class StationIndex {
-        searchByArea()
-        searchByRadius()
-        searchNearestN()
-    }
-    class EuropeanStationDataset {
-        (64k records)
-    }
-    class "BST/AVL" as TreeIndex
-    class "2DTree" as SpatialIndex
-
-    StationIndex "1" -- "1" EuropeanStationDataset : is built from >
-    StationIndex "1" -- "*" TreeIndex : uses >
-    StationIndex "1" -- "1" SpatialIndex : uses >
-
-' --- GLOBAL RELATIONSHIPS ---
+' --- RELACIONAMENTOS GLOBAIS ---
 
 Station "1" -- "0..*" Warehouse : "can have"
 
 RouteStop "1" -- "1" Station : "is at"
 RouteStop "1" -- "1" LineSegment : "is reached via"
 TrainEvent "1" -- "1" Station : "occurs at"
-
-StationMngtSystem "1" -- "1" Station : manages >
-Station "1" -- "1..99" Track : has >
 
 TrainTrip "1" -- "1..*" Locomotive : "is pulled by"
 Freight "1" -- "1..*" Wagon : "is composed of"
